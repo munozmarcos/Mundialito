@@ -2,6 +2,7 @@
 
 import { scorePrediction } from "@/lib/scoring";
 import { formatArgentinaDate } from "@/lib/dates";
+import { matchFitsGroupFilters } from "@/lib/match-filters";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
 import { TeamLabel } from "@/components/team-label";
 import { Calculator, ClipboardPaste, GitBranch, Lock, RotateCcw, Table2, Trophy } from "lucide-react";
@@ -45,27 +46,8 @@ const stageLabels: Record<string, string> = {
 
 const knockoutOrder: MatchStage[] = ["R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
 
-function normalizeFilter(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
-function dateKey(value: string) {
-  return value.slice(0, 10);
-}
-
 function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string, groupFilter: string) {
-  const team = normalizeFilter(teamFilter);
-  const teamOk =
-    !team ||
-    normalizeFilter(match.home_team).includes(team) ||
-    normalizeFilter(match.away_team).includes(team);
-  const dateOk = !dateFilter || dateKey(match.kickoff_at) === dateFilter;
-  const groupOk = groupFilter === "ALL" || match.group_name === groupFilter;
-  return teamOk && dateOk && groupOk;
+  return matchFitsGroupFilters(match, teamFilter, dateFilter, groupFilter);
 }
 
 type Props = {
@@ -323,7 +305,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   const [copyMessage, setCopyMessage] = useState("");
   const [groupFilter, setGroupFilter] = useState("ALL");
   const [teamFilter, setTeamFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("2026-06-11");
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
   const knockoutMatches = matches.filter((match) => match.stage !== "GROUP");
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");

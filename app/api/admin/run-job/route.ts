@@ -9,6 +9,7 @@ const Body = z.object({
     "/api/jobs/send-reminders",
     "/api/jobs/lock-matches",
     "/api/jobs/notify-kickoff",
+    "/api/jobs/send-daily-ranking",
     "/api/jobs/notify-results"
   ]),
   matchId: z.string().uuid().optional()

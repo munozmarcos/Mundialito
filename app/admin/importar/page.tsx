@@ -18,7 +18,7 @@ export default function ImportAdminPage() {
         <article className="panel p-5">
           <RefreshCw className="h-6 w-6 text-grass" />
           <h2 className="mt-3 text-xl font-black">Uso normal</h2>
-          <p className="mt-2 text-sm text-ink/70">Usa Admin &gt; Ejecutar ahora: actualizar partidos para traer el calendario automaticamente.</p>
+          <p className="mt-2 text-sm text-ink/70">Usa Admin &gt; Actualizar partidos para traer el calendario automaticamente.</p>
         </article>
         <article className="panel p-5">
           <FileSpreadsheet className="h-6 w-6 text-gold" />

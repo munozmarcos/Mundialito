@@ -12,11 +12,12 @@ const pages = [
 ];
 
 const jobs = [
-  { path: "/api/jobs/sync-fixtures", icon: RefreshCw, title: "Ejecutar ahora: actualizar partidos", text: "Corre en este momento la búsqueda del calendario y cruces." },
-  { path: "/api/jobs/sync-results", icon: Trophy, title: "Ejecutar ahora: actualizar resultados", text: "Busca resultados finales ahora y recalcula puntos." },
-  { path: "/api/jobs/send-reminders", icon: ListChecks, title: "Ejecutar ahora: recordatorios 4h", text: "Envia WhatsApp ahora a quienes falten si hay partidos dentro de la ventana." },
-  { path: "/api/jobs/lock-matches", icon: LockKeyhole, title: "Ejecutar ahora: bloquear 15m", text: "Bloquea ahora partidos que esten a 15 minutos o menos." },
-  { path: "/api/jobs/notify-kickoff", icon: MessageCircle, title: "Ejecutar ahora: avisar inicio", text: "Envia WhatsApp ahora si hay partidos empezando en la ventana actual." }
+  { path: "/api/jobs/sync-fixtures", icon: RefreshCw, title: "Actualizar partidos", text: "Corre en este momento la búsqueda del calendario y cruces." },
+  { path: "/api/jobs/sync-results", icon: Trophy, title: "Actualizar resultados", text: "Busca resultados finales ahora y recalcula puntos." },
+  { path: "/api/jobs/send-reminders", icon: ListChecks, title: "Recordatorios 4h", text: "Envia WhatsApp ahora a quienes falten si hay partidos dentro de la ventana." },
+  { path: "/api/jobs/lock-matches", icon: LockKeyhole, title: "Bloquear 15m", text: "Bloquea ahora partidos que esten a 15 minutos o menos." },
+  { path: "/api/jobs/notify-kickoff", icon: MessageCircle, title: "Avisar inicio", text: "Envia WhatsApp ahora si hay partidos empezando en la ventana actual." },
+  { path: "/api/jobs/send-daily-ranking", icon: MessageCircle, title: "Enviar ranking por WhatsApp", text: "Manda el ranking actual por WhatsApp a todos los miembros registrados." }
 ];
 
 export default function AdminPage() {

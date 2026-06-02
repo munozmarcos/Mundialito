@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/empty-state";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
+import { dateKey, matchFitsBasicFilters } from "@/lib/match-filters";
 import { matchStatus } from "@/lib/scoring";
 import type { Match, MatchStage, Prediction } from "@/lib/types";
 import { Calculator, Check, GitBranch, Lock, LogIn, Save, Table2, Trophy } from "lucide-react";
@@ -56,14 +57,6 @@ const stageLabels: Record<MatchStage, string> = {
 
 const knockoutOrder: MatchStage[] = ["R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
 
-function normalizeFilter(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
 function groupBy<T>(items: T[], key: (item: T) => string) {
   return items.reduce<Record<string, T[]>>((acc, item) => {
     const group = key(item);
@@ -84,18 +77,8 @@ function formatKickoff(value: string) {
   return formatArgentinaDateTime(value);
 }
 
-function dateKey(value: string) {
-  return value.slice(0, 10);
-}
-
 function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string) {
-  const team = normalizeFilter(teamFilter);
-  const teamOk =
-    !team ||
-    normalizeFilter(match.home_team).includes(team) ||
-    normalizeFilter(match.away_team).includes(team);
-  const dateOk = !dateFilter || dateKey(match.kickoff_at) === dateFilter;
-  return teamOk && dateOk;
+  return matchFitsBasicFilters(match, teamFilter, dateFilter);
 }
 
 function projectedGroupTable(matches: Match[], predictions: Record<string, PredictionWithUpdated>) {
@@ -512,7 +495,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [groupFilter, setGroupFilter] = useState("ALL");
   const [teamFilter, setTeamFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("2026-06-11");
   const predictionMap = useMemo(() => byId(predictions), [predictions]);
 
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
