@@ -4,8 +4,8 @@ import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const videoId = "rPrRa-EehAQ";
-const chorusStart = 54;
-const chorusEnd = 88;
+const chorusStart = 80;
+const chorusEnd = 112;
 
 function youtubeCommand(command: "playVideo" | "pauseVideo" | "mute" | "unMute") {
   return JSON.stringify({ event: "command", func: command, args: [] });

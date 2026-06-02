@@ -319,10 +319,7 @@ function PredictionCard({
     <article className="rounded-lg border border-line bg-white p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-xs font-bold text-ink/60">{formatKickoff(match.kickoff_at)}</span>
-        <div className="flex flex-wrap justify-end gap-2">
-          {prediction && <span className="badge bg-mint text-grass">Cargado</span>}
-          <StatusPill status={unavailable ? "locked" : status} />
-        </div>
+        <StatusPill status={unavailable ? "locked" : status} />
       </div>
 
       <form className="grid gap-3" onSubmit={save}>
@@ -392,9 +389,12 @@ function PredictionCard({
               </div>
             </div>
           </div>
-          <button className="btn min-w-11 px-0" disabled={!loggedIn || locked || saving} title="Guardar predicción" type="submit">
-            {message === "Guardada" ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-          </button>
+          <div className="flex items-center gap-2">
+            {prediction && <span className="badge bg-mint text-grass">Cargado</span>}
+            <button className="btn min-w-11 px-0" disabled={!loggedIn || locked || saving} title="Guardar predicción" type="submit">
+              {message === "Guardada" ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
         {unavailable && <p className="text-xs font-bold text-slate-500">Cerrado hasta que se definan los clasificados.</p>}
         {message && <p className="text-xs font-bold text-grass">{message}</p>}
@@ -450,10 +450,7 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
     <article className="rounded-lg border border-line bg-white p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-xs font-bold text-ink/60">{formatKickoff(match.kickoff_at)}</span>
-        <div className="flex flex-wrap justify-end gap-2">
-          {prediction && <span className="badge bg-mint text-grass">Cargado</span>}
-          <StatusPill status={status} />
-        </div>
+        <StatusPill status={status} />
       </div>
       <div className="grid gap-2">
         <div className={`flex items-center justify-between gap-3 rounded-md p-2 ${winner?.name === home.name ? "bg-mint" : "bg-field"}`}>
@@ -496,7 +493,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [groupFilter, setGroupFilter] = useState("ALL");
   const [teamFilter, setTeamFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState("2026-06-11");
+  const [dateFilter, setDateFilter] = useState("");
   const predictionMap = useMemo(() => byId(predictions), [predictions]);
 
   const groupMatches = matches.filter((match) => match.stage === "GROUP");

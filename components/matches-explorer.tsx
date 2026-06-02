@@ -285,7 +285,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const [stage, setStage] = useState("ALL");
   const [groupFilter, setGroupFilter] = useState("ALL");
   const [teamFilter, setTeamFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState("2026-06-11");
+  const [dateFilter, setDateFilter] = useState("");
   const results = useMemo(() => initialResults(matches), [matches]);
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
   const knockoutMatches = matches.filter((match) => match.stage !== "GROUP");

@@ -306,7 +306,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   const [copyMessage, setCopyMessage] = useState("");
   const [groupFilter, setGroupFilter] = useState("ALL");
   const [teamFilter, setTeamFilter] = useState("");
-  const [dateFilter, setDateFilter] = useState("2026-06-11");
+  const [dateFilter, setDateFilter] = useState("");
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
   const knockoutMatches = matches.filter((match) => match.stage !== "GROUP");
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
