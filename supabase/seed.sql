@@ -1,0 +1,6 @@
+insert into matches (home_team, away_team, home_country_code, away_country_code, kickoff_at, stadium, stage, group_name)
+values
+  ('Mexico', 'South Africa', 'mx', 'za', '2026-06-11T16:00:00-05:00', 'Estadio Azteca', 'GROUP', 'A'),
+  ('Canada', 'Qualifier', 'ca', null, '2026-06-12T18:00:00-04:00', 'BMO Field', 'GROUP', 'B'),
+  ('United States', 'Qualifier', 'us', null, '2026-06-12T20:00:00-07:00', 'SoFi Stadium', 'GROUP', 'D')
+on conflict do nothing;

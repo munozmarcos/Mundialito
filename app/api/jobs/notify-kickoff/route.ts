@@ -1,0 +1,85 @@
+import { formatArgentinaDateTime } from "@/lib/dates";
+import { countryCodeForTeam } from "@/lib/flags";
+import { supabaseAdmin } from "@/lib/supabase";
+import { sendWhatsApp } from "@/lib/whatsapp";
+import { NextResponse } from "next/server";
+
+function assertCron(req: Request) {
+  const secret = process.env.CRON_SECRET;
+  return secret && req.headers.get("authorization") === `Bearer ${secret}`;
+}
+
+function flagEmoji(team: string, explicit?: string | null) {
+  const code = countryCodeForTeam(team, explicit);
+  if (!code) return "🏳️";
+  if (code === "gb-eng" || code === "gb-sct") return "🏴";
+  return code
+    .toUpperCase()
+    .split("")
+    .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
+    .join("");
+}
+
+export async function POST(req: Request) {
+  if (!assertCron(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const db = supabaseAdmin();
+  const url = new URL(req.url);
+  const now = url.searchParams.get("now") ? new Date(url.searchParams.get("now")!) : new Date();
+  const from = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
+  const to = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
+
+  const { data: matches, error } = await db
+    .from("matches")
+    .select("*")
+    .gte("kickoff_at", from)
+    .lte("kickoff_at", to)
+    .is("home_goals", null);
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  const { data: users, error: usersError } = await db
+    .from("profiles")
+    .select("id,display_name,phone,role")
+    .not("phone", "is", null)
+    .in("role", ["participant", "admin"]);
+  if (usersError) return NextResponse.json({ error: usersError.message }, { status: 400 });
+
+  let sent = 0;
+  const failures: string[] = [];
+  for (const match of matches ?? []) {
+    for (const user of users ?? []) {
+      const dedupeKey = `${match.id}:${user.id}:kickoff`;
+      const { error: logError } = await db.from("notification_logs").insert({
+        user_id: user.id,
+        match_id: match.id,
+        kind: "whatsapp-kickoff",
+        dedupe_key: dedupeKey
+      });
+      if (logError) continue;
+
+      try {
+        await sendWhatsApp(
+          user.phone,
+          [
+            "⚽ *Arranca el partido*",
+            "",
+            `${flagEmoji(match.home_team, match.home_country_code)} ${match.home_team} vs ${flagEmoji(match.away_team, match.away_country_code)} ${match.away_team}`,
+            `🕒 ${formatArgentinaDateTime(match.kickoff_at)}`,
+            "",
+            "🍿 A mirar y sufrir.",
+            "Responde *$comandos* para ver opciones."
+          ].join("\n")
+        );
+        sent += 1;
+      } catch (error) {
+        failures.push(`${user.display_name}: ${error instanceof Error ? error.message : "unknown"}`);
+      }
+    }
+  }
+
+  return NextResponse.json({ sent, matches: matches?.length ?? 0, failures });
+}
+
+export async function GET(req: Request) {
+  return POST(req);
+}
