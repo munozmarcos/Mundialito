@@ -45,6 +45,29 @@ const stageLabels: Record<string, string> = {
 
 const knockoutOrder: MatchStage[] = ["R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
 
+function normalizeFilter(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function dateKey(value: string) {
+  return value.slice(0, 10);
+}
+
+function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string, groupFilter: string) {
+  const team = normalizeFilter(teamFilter);
+  const teamOk =
+    !team ||
+    normalizeFilter(match.home_team).includes(team) ||
+    normalizeFilter(match.away_team).includes(team);
+  const dateOk = !dateFilter || dateKey(match.kickoff_at) === dateFilter;
+  const groupOk = groupFilter === "ALL" || match.group_name === groupFilter;
+  return teamOk && dateOk && groupOk;
+}
+
 type Props = {
   matches: Match[];
   predictions: SimPrediction[];
@@ -253,6 +276,9 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
+  const [groupFilter, setGroupFilter] = useState("ALL");
+  const [teamFilter, setTeamFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
   const knockoutMatches = matches.filter((match) => match.stage !== "GROUP");
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
@@ -262,7 +288,14 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage)
     ? activeKnockoutStage
     : availableKnockoutStages[0];
-  const selectedKnockoutMatches = selectedKnockoutStage ? byStage[selectedKnockoutStage] ?? [] : [];
+  const selectedKnockoutMatches = selectedKnockoutStage
+    ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter, groupFilter))
+    : [];
+  const availableGroups = Object.keys(byGroup).sort();
+  const filteredGroups = Object.entries(byGroup)
+    .filter(([group]) => groupFilter === "ALL" || group === groupFilter)
+    .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter, groupFilter))] as const)
+    .filter(([, items]) => items.length);
 
   useEffect(() => {
     let mounted = true;
@@ -458,10 +491,24 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         ))}
       </section>
 
+      <section className="panel grid gap-3 p-3 md:grid-cols-[180px_1fr_180px_auto]">
+        <select className="field" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
+          <option value="ALL">Todos los grupos</option>
+          {availableGroups.map((group) => (
+            <option key={group} value={group}>Grupo {group}</option>
+          ))}
+        </select>
+        <input className="field" placeholder="Filtrar por seleccion" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
+        <input className="field" type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} />
+        <button className="btn secondary" type="button" onClick={() => { setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
+          Limpiar
+        </button>
+      </section>
+
       {activeTab === "cargar" && (
       <section className="grid gap-4 lg:grid-cols-[1fr_420px]">
         <div className="grid gap-4">
-          {Object.entries(byGroup).map(([group, items]) => (
+          {filteredGroups.map(([group, items]) => (
             <article className="panel p-4" key={group}>
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h2 className="text-xl font-black">Grupo {group}</h2>
@@ -539,7 +586,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
 
       {activeTab === "tablas" && (
         <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          {Object.entries(byGroup).map(([group, items]) => {
+          {filteredGroups.map(([group, items]) => {
             const table = simulated.groupTables[group] ?? projectedGroupTable(items, results);
             const completed = items.filter((match) => results[match.id]?.home !== "" && results[match.id]?.away !== "").length;
             return (

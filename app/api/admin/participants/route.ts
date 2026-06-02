@@ -1,4 +1,5 @@
 import { internalEmailForPhone, normalizePhone, publicPhone, randomPassword } from "@/lib/app-auth";
+import { displayNameExists, normalizeDisplayName } from "@/lib/profiles";
 import { requireAdmin, supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -37,6 +38,8 @@ export async function POST(req: Request) {
 
   const body = Body.parse(await req.json());
   const db = supabaseAdmin();
+  const displayName = normalizeDisplayName(body.displayName);
+  if (await displayNameExists(db, displayName)) return NextResponse.json({ error: "Ese apodo ya esta usado. Elegi otro." }, { status: 409 });
   const normalizedPhone = normalizePhone(body.phone ?? "");
   const authEmail = body.authEmail || (normalizedPhone ? internalEmailForPhone(normalizedPhone) : "");
   if (!authEmail) return NextResponse.json({ error: "Carga un WhatsApp para crear el participante." }, { status: 400 });
@@ -45,7 +48,7 @@ export async function POST(req: Request) {
     email: authEmail,
     password: body.password || randomPassword(),
     email_confirm: true,
-    user_metadata: { display_name: body.displayName, phone: normalizedPhone ? publicPhone(normalizedPhone) : body.phone ?? null }
+    user_metadata: { display_name: displayName, phone: normalizedPhone ? publicPhone(normalizedPhone) : body.phone ?? null }
   });
 
   if (authError && !authError.message.toLowerCase().includes("already registered")) {
@@ -64,7 +67,7 @@ export async function POST(req: Request) {
   if (body.password) {
     const { error: updateAuthError } = await db.auth.admin.updateUserById(userId, {
       password: body.password,
-      user_metadata: { display_name: body.displayName }
+      user_metadata: { display_name: displayName }
     });
     if (updateAuthError) return NextResponse.json({ error: updateAuthError.message }, { status: 400 });
   }
@@ -74,7 +77,7 @@ export async function POST(req: Request) {
     .upsert({
       id: userId,
       auth_email: authEmail,
-      display_name: body.displayName,
+      display_name: displayName,
       phone: normalizedPhone ? publicPhone(normalizedPhone) : body.phone ?? null,
       role: body.role,
       paid: body.paid
@@ -92,10 +95,12 @@ export async function PUT(req: Request) {
 
   const body = UpdateBody.parse(await req.json());
   const db = supabaseAdmin();
+  const displayName = normalizeDisplayName(body.displayName);
+  if (await displayNameExists(db, displayName, body.id)) return NextResponse.json({ error: "Ese apodo ya esta usado. Elegi otro." }, { status: 409 });
   const normalizedPhone = normalizePhone(body.phone ?? "");
 
   const authUpdate: { password?: string; user_metadata: { display_name: string } } = {
-    user_metadata: { display_name: body.displayName }
+    user_metadata: { display_name: displayName }
   };
   if (body.password) authUpdate.password = body.password;
 
@@ -105,7 +110,7 @@ export async function PUT(req: Request) {
   const { data, error } = await db
     .from("profiles")
     .update({
-      display_name: body.displayName,
+      display_name: displayName,
       phone: normalizedPhone ? publicPhone(normalizedPhone) : body.phone ?? null,
       role: body.role,
       paid: body.paid

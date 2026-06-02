@@ -45,6 +45,29 @@ const stageLabels: Record<string, string> = {
 const knockoutOrder: MatchStage[] = ["R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
 const stages = ["ALL", "GROUP", "R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
 
+function normalizeFilter(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function dateKey(value: string) {
+  return value.slice(0, 10);
+}
+
+function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string, groupFilter: string) {
+  const team = normalizeFilter(teamFilter);
+  const teamOk =
+    !team ||
+    normalizeFilter(match.home_team).includes(team) ||
+    normalizeFilter(match.away_team).includes(team);
+  const dateOk = !dateFilter || dateKey(match.kickoff_at) === dateFilter;
+  const groupOk = groupFilter === "ALL" || match.group_name === groupFilter;
+  return teamOk && dateOk && groupOk;
+}
+
 function initialResults(matches: Match[]): ResultMap {
   return matches.reduce<ResultMap>((acc, match) => {
     acc[match.id] = {
@@ -279,14 +302,23 @@ function MatchCard({ match, display }: { match: Match; display?: DisplayMatch })
 export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const [activeTab, setActiveTab] = useState<"partidos" | "tablas" | "llaves">("partidos");
   const [stage, setStage] = useState("ALL");
+  const [groupFilter, setGroupFilter] = useState("ALL");
+  const [teamFilter, setTeamFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const results = useMemo(() => initialResults(matches), [matches]);
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
   const knockoutMatches = matches.filter((match) => match.stage !== "GROUP");
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
   const byStage = groupBy(knockoutMatches, (match) => match.stage);
   const bracket = useMemo(() => deriveBracket(groupMatches, knockoutMatches, results), [groupMatches, knockoutMatches, results]);
-  const visibleMatches = stage === "ALL" ? matches : matches.filter((match) => match.stage === stage);
+  const visibleMatches = (stage === "ALL" ? matches : matches.filter((match) => match.stage === stage))
+    .filter((match) => matchFitsFilters(match, teamFilter, dateFilter, groupFilter));
   const completed = matches.filter((match) => match.home_goals != null && match.away_goals != null).length;
+  const availableGroups = Object.keys(byGroup).sort();
+  const filteredGroups = Object.entries(byGroup)
+    .filter(([group]) => groupFilter === "ALL" || group === groupFilter)
+    .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter, groupFilter))] as const)
+    .filter(([, items]) => items.length);
 
   return (
     <div className="grid gap-6">
@@ -323,6 +355,25 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
         ))}
       </section>
 
+      <section className="panel grid gap-3 p-3 md:grid-cols-[160px_180px_1fr_180px_auto]">
+        <select className="field" value={stage} onChange={(event) => setStage(event.target.value)}>
+          {stages.map((item) => (
+            <option key={item} value={item}>{stageLabels[item] ?? item}</option>
+          ))}
+        </select>
+        <select className="field" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
+          <option value="ALL">Todos los grupos</option>
+          {availableGroups.map((group) => (
+            <option key={group} value={group}>Grupo {group}</option>
+          ))}
+        </select>
+        <input className="field" placeholder="Filtrar por seleccion" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
+        <input className="field" type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} />
+        <button className="btn secondary" type="button" onClick={() => { setStage("ALL"); setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
+          Limpiar
+        </button>
+      </section>
+
       {activeTab === "partidos" && (
         <section className="grid gap-4">
           <div>
@@ -352,7 +403,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
             <p className="mt-1 text-sm font-semibold text-ink/60">Se actualizan con cada resultado cargado y marcan clasificacion directa y mejores terceros.</p>
           </div>
           <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-            {Object.entries(byGroup).map(([group, items]) => {
+            {filteredGroups.map(([group, items]) => {
               const table = bracket.groupTables[group] ?? projectedGroupTable(items, results);
               const groupCompleted = items.filter((match) => results[match.id]?.home !== "" && results[match.id]?.away !== "").length;
               return (

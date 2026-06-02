@@ -1,5 +1,6 @@
 import { hashLoginCode, internalEmailForPhone, normalizePhone, publicPhone, randomLoginCode, randomPassword } from "@/lib/app-auth";
 import { sendWhatsApp } from "@/lib/whatsapp";
+import { displayNameExists, normalizeDisplayName } from "@/lib/profiles";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -23,13 +24,15 @@ async function findOrCreateProfile(displayName: string | undefined, phone: strin
 
   if (mode === "login" || mode === "reset") throw new Error("No encontre ese WhatsApp. Si es tu primera vez, entra por 'Soy nuevo'.");
   if (!displayName || displayName.length < 2) throw new Error("Carga un apodo para crear el usuario.");
+  const cleanDisplayName = normalizeDisplayName(displayName);
+  if (await displayNameExists(db, cleanDisplayName)) throw new Error("Ese apodo ya esta usado. Elegi otro.");
 
   const authEmail = internalEmailForPhone(phone);
   const { data: created, error: createError } = await db.auth.admin.createUser({
     email: authEmail,
     password: randomPassword(),
     email_confirm: true,
-    user_metadata: { display_name: displayName, phone: publicPhone(phone) }
+    user_metadata: { display_name: cleanDisplayName, phone: publicPhone(phone) }
   });
 
   if (createError && !createError.message.toLowerCase().includes("already")) throw createError;
@@ -47,7 +50,7 @@ async function findOrCreateProfile(displayName: string | undefined, phone: strin
       {
         id: userId,
         auth_email: authEmail,
-        display_name: displayName,
+        display_name: cleanDisplayName,
         phone: publicPhone(phone),
         role: "participant"
       },

@@ -56,6 +56,14 @@ const stageLabels: Record<MatchStage, string> = {
 
 const knockoutOrder: MatchStage[] = ["R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
 
+function normalizeFilter(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 function groupBy<T>(items: T[], key: (item: T) => string) {
   return items.reduce<Record<string, T[]>>((acc, item) => {
     const group = key(item);
@@ -74,6 +82,20 @@ function byId(predictions: PredictionWithUpdated[]) {
 
 function formatKickoff(value: string) {
   return formatArgentinaDateTime(value);
+}
+
+function dateKey(value: string) {
+  return value.slice(0, 10);
+}
+
+function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string) {
+  const team = normalizeFilter(teamFilter);
+  const teamOk =
+    !team ||
+    normalizeFilter(match.home_team).includes(team) ||
+    normalizeFilter(match.away_team).includes(team);
+  const dateOk = !dateFilter || dateKey(match.kickoff_at) === dateFilter;
+  return teamOk && dateOk;
 }
 
 function projectedGroupTable(matches: Match[], predictions: Record<string, PredictionWithUpdated>) {
@@ -305,7 +327,7 @@ function PredictionCard({
   const hasResult = match.home_goals != null && match.away_goals != null;
   const realResult = hasResult ? `${match.home_goals}-${match.away_goals}` : "Pendiente";
   const hitLabel = prediction?.exact_hit ? "Exacto" : prediction?.trend_hit ? "Tendencia" : hasResult && prediction ? "Sin puntos" : "";
-  const pointsText = prediction && hasResult ? `${prediction.points} pts${hitLabel ? ` - ${hitLabel}` : ""}` : hasResult ? "Sin apuesta" : "Pendiente";
+  const pointsText = prediction && hasResult ? `${prediction.points} pts${hitLabel ? ` - ${hitLabel}` : ""}` : hasResult ? "Sin apuesta" : "0 pts";
   const pointsReady = prediction && hasResult;
   const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
   const away = display?.away ?? { name: match.away_team, code: match.away_country_code };
@@ -315,7 +337,10 @@ function PredictionCard({
     <article className="rounded-lg border border-line bg-white p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-xs font-bold text-ink/60">{formatKickoff(match.kickoff_at)}</span>
-        <StatusPill status={unavailable ? "locked" : status} />
+        <div className="flex flex-wrap justify-end gap-2">
+          {prediction && <span className="badge bg-mint text-grass">Cargado</span>}
+          <StatusPill status={unavailable ? "locked" : status} />
+        </div>
       </div>
 
       <form className="grid gap-3" onSubmit={save}>
@@ -433,7 +458,7 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
   const hasResult = match.home_goals != null && match.away_goals != null;
   const realResult = hasResult ? `${match.home_goals}-${match.away_goals}` : "Pendiente";
   const hitLabel = prediction?.exact_hit ? "Exacto" : prediction?.trend_hit ? "Tendencia" : hasResult && prediction ? "Sin puntos" : "";
-  const pointsText = prediction && hasResult ? `${prediction.points} pts${hitLabel ? ` - ${hitLabel}` : ""}` : hasResult ? "Sin apuesta" : "Pendiente";
+  const pointsText = prediction && hasResult ? `${prediction.points} pts${hitLabel ? ` - ${hitLabel}` : ""}` : hasResult ? "Sin apuesta" : "0 pts";
   const pointsReady = prediction && hasResult;
   const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
   const away = display?.away ?? { name: match.away_team, code: match.away_country_code };
@@ -443,7 +468,10 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
     <article className="rounded-lg border border-line bg-white p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-xs font-bold text-ink/60">{formatKickoff(match.kickoff_at)}</span>
-        <StatusPill status={status} />
+        <div className="flex flex-wrap justify-end gap-2">
+          {prediction && <span className="badge bg-mint text-grass">Cargado</span>}
+          <StatusPill status={status} />
+        </div>
       </div>
       <div className="grid gap-2">
         <div className={`flex items-center justify-between gap-3 rounded-md p-2 ${winner?.name === home.name ? "bg-mint" : "bg-field"}`}>
@@ -484,6 +512,9 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"cargar" | "tablas" | "llave">("cargar");
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
+  const [groupFilter, setGroupFilter] = useState("ALL");
+  const [teamFilter, setTeamFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const predictionMap = useMemo(() => byId(predictions), [predictions]);
 
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
@@ -492,10 +523,15 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const byStage = groupBy(knockoutMatches, (match) => match.stage);
   const availableKnockoutStages = knockoutOrder.filter((stage) => byStage[stage]?.length);
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
-  const selectedKnockoutMatches = selectedKnockoutStage ? byStage[selectedKnockoutStage] ?? [] : [];
+  const selectedKnockoutMatches = selectedKnockoutStage ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter)) : [];
   const bracket = useMemo(() => deriveBracket(groupMatches, knockoutMatches, predictionMap), [groupMatches, knockoutMatches, predictionMap]);
   const loaded = predictions.length;
   const pending = matches.filter((match) => !predictionMap[match.id] && matchStatus(match.kickoff_at, match.locked, match.home_goals != null) !== "final").length;
+  const groupEntries = Object.entries(byGroup).filter(([group]) => groupFilter === "ALL" || group === groupFilter);
+  const filteredGroupEntries = groupEntries
+    .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
+    .filter(([, items]) => items.length);
+  const availableGroups = Object.keys(byGroup).sort();
 
   async function loadPredictions() {
     const res = await fetch("/api/predictions", { cache: "no-store" });
@@ -569,13 +605,32 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         ))}
       </section>
 
+      <section className="panel grid gap-3 p-3 md:grid-cols-[180px_1fr_180px_auto]">
+        <select className="field" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
+          <option value="ALL">Todos los grupos</option>
+          {availableGroups.map((group) => (
+            <option key={group} value={group}>Grupo {group}</option>
+          ))}
+        </select>
+        <input
+          className="field"
+          placeholder="Filtrar por seleccion"
+          value={teamFilter}
+          onChange={(event) => setTeamFilter(event.target.value)}
+        />
+        <input className="field" type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} />
+        <button className="btn secondary" type="button" onClick={() => { setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
+          Limpiar
+        </button>
+      </section>
+
       {activeTab === "cargar" && (
       <section className="grid gap-4">
         <div>
           <h3 className="text-2xl font-black">Partidos de grupos</h3>
           <p className="mb-3 mt-1 text-sm font-semibold text-ink/60">Carga tus marcadores y mira abajo como se mueve tu torneo proyectado.</p>
           <div className="grid gap-4 lg:grid-cols-2">
-            {Object.entries(byGroup).map(([group, items]) => (
+            {filteredGroupEntries.map(([group, items]) => (
               <div className="panel overflow-hidden" key={group}>
                 <div className="border-b border-line bg-field p-4">
                   <span className="badge">Grupo {group}</span>
@@ -598,7 +653,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         <div>
           <h2 className="mb-3 text-2xl font-black">Tablas proyectadas</h2>
           <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-            {Object.entries(byGroup).map(([group, items]) => (
+            {filteredGroupEntries.map(([group, items]) => (
               <div className="panel overflow-hidden p-4" key={`table-${group}`}>
                 <span className="badge">Grupo {group}</span>
                 <GroupProjection group={group} matches={items} predictions={predictionMap} />

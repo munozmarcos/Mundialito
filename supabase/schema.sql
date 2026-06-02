@@ -14,6 +14,8 @@ create table if not exists profiles (
   created_at timestamptz not null default now()
 );
 
+create unique index if not exists profiles_display_name_unique_ci on profiles (lower(trim(display_name)));
+
 create table if not exists matches (
   id uuid primary key default uuid_generate_v4(),
   home_team text not null,
