@@ -200,6 +200,47 @@ function resolveGroupSlot(slot: string, groupTables: Record<string, GroupRow[]>,
   return { name: clean };
 }
 
+function thirdAllowedGroups(slot: string) {
+  const third = slot.trim().match(/^3([A-L](?:\/[A-L])+)$/i);
+  return third ? new Set(third[1].split("/").map((group) => group.toUpperCase())) : null;
+}
+
+function resolveThirdAssignments(knockoutMatches: Match[], bestThirds: GroupRow[]) {
+  const slots = knockoutMatches
+    .flatMap((match) => [
+      { matchId: match.id, side: "home" as const, slot: match.home_team },
+      { matchId: match.id, side: "away" as const, slot: match.away_team }
+    ])
+    .map((item) => ({ ...item, allowed: thirdAllowedGroups(item.slot) }))
+    .filter((item): item is typeof item & { allowed: Set<string> } => Boolean(item.allowed));
+
+  const byGroup = new Map(bestThirds.map((row) => [row.group ?? "", row]));
+  const sortedSlots = [...slots].sort((a, b) => a.allowed.size - b.allowed.size);
+  const assigned = new Map<string, GroupRow>();
+  const used = new Set<string>();
+
+  function backtrack(index: number): boolean {
+    if (index >= sortedSlots.length) return true;
+    const slot = sortedSlots[index];
+    const candidates = [...slot.allowed]
+      .map((group) => byGroup.get(group))
+      .filter((row): row is GroupRow => Boolean(row && row.group && !used.has(row.group)));
+
+    for (const row of candidates) {
+      used.add(row.group!);
+      assigned.set(`${slot.matchId}:${slot.side}`, row);
+      if (backtrack(index + 1)) return true;
+      assigned.delete(`${slot.matchId}:${slot.side}`);
+      used.delete(row.group!);
+    }
+
+    return false;
+  }
+
+  backtrack(0);
+  return assigned;
+}
+
 function winnerFromResult(display: DisplayMatch, result?: { home: number | ""; away: number | ""; winner?: WinnerSide | "" }): DisplayTeam | null {
   if (!result || result.home === "" || result.away === "") return null;
   if (result.home > result.away) return display.home;
@@ -223,7 +264,8 @@ function resolveBracketSlot(
   groupTables: Record<string, GroupRow[]>,
   bestThirds: GroupRow[],
   winners: Record<number, DisplayTeam>,
-  losers: Record<number, DisplayTeam>
+  losers: Record<number, DisplayTeam>,
+  assignedThird?: GroupRow
 ): DisplayTeam {
   const clean = slot.trim();
   const winner = clean.match(/^(?:Ganador|Winner Match|W)\s*#?(\d+)$/i);
@@ -231,6 +273,8 @@ function resolveBracketSlot(
 
   const loser = clean.match(/^(?:Perdedor|Loser Match|L)\s*#?(\d+)$/i);
   if (loser) return losers[Number(loser[1])] ?? { name: clean };
+
+  if (thirdAllowedGroups(clean)) return displayFromRow(assignedThird, clean);
 
   return resolveGroupSlot(clean, groupTables, bestThirds);
 }
@@ -246,6 +290,7 @@ function deriveSimulatedBracket(groupMatches: Match[], knockoutMatches: Match[],
       return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.team.localeCompare(b.team);
     })
     .slice(0, 8);
+  const thirdAssignments = resolveThirdAssignments(knockoutMatches.filter((match) => match.stage === "R32"), bestThirds);
 
   const winners: Record<number, DisplayTeam> = {};
   const losers: Record<number, DisplayTeam> = {};
@@ -253,8 +298,8 @@ function deriveSimulatedBracket(groupMatches: Match[], knockoutMatches: Match[],
 
   for (const match of [...knockoutMatches].sort((a, b) => (matchNumber(a) ?? 999) - (matchNumber(b) ?? 999))) {
     const display = {
-      home: resolveBracketSlot(match.home_team, groupTables, bestThirds, winners, losers),
-      away: resolveBracketSlot(match.away_team, groupTables, bestThirds, winners, losers)
+      home: resolveBracketSlot(match.home_team, groupTables, bestThirds, winners, losers, thirdAssignments.get(`${match.id}:home`)),
+      away: resolveBracketSlot(match.away_team, groupTables, bestThirds, winners, losers, thirdAssignments.get(`${match.id}:away`))
     };
     displays[match.id] = display;
 

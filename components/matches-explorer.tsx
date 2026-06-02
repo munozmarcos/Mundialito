@@ -148,9 +148,7 @@ function resolveGroupSlot(slot: string, groupTables: Record<string, GroupRow[]>,
 
   const third = clean.match(/^3([A-L](?:\/[A-L])+)$/i);
   if (third) {
-    const allowed = new Set(third[1].split("/").map((group) => group.toUpperCase()));
-    const row = bestThirds.find((item) => allowed.has(item.group ?? ""));
-    return displayFromRow(row, clean);
+    return { name: clean };
   }
 
   return { name: clean };
