@@ -17,11 +17,6 @@ export async function PUT(req: Request) {
 
   const body = Body.parse(await req.json());
   const db = supabaseAdmin();
-  const { data: match, error: matchError } = await db.from("matches").select("stage").eq("id", body.matchId).single();
-  if (matchError) return NextResponse.json({ error: matchError.message }, { status: 404 });
-  if (match.stage !== "GROUP" && body.homeGoals === body.awayGoals && !body.penaltyWinner) {
-    return NextResponse.json({ error: "En eliminatorias empatadas tenés que elegir ganador." }, { status: 400 });
-  }
   const { data, error } = await db
     .from("predictions")
     .upsert(

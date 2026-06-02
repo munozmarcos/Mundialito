@@ -4,7 +4,7 @@ const labels: Record<MatchStatus, string> = {
   scheduled: "Programado",
   open: "Abierto",
   closing_soon: "Cierra pronto",
-  locked: "Bloqueado",
+  locked: "Cerrado",
   final: "Finalizado"
 };
 
@@ -16,10 +16,10 @@ const styles: Record<MatchStatus, string> = {
   final: "border-blue-500/30 bg-blue-950/70 text-blue-100"
 };
 
-export function StatusPill({ status }: { status: MatchStatus }) {
+export function StatusPill({ status, label }: { status: MatchStatus; label?: string }) {
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-bold ${styles[status] ?? styles.scheduled}`}>
-      {labels[status] ?? status}
+      {label ?? labels[status] ?? status}
     </span>
   );
 }

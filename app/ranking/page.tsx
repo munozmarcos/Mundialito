@@ -74,7 +74,7 @@ export default async function RankingPage({ searchParams }: { searchParams?: { p
               <strong className="mt-1 block text-2xl">{money(summary.secondPrize)}</strong>
             </div>
             <div className="rounded-lg bg-field p-4">
-              <span className="text-xs font-black uppercase text-ink/55">3er puesto - 10%</span>
+              <span className="text-xs font-black uppercase text-ink/55">3ros - 10%</span>
               <strong className="mt-1 block text-2xl">{money(summary.thirdPrize)}</strong>
             </div>
           </div>

@@ -5,16 +5,15 @@ import { DateFilter } from "@/components/date-filter";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
+import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { dateKey, matchFitsBasicFilters } from "@/lib/match-filters";
 import { matchStatus } from "@/lib/scoring";
 import type { Match, MatchStage, Prediction } from "@/lib/types";
-import { Calculator, Check, GitBranch, Lock, LogIn, Save, Table2, Trophy } from "lucide-react";
+import { Calculator, Check, GitBranch, Lock, LogIn, Save, Table2, Trophy, X } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type PredictionWithUpdated = Prediction & { updated_at?: string | null };
-type WinnerSide = "HOME" | "AWAY";
-
 type BoardProps = {
   matches: Match[];
   demoMode: boolean;
@@ -30,6 +29,7 @@ type GroupRow = {
   team: string;
   code?: string | null;
   group?: string | null;
+  order: number;
   played: number;
   points: number;
   goalsFor: number;
@@ -52,7 +52,7 @@ const stageLabels: Record<MatchStage, string> = {
   R16: "8vos",
   QF: "4tos",
   SF: "Semis",
-  THIRD_PLACE: "Tercer puesto",
+  THIRD_PLACE: "3ros",
   FINAL: "Final"
 };
 
@@ -86,7 +86,7 @@ function projectedGroupTable(matches: Match[], predictions: Record<string, Predi
   const rows = new Map<string, GroupRow>();
   const group = matches[0]?.group_name ?? null;
   const ensure = (team: string, code?: string | null) => {
-    if (!rows.has(team)) rows.set(team, { team, code, group, played: 0, points: 0, goalsFor: 0, goalsAgainst: 0 });
+    if (!rows.has(team)) rows.set(team, { team, code, group, order: fifaGroupTeamOrder(group, team, rows.size), played: 0, points: 0, goalsFor: 0, goalsAgainst: 0 });
     return rows.get(team)!;
   };
 
@@ -115,7 +115,7 @@ function projectedGroupTable(matches: Match[], predictions: Record<string, Predi
 
   return [...rows.values()].sort((a, b) => {
     const goalDiff = (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst);
-    return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.team.localeCompare(b.team);
+    return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.order - b.order;
   });
 }
 
@@ -221,7 +221,7 @@ function deriveBracket(
     .filter(Boolean)
     .sort((a, b) => {
       const goalDiff = (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst);
-      return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.team.localeCompare(b.team);
+      return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.order - b.order;
     })
     .slice(0, 8);
 
@@ -264,26 +264,21 @@ function PredictionCard({
   const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null);
   const unavailable = isMatchUnavailable(match, display);
   const locked = status === "locked" || status === "final" || unavailable;
-  const [homeGoals, setHomeGoals] = useState(prediction?.home_goals ?? 0);
-  const [awayGoals, setAwayGoals] = useState(prediction?.away_goals ?? 0);
-  const [winnerSide, setWinnerSide] = useState<WinnerSide | "">(
-    prediction?.penalty_winner === "HOME" || prediction?.penalty_winner === "AWAY" ? prediction.penalty_winner : ""
-  );
+  const [homeGoals, setHomeGoals] = useState<number | "">(prediction?.home_goals ?? "");
+  const [awayGoals, setAwayGoals] = useState<number | "">(prediction?.away_goals ?? "");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setHomeGoals(prediction?.home_goals ?? 0);
-    setAwayGoals(prediction?.away_goals ?? 0);
-    setWinnerSide(prediction?.penalty_winner === "HOME" || prediction?.penalty_winner === "AWAY" ? prediction.penalty_winner : "");
-  }, [prediction?.home_goals, prediction?.away_goals, prediction?.penalty_winner]);
+    setHomeGoals(prediction?.home_goals ?? "");
+    setAwayGoals(prediction?.away_goals ?? "");
+  }, [prediction?.home_goals, prediction?.away_goals]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!loggedIn || locked) return;
-    const needsWinner = match.stage !== "GROUP" && homeGoals === awayGoals;
-    if (needsWinner && !winnerSide) {
-      setMessage("Elegí ganador.");
+    if (homeGoals === "" || awayGoals === "") {
+      setMessage("Cargá los dos goles.");
       return;
     }
     setSaving(true);
@@ -292,7 +287,7 @@ function PredictionCard({
     const res = await fetch("/api/predictions", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ matchId: match.id, homeGoals, awayGoals, penaltyWinner: needsWinner ? winnerSide : null })
+      body: JSON.stringify({ matchId: match.id, homeGoals, awayGoals, penaltyWinner: null })
     });
     const data = await res.json();
     setSaving(false);
@@ -308,18 +303,18 @@ function PredictionCard({
 
   const hasResult = match.home_goals != null && match.away_goals != null;
   const realResult = hasResult ? `${match.home_goals}-${match.away_goals}` : "Pendiente";
-  const hitLabel = prediction?.exact_hit ? "Exacto" : prediction?.trend_hit ? "Tendencia" : hasResult && prediction ? "Sin puntos" : "";
-  const pointsText = prediction && hasResult ? `${prediction.points} pts${hitLabel ? ` - ${hitLabel}` : ""}` : hasResult ? "Sin apuesta" : "0 pts";
+  const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
   const pointsReady = prediction && hasResult;
   const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
   const away = display?.away ?? { name: match.away_team, code: match.away_country_code };
-  const needsWinner = match.stage !== "GROUP" && homeGoals === awayGoals;
-
   return (
     <article className="rounded-lg border border-line bg-white p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-xs font-bold text-ink/60">{formatKickoff(match.kickoff_at)}</span>
-        <StatusPill status={unavailable ? "locked" : status} />
+        <div className="flex flex-wrap justify-end gap-2">
+          {prediction?.updated_at && <span className="self-center text-[11px] italic text-ink/45">Actualizado - {formatKickoff(prediction.updated_at)}</span>}
+          <StatusPill status={unavailable ? "locked" : status} label={unavailable ? "Bloqueado" : undefined} />
+        </div>
       </div>
 
       <form className="grid gap-3" onSubmit={save}>
@@ -334,7 +329,7 @@ function PredictionCard({
               max={30}
               type="number"
               value={homeGoals}
-              onChange={(event) => setHomeGoals(Number(event.target.value))}
+              onChange={(event) => setHomeGoals(event.target.value === "" ? "" : Number(event.target.value))}
             />
           </div>
           <div className="grid grid-cols-[1fr_68px] items-center gap-3">
@@ -347,34 +342,10 @@ function PredictionCard({
               max={30}
               type="number"
               value={awayGoals}
-              onChange={(event) => setAwayGoals(Number(event.target.value))}
+              onChange={(event) => setAwayGoals(event.target.value === "" ? "" : Number(event.target.value))}
             />
           </div>
         </div>
-
-        {needsWinner && (
-          <div className="rounded-lg border border-line bg-field p-3">
-            <div className="mb-2 text-xs font-black uppercase text-ink/45">Ganador</div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <button
-                className={`btn ${winnerSide === "HOME" ? "" : "secondary"}`}
-                disabled={!loggedIn || locked}
-                onClick={() => setWinnerSide("HOME")}
-                type="button"
-              >
-                <TeamLabel name={home.name} code={home.code} />
-              </button>
-              <button
-                className={`btn ${winnerSide === "AWAY" ? "" : "secondary"}`}
-                disabled={!loggedIn || locked}
-                onClick={() => setWinnerSide("AWAY")}
-                type="button"
-              >
-                <TeamLabel name={away.name} code={away.code} />
-              </button>
-            </div>
-          </div>
-        )}
 
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <div className="rounded-md bg-field p-2 text-xs">
@@ -384,19 +355,17 @@ function PredictionCard({
                 <span className="font-black">{realResult}</span>
               </div>
               <div className="text-right">
-                <span className="block font-bold text-ink/60">Puntos</span>
-                <span className={`font-black ${pointsReady ? "text-grass" : "text-ink/55"}`}>{pointsText}</span>
+                <span className={`inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-black ${pointsReady ? "bg-mint text-grass" : "bg-field text-ink/55"}`}>{pointsText}</span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {prediction && <span className="badge bg-mint text-grass">Cargado</span>}
             <button className="btn min-w-11 px-0" disabled={!loggedIn || locked || saving} title="Guardar predicción" type="submit">
               {message === "Guardada" ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
             </button>
           </div>
         </div>
-        {unavailable && <p className="text-xs font-bold text-slate-500">Cerrado hasta que se definan los clasificados.</p>}
+        {unavailable && <p className="text-xs font-bold text-slate-500">Bloqueado hasta que se definan los clasificados.</p>}
         {message && <p className="text-xs font-bold text-grass">{message}</p>}
       </form>
     </article>
@@ -439,8 +408,7 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
   const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null);
   const hasResult = match.home_goals != null && match.away_goals != null;
   const realResult = hasResult ? `${match.home_goals}-${match.away_goals}` : "Pendiente";
-  const hitLabel = prediction?.exact_hit ? "Exacto" : prediction?.trend_hit ? "Tendencia" : hasResult && prediction ? "Sin puntos" : "";
-  const pointsText = prediction && hasResult ? `${prediction.points} pts${hitLabel ? ` - ${hitLabel}` : ""}` : hasResult ? "Sin apuesta" : "0 pts";
+  const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
   const pointsReady = prediction && hasResult;
   const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
   const away = display?.away ?? { name: match.away_team, code: match.away_country_code };
@@ -476,8 +444,7 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
           {winner && prediction?.home_goals === prediction?.away_goals && <span className="block font-black text-grass">Ganador: {winner.name}</span>}
         </div>
         <div className="rounded-md bg-field p-2 text-right">
-          <span className="block font-bold text-ink/60">Puntos</span>
-          <span className={`font-black ${pointsReady ? "text-grass" : "text-ink/55"}`}>{pointsText}</span>
+          <span className={`inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-black ${pointsReady ? "bg-mint text-grass" : "bg-field text-ink/55"}`}>{pointsText}</span>
         </div>
       </div>
       {match.stadium && <p className="mt-2 text-xs font-semibold text-ink/55">{match.stadium}</p>}
@@ -503,9 +470,13 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const availableKnockoutStages = knockoutOrder.filter((stage) => byStage[stage]?.length);
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
   const selectedKnockoutMatches = selectedKnockoutStage ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter)) : [];
-  const bracket = useMemo(() => deriveBracket(groupMatches, knockoutMatches, predictionMap), [groupMatches, knockoutMatches, predictionMap]);
   const loaded = predictions.length;
-  const pending = matches.filter((match) => !predictionMap[match.id] && matchStatus(match.kickoff_at, match.locked, match.home_goals != null) !== "final").length;
+  const pending = matches.filter((match) => {
+    if (predictionMap[match.id]) return false;
+    if (isMatchUnavailable(match)) return false;
+    return matchStatus(match.kickoff_at, match.locked, match.home_goals != null) === "open" || matchStatus(match.kickoff_at, match.locked, match.home_goals != null) === "closing_soon";
+  }).length;
+  const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0);
   const groupEntries = Object.entries(byGroup).filter(([group]) => groupFilter === "ALL" || group === groupFilter);
   const filteredGroupEntries = groupEntries
     .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
@@ -550,8 +521,8 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           <strong className="block text-3xl">{pending}</strong>
         </div>
         <div className="panel p-4">
-          <span className="text-sm font-bold text-ink/60">Sesion</span>
-          <strong className="block truncate text-lg">{user?.displayName || "Sin login"}</strong>
+          <span className="text-sm font-bold text-ink/60">Puntos acumulados</span>
+          <strong className="block text-3xl">{totalPoints}</strong>
         </div>
       </section>
       {!user && !loading && (
@@ -584,7 +555,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         ))}
       </section>
 
-      <section className="panel grid gap-3 p-3 md:grid-cols-[180px_1fr_180px_auto]">
+      <section className="panel grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-[240px_150px_112px_44px] lg:items-center">
         <select className="field" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
           <option value="ALL">Todos los grupos</option>
           {availableGroups.map((group) => (
@@ -593,13 +564,13 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         </select>
         <input
           className="field"
-          placeholder="Filtrar por seleccion"
+          placeholder="Pais"
           value={teamFilter}
           onChange={(event) => setTeamFilter(event.target.value)}
         />
         <DateFilter value={dateFilter} onChange={setDateFilter} />
-        <button className="btn secondary" type="button" onClick={() => { setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
-          Limpiar
+        <button className="btn secondary aspect-square px-0" type="button" title="Limpiar filtros" onClick={() => { setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
+          <X className="h-4 w-4" />
         </button>
       </section>
 
@@ -671,7 +642,6 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
                   {selectedKnockoutMatches.map((match) => (
                     <PredictionCard
                       match={match}
-                      display={bracket.displays[match.id]}
                       loggedIn={Boolean(user)}
                       onSaved={upsertSaved}
                       prediction={predictionMap[match.id]}

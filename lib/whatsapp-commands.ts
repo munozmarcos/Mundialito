@@ -87,7 +87,8 @@ function teamsAreClose(query: string, team: string) {
 function flagEmoji(team: string, explicit?: string | null) {
   const code = countryCodeForTeam(team, explicit);
   if (!code) return "[ ]";
-  if (code === "gb-eng" || code === "gb-sct") return "[UK]";
+  if (code === "gb-sct") return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0073, 0xe0063, 0xe0074, 0xe007f);
+  if (code === "gb-eng") return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0065, 0xe006e, 0xe0067, 0xe007f);
   return code
     .toUpperCase()
     .split("")
@@ -173,11 +174,7 @@ async function savePredictionFromWhatsApp(text: string, from?: string) {
     (item) => teamsAreClose(prediction.homeTeam, item.home_team) && teamsAreClose(prediction.awayTeam, item.away_team)
   );
   if (!match) return `⚽ *Mundialito*\nNo encontre partido abierto para ${prediction.homeTeam} vs ${prediction.awayTeam}.`;
-  if (isPredictionLocked(match.kickoff_at, match.locked)) return `⚽ *Mundialito*\nEse partido ya está bloqueado: ${displayNameForTeam(match.home_team)} vs ${displayNameForTeam(match.away_team)}.`;
-  if (match.stage !== "GROUP" && prediction.homeGoals === prediction.awayGoals) {
-    return "⚽ *Mundialito*\nEn eliminatorias empatadas, cargá esa predicción desde la web para elegir ganador.";
-  }
-
+  if (isPredictionLocked(match.kickoff_at, match.locked)) return `⚽ *Mundialito*\nEse partido ya está cerrado: ${displayNameForTeam(match.home_team)} vs ${displayNameForTeam(match.away_team)}.`;
   const { error } = await db.from("predictions").upsert(
     {
       user_id: profile.id,

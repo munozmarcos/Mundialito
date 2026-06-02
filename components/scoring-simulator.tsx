@@ -3,10 +3,12 @@
 import { scorePrediction } from "@/lib/scoring";
 import { formatArgentinaDate } from "@/lib/dates";
 import { matchFitsGroupFilters } from "@/lib/match-filters";
+import { displayNameForTeam } from "@/lib/flags";
+import { fifaGroupTeamOrder } from "@/lib/group-order";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
 import { TeamLabel } from "@/components/team-label";
 import { DateFilter } from "@/components/date-filter";
-import { Calculator, ClipboardPaste, GitBranch, Lock, RotateCcw, Table2, Trophy } from "lucide-react";
+import { Calculator, ClipboardPaste, GitBranch, Lock, RotateCcw, Table2, Trophy, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type SimPrediction = Prediction & { profiles?: Pick<Profile, "display_name"> | null };
@@ -18,6 +20,7 @@ type GroupRow = {
   team: string;
   code?: string | null;
   group?: string | null;
+  order: number;
   played: number;
   points: number;
   goalsFor: number;
@@ -41,7 +44,7 @@ const stageLabels: Record<string, string> = {
   R16: "8vos",
   QF: "4tos",
   SF: "Semis",
-  THIRD_PLACE: "3er puesto",
+  THIRD_PLACE: "3ros",
   FINAL: "Final"
 };
 
@@ -74,7 +77,11 @@ function initialResults(matches: Match[]): ResultMap {
 }
 
 function parseBulkLine(line: string) {
-  const match = line.match(/^(.+?)\s+(\d+)\s*[-:]\s*(\d+)\s+(.+)$/);
+  const clean = line
+    .replace(/\s*\|\s*Ganador:.+$/i, "")
+    .replace(/\s+Ganador:.+$/i, "")
+    .trim();
+  const match = clean.match(/^(.+?)\s+(\d+)\s*[-:]\s*(\d+)\s+(.+)$/);
   if (!match) return null;
   return { homeTeam: match[1].trim().toLowerCase(), homeGoals: Number(match[2]), awayGoals: Number(match[3]), awayTeam: match[4].trim().toLowerCase() };
 }
@@ -87,6 +94,11 @@ function norm(value: string) {
     .replace(/\s+/g, " ")
     .toLowerCase()
     .trim();
+}
+
+function teamMatchesBulk(team: string, query: string) {
+  const normalizedQuery = norm(query);
+  return norm(team) === normalizedQuery || norm(displayNameForTeam(team)) === normalizedQuery;
 }
 
 function groupBy<T>(items: T[], key: (item: T) => string) {
@@ -135,7 +147,7 @@ function projectedGroupTable(matches: Match[], results: ResultMap) {
   const rows = new Map<string, GroupRow>();
   const group = matches[0]?.group_name ?? null;
   const ensure = (team: string, code?: string | null) => {
-    if (!rows.has(team)) rows.set(team, { team, code, group, played: 0, points: 0, goalsFor: 0, goalsAgainst: 0 });
+    if (!rows.has(team)) rows.set(team, { team, code, group, order: fifaGroupTeamOrder(group, team, rows.size), played: 0, points: 0, goalsFor: 0, goalsAgainst: 0 });
     return rows.get(team)!;
   };
 
@@ -164,7 +176,7 @@ function projectedGroupTable(matches: Match[], results: ResultMap) {
 
   return [...rows.values()].sort((a, b) => {
     const goalDiff = (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst);
-    return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.team.localeCompare(b.team);
+    return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.order - b.order;
   });
 }
 
@@ -270,7 +282,7 @@ function deriveSimulatedBracket(groupMatches: Match[], knockoutMatches: Match[],
     .filter(Boolean)
     .sort((a, b) => {
       const goalDiff = (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst);
-      return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.team.localeCompare(b.team);
+      return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.order - b.order;
     })
     .slice(0, 8);
   const thirdAssignments = resolveThirdAssignments(knockoutMatches.filter((match) => match.stage === "R32"), bestThirds);
@@ -300,6 +312,7 @@ function deriveSimulatedBracket(groupMatches: Match[], knockoutMatches: Match[],
 export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   const [results, setResults] = useState<ResultMap>(() => initialResults(matches));
   const [bulk, setBulk] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"cargar" | "tablas" | "llave">("cargar");
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
@@ -432,10 +445,11 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
     for (const line of bulk.split(/\r?\n/)) {
       const parsed = parseBulkLine(line.trim());
       if (!parsed) continue;
-      const match = matches.find((item) => norm(item.home_team) === norm(parsed.homeTeam) && norm(item.away_team) === norm(parsed.awayTeam));
+      const match = matches.find((item) => teamMatchesBulk(item.home_team, parsed.homeTeam) && teamMatchesBulk(item.away_team, parsed.awayTeam));
       if (match) next[match.id] = { ...next[match.id], home: parsed.homeGoals, away: parsed.awayGoals };
     }
     setResults(next);
+    setBulkOpen(false);
   }
 
   function resultCard(match: Match) {
@@ -472,14 +486,16 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
           </div>
         </div>
         {isKnockoutTie && (
-          <div className="flex flex-wrap gap-2">
-            <span className="self-center text-xs font-black uppercase text-ink/45">Ganador</span>
-            <button className={`badge ${result?.winner === "HOME" ? "bg-mint text-grass" : ""}`} onClick={() => setWinner(match.id, "HOME")} type="button">
-              {display.home.name}
+          <div className="rounded-lg border border-line bg-field p-3">
+            <div className="mb-2 text-xs font-black uppercase text-ink/45">Ganador</div>
+            <div className="grid gap-2 sm:grid-cols-2">
+            <button className={`btn ${result?.winner === "HOME" ? "" : "secondary"}`} onClick={() => setWinner(match.id, "HOME")} type="button">
+              <TeamLabel name={display.home.name} code={display.home.code} />
             </button>
-            <button className={`badge ${result?.winner === "AWAY" ? "bg-mint text-grass" : ""}`} onClick={() => setWinner(match.id, "AWAY")} type="button">
-              {display.away.name}
+            <button className={`btn ${result?.winner === "AWAY" ? "" : "secondary"}`} onClick={() => setWinner(match.id, "AWAY")} type="button">
+              <TeamLabel name={display.away.name} code={display.away.code} />
             </button>
+            </div>
           </div>
         )}
       </div>
@@ -496,6 +512,10 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
           <button className="btn secondary" onClick={copyMyPrediction} type="button">
             <ClipboardPaste className="h-4 w-4" />
             Copiar mi pronóstico
+          </button>
+          <button className="btn secondary" onClick={() => setBulkOpen(true)} type="button">
+            <Calculator className="h-4 w-4" />
+            Carga masiva
           </button>
           {copyMessage && <span className="text-sm font-bold text-ink/65">{copyMessage}</span>}
         </div>
@@ -519,17 +539,17 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         ))}
       </section>
 
-      <section className="panel grid gap-3 p-3 md:grid-cols-[180px_1fr_180px_auto]">
+      <section className="panel grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-[240px_150px_112px_44px] lg:items-center">
         <select className="field" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
           <option value="ALL">Todos los grupos</option>
           {availableGroups.map((group) => (
             <option key={group} value={group}>Grupo {group}</option>
           ))}
         </select>
-        <input className="field" placeholder="Filtrar por seleccion" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
+        <input className="field" placeholder="Pais" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
         <DateFilter value={dateFilter} onChange={setDateFilter} />
-        <button className="btn secondary" type="button" onClick={() => { setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
-          Limpiar
+        <button className="btn secondary aspect-square px-0" type="button" title="Limpiar filtros" onClick={() => { setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
+          <X className="h-4 w-4" />
         </button>
       </section>
 
@@ -550,19 +570,6 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         </div>
 
         <div className="grid gap-4 content-start">
-          <section className="panel p-4">
-            <h2 className="flex items-center gap-2 text-xl font-black"><ClipboardPaste className="h-5 w-5 text-grass" />Carga masiva</h2>
-            <p className="mt-1 text-sm text-ink/60">Formato por línea: Argentina 2-1 México</p>
-            <textarea
-              className="field mt-3 h-[360px] min-h-[360px] w-full resize-y py-4 leading-6 sm:h-[520px] sm:min-h-[520px]"
-              rows={18}
-              style={{ minHeight: "min(520px, 62vh)" }}
-              value={bulk}
-              onChange={(event) => setBulk(event.target.value)}
-            />
-            <button className="btn mt-3" onClick={applyBulk} type="button"><Calculator className="h-4 w-4" />Aplicar</button>
-          </section>
-
           <section className="panel overflow-hidden">
             <div className="border-b border-line p-4">
               <h2 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-5 w-5 text-gold" />Ranking simulado</h2>
@@ -582,6 +589,32 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
           <button className="btn secondary w-fit" onClick={() => setResults(initialResults(matches))} type="button"><RotateCcw className="h-4 w-4" />Reiniciar</button>
         </div>
       </section>
+      )}
+
+      {bulkOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/75 p-4">
+          <section className="panel w-full max-w-3xl p-4 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-xl font-black"><ClipboardPaste className="h-5 w-5 text-grass" />Carga masiva</h2>
+                <p className="mt-1 text-sm text-ink/60">Pegá el texto de $pronosticos o usá formato por línea: Argentina 2-1 México</p>
+              </div>
+              <button className="btn secondary min-w-11 px-0" onClick={() => setBulkOpen(false)} type="button" aria-label="Cerrar">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <textarea
+              className="field mt-4 h-[52vh] min-h-[340px] w-full resize-y py-4 leading-6"
+              rows={18}
+              value={bulk}
+              onChange={(event) => setBulk(event.target.value)}
+            />
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              <button className="btn secondary" onClick={() => setBulkOpen(false)} type="button">Cancelar</button>
+              <button className="btn" onClick={applyBulk} type="button"><Calculator className="h-4 w-4" />Aplicar</button>
+            </div>
+          </section>
+        </div>
       )}
 
       {activeTab === "llave" && (

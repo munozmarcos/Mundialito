@@ -27,8 +27,9 @@ export async function POST(req: Request) {
   if (!assertCron(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
+  const manual = url.searchParams.get("manual") === "1";
   const today = url.searchParams.get("date") ?? argentinaDate();
-  if (!inWorldCupWindow(today)) return NextResponse.json({ skipped: true, reason: "outside-world-cup-window", date: today });
+  if (!manual && !inWorldCupWindow(today)) return NextResponse.json({ skipped: true, reason: "outside-world-cup-window", date: today });
 
   const db = supabaseAdmin();
   const ranking = await getRanking();
@@ -39,9 +40,9 @@ export async function POST(req: Request) {
     "",
     top.length
       ? top.map((row, index) => `${index + 1}. ${row.display_name} - *${row.total_points} pts*`).join("\n")
-      : "Todavía no hay puntos cargados.",
+      : "Todavia no hay puntos cargados.",
     "",
-    "Respondé *$ranking* para ver el top cuando quieras."
+    "Responde *$ranking* para ver el top cuando quieras."
   ].join("\n");
 
   const { data: users, error } = await db
@@ -55,13 +56,16 @@ export async function POST(req: Request) {
   const failures: string[] = [];
   for (const user of users ?? []) {
     if (!user.phone) continue;
-    const dedupeKey = `${user.id}:daily-ranking:${today}`;
-    const { error: logError } = await db.from("notification_logs").insert({
-      user_id: user.id,
-      kind: "whatsapp-daily-ranking",
-      dedupe_key: dedupeKey
-    });
-    if (logError) continue;
+
+    if (!manual) {
+      const dedupeKey = `${user.id}:daily-ranking:${today}`;
+      const { error: logError } = await db.from("notification_logs").insert({
+        user_id: user.id,
+        kind: "whatsapp-daily-ranking",
+        dedupe_key: dedupeKey
+      });
+      if (logError) continue;
+    }
 
     try {
       await sendWhatsApp(user.phone, body);
@@ -71,7 +75,7 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ date: today, sent, failures });
+  return NextResponse.json({ date: today, manual, sent, failures });
 }
 
 export async function GET(req: Request) {

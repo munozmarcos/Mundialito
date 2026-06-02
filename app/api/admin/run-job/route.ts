@@ -28,6 +28,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Falta partido para notificar resultado." }, { status: 400 });
   }
   const url = new URL(path, req.url);
+  url.searchParams.set("manual", "1");
   const res = await fetch(url, {
     method: "POST",
     headers: {

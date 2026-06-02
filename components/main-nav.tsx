@@ -14,7 +14,7 @@ const links = [
   { href: "/ranking", label: "Ranking" },
   { href: "/probar", label: "Simulador" },
   { href: "/reglas", label: "Reglas" },
-  { href: "/creditos", label: "Creditos" }
+  { href: "/creditos", label: "Créditos" }
 ];
 
 export function MainNav() {

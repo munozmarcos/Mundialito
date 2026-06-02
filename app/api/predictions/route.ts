@@ -34,10 +34,7 @@ export async function POST(req: Request) {
   if (matchError) return NextResponse.json({ error: matchError.message }, { status: 404 });
 
   if (isPredictionLocked(match.kickoff_at, match.locked)) {
-    return NextResponse.json({ error: "El partido ya está bloqueado" }, { status: 409 });
-  }
-  if (match.stage !== "GROUP" && body.homeGoals === body.awayGoals && !body.penaltyWinner) {
-    return NextResponse.json({ error: "En eliminatorias empatadas tenés que elegir ganador." }, { status: 400 });
+    return NextResponse.json({ error: "El partido ya está cerrado" }, { status: 409 });
   }
 
   const { data, error } = await db

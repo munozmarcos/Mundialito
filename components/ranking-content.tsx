@@ -2,7 +2,7 @@
 
 import { EmptyState } from "@/components/empty-state";
 import type { ParticipantPaymentRow, RankingRow } from "@/lib/data";
-import { UsersRound } from "lucide-react";
+import { UsersRound, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type Props = {
@@ -40,8 +40,8 @@ export function RankingContent({ ranking, participants, paidParticipants, totalP
           <p className="mt-1 text-sm font-semibold text-ink/60">Puntos, exactos y tendencias acertadas.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
             <input className="field" placeholder="Buscar apodo" value={query} onChange={(event) => setQuery(event.target.value)} />
-            <button className="btn secondary" type="button" onClick={() => { setQuery(""); setPaidFilter("ALL"); }}>
-              Limpiar
+            <button className="btn secondary aspect-square px-0" type="button" title="Limpiar filtros" onClick={() => { setQuery(""); setPaidFilter("ALL"); }}>
+              <X className="h-4 w-4" />
             </button>
           </div>
         </div>

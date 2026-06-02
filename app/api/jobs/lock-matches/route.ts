@@ -56,7 +56,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await db
     .from("matches")
-    .update({ locked: true, status: "locked" })
+    .update({ locked: true, status: "closed" })
     .lte("kickoff_at", lockBefore)
     .eq("locked", false)
     .is("home_goals", null)
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
         await sendWhatsApp(
           user.phone,
           [
-            "🔒 Mundialito - partido bloqueado",
+            "🔒 Mundialito - partido cerrado",
             "",
             `*${matchLabel}*`,
             "",

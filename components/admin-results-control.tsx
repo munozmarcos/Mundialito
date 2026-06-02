@@ -1,8 +1,9 @@
 "use client";
 
 import { TeamLabel } from "@/components/team-label";
+import { fifaGroupTeamOrder } from "@/lib/group-order";
 import type { Match, Prediction, Profile } from "@/lib/types";
-import { Lock, LockOpen, Save, Trash2 } from "lucide-react";
+import { GitBranch, Lock, LockOpen, Save, Table2, Trash2, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type AdminPrediction = Prediction & { profiles?: Pick<Profile, "display_name"> | null };
@@ -42,11 +43,13 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
   const [matches, setMatches] = useState(initialMatches);
   const [scores, setScores] = useState<ScoreDraft>(() => initialScores(initialMatches));
   const [drafts, setDrafts] = useState<PredictionDraft>(() => initialPredictionDrafts(predictions));
+  const [activeTab, setActiveTab] = useState<"grupos" | "tablas" | "llaves">("grupos");
   const [selectedMatchId, setSelectedMatchId] = useState(initialMatches[0]?.id ?? "");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const selectedMatch = matches.find((match) => match.id === selectedMatchId) ?? matches[0];
+  const tabMatches = activeTab === "llaves" ? matches.filter((match) => match.stage !== "GROUP") : matches.filter((match) => match.stage === "GROUP");
+  const selectedMatch = tabMatches.find((match) => match.id === selectedMatchId) ?? tabMatches[0] ?? matches[0];
   const predictionMap = useMemo(() => {
     return predictions.reduce<Record<string, AdminPrediction>>((acc, prediction) => {
       acc[predictionKey(prediction.user_id, prediction.match_id)] = prediction;
@@ -104,7 +107,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
         updateLocalMatch(match.id, { locked: false, status: "open", home_goals: null, away_goals: null, penalty_winner: null });
         setScores((current) => ({ ...current, [match.id]: { home: "", away: "", penaltyWinner: null } }));
       }
-      setMessage(action === "lock" ? "Partido bloqueado." : action === "open" ? "Partido abierto." : "Resultado eliminado.");
+      setMessage(action === "lock" ? "Partido cerrado." : action === "open" ? "Partido abierto." : "Resultado eliminado.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo actualizar.");
     } finally {
@@ -149,6 +152,36 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
     }
   }
 
+  const groupTables = useMemo(() => {
+    const rowsByGroup = new Map<string, Map<string, { team: string; code?: string | null; order: number; points: number; played: number; diff: number }>>();
+    for (const match of matches.filter((item) => item.stage === "GROUP")) {
+      const group = match.group_name || "Sin grupo";
+      if (!rowsByGroup.has(group)) rowsByGroup.set(group, new Map());
+      const rows = rowsByGroup.get(group)!;
+      const ensure = (team: string, code?: string | null) => {
+        if (!rows.has(team)) rows.set(team, { team, code, order: fifaGroupTeamOrder(group, team, rows.size), points: 0, played: 0, diff: 0 });
+        return rows.get(team)!;
+      };
+      const home = ensure(match.home_team, match.home_country_code);
+      const away = ensure(match.away_team, match.away_country_code);
+      const score = scores[match.id];
+      if (!score || score.home === "" || score.away === "") continue;
+      home.played += 1;
+      away.played += 1;
+      home.diff += score.home - score.away;
+      away.diff += score.away - score.home;
+      if (score.home > score.away) home.points += 3;
+      else if (score.away > score.home) away.points += 3;
+      else {
+        home.points += 1;
+        away.points += 1;
+      }
+    }
+    return [...rowsByGroup.entries()].map(([group, rows]) => ({
+      group,
+      rows: [...rows.values()].sort((a, b) => b.points - a.points || b.diff - a.diff || a.order - b.order)
+    }));
+  }, [matches, scores]);
   if (!selectedMatch) return null;
   const selectedScore = scores[selectedMatch.id];
   const selectedTieNeedsWinner =
@@ -158,13 +191,55 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
     selectedScore?.home === selectedScore?.away;
 
   return (
+    <div className="grid gap-4">
+      <section className="panel flex flex-wrap gap-2 p-2">
+        {[
+          ["grupos", "Grupos", Trophy],
+          ["tablas", "Tablas", Table2],
+          ["llaves", "Llaves", GitBranch]
+        ].map(([key, label, Icon]) => (
+          <button
+            className={`btn ${activeTab === key ? "" : "secondary"}`}
+            key={key as string}
+            onClick={() => setActiveTab(key as "grupos" | "tablas" | "llaves")}
+            type="button"
+          >
+            <Icon className="h-4 w-4" />
+            {label as string}
+          </button>
+        ))}
+      </section>
+
+      {activeTab === "tablas" ? (
+        <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          {groupTables.map(({ group, rows }) => (
+            <article className="panel p-4" key={group}>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="text-xl font-black">Grupo {group}</h2>
+                <span className="badge">Tabla</span>
+              </div>
+              <div className="grid gap-2 text-sm">
+                {rows.map((row, index) => (
+                  <div className="grid grid-cols-[28px_1fr_42px_42px_42px] items-center gap-2 rounded-lg border border-line bg-field p-2" key={`${group}-${row.team}`}>
+                    <span className="font-black text-gold">{index + 1}</span>
+                    <TeamLabel name={row.team} code={row.code} />
+                    <strong className="text-center">{row.points}</strong>
+                    <span className="text-center text-ink/60">{row.played}</span>
+                    <span className="text-center text-ink/60">{row.diff}</span>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : (
     <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
       <section className="panel overflow-hidden">
         <div className="border-b border-line p-4">
-          <h2 className="text-xl font-black">Partidos</h2>
+          <h2 className="text-xl font-black">{activeTab === "llaves" ? "Llaves" : "Grupos"}</h2>
         </div>
         <div className="max-h-[760px] overflow-y-auto">
-          {matches.map((match) => (
+          {tabMatches.map((match) => (
             <button
               className={`w-full border-b border-line p-3 text-left last:border-0 ${selectedMatch.id === match.id ? "bg-mint" : "bg-white"}`}
               key={match.id}
@@ -192,7 +267,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
               <span className="text-ink/40">vs</span>
               <TeamLabel name={selectedMatch.away_team} code={selectedMatch.away_country_code} />
             </h2>
-            <span className="badge">{selectedMatch.locked ? "Bloqueado" : "Abierto"}</span>
+            <span className="badge">{selectedMatch.locked ? "Cerrado" : "Abierto"}</span>
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-[90px_90px_auto] sm:items-end">
@@ -249,7 +324,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
           <div className="mt-4 flex flex-wrap gap-2">
             <button className="btn secondary" disabled={saving} onClick={() => changeState(selectedMatch, selectedMatch.locked ? "open" : "lock")} type="button">
               {selectedMatch.locked ? <LockOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-              {selectedMatch.locked ? "Abrir partido" : "Bloquear partido"}
+              {selectedMatch.locked ? "Abrir partido" : "Cerrar partido"}
             </button>
             <button className="btn secondary" disabled={saving} onClick={() => changeState(selectedMatch, "clear")} type="button">
               <Trash2 className="h-4 w-4" />
@@ -329,6 +404,8 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
           </div>
         </article>
       </section>
+    </div>
+      )}
     </div>
   );
 }

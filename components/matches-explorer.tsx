@@ -4,10 +4,11 @@ import { StatusPill } from "@/components/status-pill";
 import { DateFilter } from "@/components/date-filter";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDate, formatArgentinaDateTime } from "@/lib/dates";
+import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { matchFitsGroupFilters } from "@/lib/match-filters";
 import { matchStatus } from "@/lib/scoring";
 import type { Match, MatchStage } from "@/lib/types";
-import { CalendarDays, GitBranch, Lock, Table2, Trophy } from "lucide-react";
+import { GitBranch, Lock, Table2, Trophy, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type WinnerSide = "HOME" | "AWAY";
@@ -17,6 +18,7 @@ type GroupRow = {
   team: string;
   code?: string | null;
   group?: string | null;
+  order: number;
   played: number;
   points: number;
   goalsFor: number;
@@ -40,7 +42,7 @@ const stageLabels: Record<string, string> = {
   R16: "8vos",
   QF: "4tos",
   SF: "Semis",
-  THIRD_PLACE: "3er puesto",
+  THIRD_PLACE: "3ros",
   FINAL: "Final"
 };
 
@@ -91,7 +93,7 @@ function projectedGroupTable(matches: Match[], results: ResultMap) {
   const rows = new Map<string, GroupRow>();
   const group = matches[0]?.group_name ?? null;
   const ensure = (team: string, code?: string | null) => {
-    if (!rows.has(team)) rows.set(team, { team, code, group, played: 0, points: 0, goalsFor: 0, goalsAgainst: 0 });
+    if (!rows.has(team)) rows.set(team, { team, code, group, order: fifaGroupTeamOrder(group, team, rows.size), played: 0, points: 0, goalsFor: 0, goalsAgainst: 0 });
     return rows.get(team)!;
   };
 
@@ -120,7 +122,7 @@ function projectedGroupTable(matches: Match[], results: ResultMap) {
 
   return [...rows.values()].sort((a, b) => {
     const goalDiff = b.goalsFor - b.goalsAgainst - (a.goalsFor - a.goalsAgainst);
-    return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.team.localeCompare(b.team);
+    return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.order - b.order;
   });
 }
 
@@ -209,7 +211,7 @@ function deriveBracket(groupMatches: Match[], knockoutMatches: Match[], results:
     .filter(Boolean)
     .sort((a, b) => {
       const goalDiff = b.goalsFor - b.goalsAgainst - (a.goalsFor - a.goalsAgainst);
-      return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.team.localeCompare(b.team);
+      return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.order - b.order;
     })
     .slice(0, 8);
 
@@ -235,10 +237,6 @@ function deriveBracket(groupMatches: Match[], knockoutMatches: Match[], results:
   return { groupTables, bestThirds, displays };
 }
 
-function resultText(match: Match) {
-  return match.home_goals == null || match.away_goals == null ? "Pendiente" : `${match.home_goals}-${match.away_goals}`;
-}
-
 function MatchCard({ match, display }: { match: Match; display?: DisplayMatch }) {
   const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
   const away = display?.away ?? { name: match.away_team, code: match.away_country_code };
@@ -252,37 +250,26 @@ function MatchCard({ match, display }: { match: Match; display?: DisplayMatch })
           <span className="badge">{match.group_name ? `Grupo ${match.group_name}` : stageLabels[match.stage]}</span>
           <p className="mt-2 text-xs font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</p>
         </div>
-        <StatusPill status={unavailable ? "locked" : status} />
+        <StatusPill status={unavailable ? "locked" : status} label={unavailable ? "Bloqueado" : undefined} />
       </div>
       <div className="grid gap-2">
-        <div className="flex items-center justify-between gap-3 rounded-md border border-line bg-field p-2">
+        <div className="grid grid-cols-[1fr_68px] items-center gap-3 rounded-md border border-line bg-field p-2">
           <TeamOrLock team={home} />
-          <strong>{match.home_goals ?? ""}</strong>
+          <input className="field text-center font-black" disabled value={match.home_goals ?? ""} aria-label={`Goles ${home.name}`} readOnly />
         </div>
-        <div className="flex items-center justify-between gap-3 rounded-md border border-line bg-field p-2">
+        <div className="grid grid-cols-[1fr_68px] items-center gap-3 rounded-md border border-line bg-field p-2">
           <TeamOrLock team={away} />
-          <strong>{match.away_goals ?? ""}</strong>
-        </div>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded-md bg-field p-2">
-          <span className="block font-bold text-ink/60">Resultado</span>
-          <span className="font-black">{resultText(match)}</span>
-        </div>
-        <div className="rounded-md bg-field p-2">
-          <span className="block font-bold text-ink/60">Fase</span>
-          <span className="font-black">{match.group_name ? `Grupo ${match.group_name}` : stageLabels[match.stage]}</span>
+          <input className="field text-center font-black" disabled value={match.away_goals ?? ""} aria-label={`Goles ${away.name}`} readOnly />
         </div>
       </div>
       {match.stadium && match.stadium !== "-" && <p className="mt-3 text-xs font-semibold text-ink/55">{match.stadium}</p>}
-      {unavailable && <p className="mt-2 text-xs font-bold text-slate-500">Cerrado hasta que se definan los clasificados.</p>}
+      {unavailable && <p className="mt-2 text-xs font-bold text-slate-500">Bloqueado hasta que se definan los clasificados.</p>}
     </article>
   );
 }
 
 export function MatchesExplorer({ matches }: { matches: Match[] }) {
-  const [activeTab, setActiveTab] = useState<"partidos" | "tablas" | "llaves">("partidos");
-  const [stage, setStage] = useState("ALL");
+  const [activeTab, setActiveTab] = useState<"grupos" | "tablas" | "llaves">("grupos");
   const [groupFilter, setGroupFilter] = useState("ALL");
   const [teamFilter, setTeamFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -292,9 +279,9 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
   const byStage = groupBy(knockoutMatches, (match) => match.stage);
   const bracket = useMemo(() => deriveBracket(groupMatches, knockoutMatches, results), [groupMatches, knockoutMatches, results]);
-  const visibleMatches = (stage === "ALL" ? matches : matches.filter((match) => match.stage === stage))
-    .filter((match) => matchFitsFilters(match, teamFilter, dateFilter, groupFilter));
-  const completed = matches.filter((match) => match.home_goals != null && match.away_goals != null).length;
+  const totalOpen = matches.filter((match) => match.home_goals == null && !isMatchUnavailable(match) && matchStatus(match.kickoff_at, match.locked, false) !== "locked").length;
+  const totalBlocked = matches.filter((match) => isMatchUnavailable(match)).length;
+  const totalClosed = matches.filter((match) => match.home_goals != null || (!isMatchUnavailable(match) && matchStatus(match.kickoff_at, match.locked, match.home_goals != null) === "locked")).length;
   const availableGroups = Object.keys(byGroup).sort();
   const filteredGroups = Object.entries(byGroup)
     .filter(([group]) => groupFilter === "ALL" || group === groupFilter)
@@ -303,31 +290,35 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
 
   return (
     <div className="grid gap-6">
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="panel p-4">
-          <span className="text-sm font-bold text-ink/60">Partidos</span>
+          <span className="text-sm font-bold text-ink/60">Totales</span>
           <strong className="block text-3xl">{matches.length}</strong>
         </div>
         <div className="panel p-4">
-          <span className="text-sm font-bold text-ink/60">Resultados cargados</span>
-          <strong className="block text-3xl">{completed}</strong>
+          <span className="text-sm font-bold text-ink/60">Abiertos</span>
+          <strong className="block text-3xl">{totalOpen}</strong>
         </div>
         <div className="panel p-4">
-          <span className="text-sm font-bold text-ink/60">Hora</span>
-          <strong className="block text-lg">Argentina</strong>
+          <span className="text-sm font-bold text-ink/60">Cerrados</span>
+          <strong className="block text-3xl">{totalClosed}</strong>
+        </div>
+        <div className="panel p-4">
+          <span className="text-sm font-bold text-ink/60">Bloqueados</span>
+          <strong className="block text-3xl">{totalBlocked}</strong>
         </div>
       </section>
 
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
-          ["partidos", "Partidos", CalendarDays],
-          ["tablas", "Tablas", Table2],
-          ["llaves", "Llaves", GitBranch]
+          ["grupos", "Grupos", Trophy],
+          ["tablas", "Tablas", Trophy],
+          ["llaves", "Llaves", Trophy]
         ].map(([key, label, Icon]) => (
           <button
             className={`btn ${activeTab === key ? "" : "secondary"}`}
             key={key as string}
-            onClick={() => setActiveTab(key as "partidos" | "tablas" | "llaves")}
+            onClick={() => setActiveTab(key as "grupos" | "tablas" | "llaves")}
             type="button"
           >
             <Icon className="h-4 w-4" />
@@ -336,42 +327,35 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
         ))}
       </section>
 
-      <section className="panel grid gap-3 p-3 md:grid-cols-[160px_180px_1fr_180px_auto]">
-        <select className="field" value={stage} onChange={(event) => setStage(event.target.value)}>
-          {stages.map((item) => (
-            <option key={item} value={item}>{stageLabels[item] ?? item}</option>
-          ))}
-        </select>
+      <section className="panel grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-[240px_150px_112px_44px] lg:items-center">
         <select className="field" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
           <option value="ALL">Todos los grupos</option>
           {availableGroups.map((group) => (
             <option key={group} value={group}>Grupo {group}</option>
           ))}
         </select>
-        <input className="field" placeholder="Filtrar por seleccion" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
+        <input className="field" placeholder="Pais" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
         <DateFilter value={dateFilter} onChange={setDateFilter} />
-        <button className="btn secondary" type="button" onClick={() => { setStage("ALL"); setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
-          Limpiar
+        <button className="btn secondary aspect-square px-0" type="button" title="Limpiar filtros" onClick={() => { setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
+          <X className="h-4 w-4" />
         </button>
       </section>
 
-      {activeTab === "partidos" && (
+      {activeTab === "grupos" && (
         <section className="grid gap-4">
-          <div>
-            <h2 className="text-2xl font-black">Calendario completo</h2>
-            <p className="mt-1 text-sm font-semibold text-ink/60">Resultados reales, estado de cierre y cruces ya resueltos cuando corresponda.</p>
-          </div>
-          <div className="panel flex flex-wrap gap-2 p-2">
-            {stages.map((item) => (
-              <button className={`btn ${stage === item ? "" : "secondary"}`} key={item} onClick={() => setStage(item)} type="button">
-                {stageLabels[item] ?? item}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-            {visibleMatches.map((match) => (
-              <MatchCard display={bracket.displays[match.id]} key={match.id} match={match} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            {filteredGroups.map(([group, items]) => (
+              <article className="panel overflow-hidden" key={group}>
+                <div className="flex items-center justify-between gap-2 border-b border-line bg-field p-4">
+                  <h2 className="text-xl font-black">Grupo {group}</h2>
+                  <span className="badge">{items.length} partidos</span>
+                </div>
+                <div className="grid gap-3 p-4">
+                  {items.map((match) => (
+                    <MatchCard key={match.id} match={match} />
+                  ))}
+                </div>
+              </article>
             ))}
           </div>
         </section>
@@ -425,7 +409,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
         <section className="grid gap-4">
           <div>
             <h2 className="text-2xl font-black">Llaves reales</h2>
-            <p className="mt-1 text-sm font-semibold text-ink/60">Los cruces se completan automaticamente segun tablas y ganadores.</p>
+            <p className="mt-1 text-sm font-semibold text-ink/60">Los cruces se muestran cuando esten confirmados oficialmente.</p>
           </div>
           <div className="overflow-x-auto pb-2">
             <div className="flex min-w-max gap-4">
@@ -439,7 +423,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
                   </h2>
                   <div className="grid gap-3 p-4">
                     {byStage[item].map((match) => {
-                      const display = bracket.displays[match.id] ?? {
+                      const display = {
                         home: { name: match.home_team, code: match.home_country_code },
                         away: { name: match.away_team, code: match.away_country_code }
                       };

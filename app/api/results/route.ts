@@ -54,7 +54,7 @@ export async function PATCH(req: Request) {
   const db = supabaseAdmin();
   const update =
     body.action === "lock"
-      ? { locked: true, status: "locked" }
+      ? { locked: true, status: "closed" }
       : body.action === "open"
         ? { locked: false, status: "open" }
         : { locked: false, status: "open", home_goals: null, away_goals: null, penalty_winner: null };

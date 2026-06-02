@@ -17,7 +17,7 @@ export default async function MatchesPage() {
         badge="Calendario"
         icon={CalendarDays}
         title="Partidos"
-        subtitle="Calendario completo del Mundialito con horarios en Argentina, fase y estado de bloqueo."
+        subtitle="Estado real de cada partido: abierto, cerrado o bloqueado hasta que se confirme la llave."
       >
         <Link className="btn" href="/mi-prode">
           Ir a Pronósticos
