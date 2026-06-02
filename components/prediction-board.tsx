@@ -1,6 +1,7 @@
 "use client";
 
 import { EmptyState } from "@/components/empty-state";
+import { DateFilter } from "@/components/date-filter";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
@@ -599,7 +600,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           value={teamFilter}
           onChange={(event) => setTeamFilter(event.target.value)}
         />
-        <input className="field" type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} />
+        <DateFilter value={dateFilter} onChange={setDateFilter} />
         <button className="btn secondary" type="button" onClick={() => { setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
           Limpiar
         </button>

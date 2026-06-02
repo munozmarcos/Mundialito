@@ -42,11 +42,11 @@ export default function CreditsPage() {
           </div>
           <div className="overflow-hidden rounded-lg border border-line bg-field shadow-xl shadow-sky-950/20">
             <Image
-              alt="Marcos junto a Tim Payne"
+              alt="Marcos, Tim Payne y Lio"
               className="h-full w-full object-cover"
               height={960}
               priority
-              src="/tim-payne.png"
+              src="/tim-lio-mark.png"
               width={1226}
             />
           </div>

@@ -12,9 +12,9 @@ export default async function MyProdePage() {
   return (
     <div className="grid gap-6">
       <PageHero
-        badge="Fixture"
+        badge="Pronósticos"
         icon={Goal}
-        title="Fixture y predicciones"
+        title="Pronósticos"
         subtitle="Completá cada partido desde la web y mirá cómo se arman tus tablas y llaves a medida que cargás resultados."
       />
 

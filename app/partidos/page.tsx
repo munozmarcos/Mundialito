@@ -17,10 +17,10 @@ export default async function MatchesPage() {
         badge="Calendario"
         icon={CalendarDays}
         title="Partidos"
-        subtitle="Fixture completo del Mundialito con horarios en Argentina, fase y estado de bloqueo."
+        subtitle="Calendario completo del Mundialito con horarios en Argentina, fase y estado de bloqueo."
       >
         <Link className="btn" href="/mi-prode">
-          Ir al Fixture
+          Ir a Pronósticos
         </Link>
       </PageHero>
 

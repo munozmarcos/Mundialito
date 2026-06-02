@@ -1,7 +1,8 @@
 "use client";
 
 import { KeyRound, LogIn, MessageCircle, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 type SessionUser = {
   displayName: string;
@@ -9,7 +10,10 @@ type SessionUser = {
   paid: boolean;
 };
 
-export default function LoginPage() {
+function LoginContent() {
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") || "/mi-prode";
+  const payIntent = searchParams.get("pay") === "1";
   const [mode, setMode] = useState<"login" | "signup" | "reset">("login");
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
@@ -49,7 +53,7 @@ export default function LoginPage() {
       setMessage(data.error ?? "No se pudo iniciar sesión.");
       return;
     }
-    window.location.href = "/mi-prode";
+    window.location.href = nextPath;
   }
 
   async function requestCode() {
@@ -84,7 +88,7 @@ export default function LoginPage() {
       setMessage(data.error ?? "Código incorrecto.");
       return;
     }
-    window.location.href = "/mi-prode";
+    window.location.href = nextPath;
   }
 
   return (
@@ -112,9 +116,16 @@ export default function LoginPage() {
                 <div className="rounded-lg bg-field p-3 text-sm font-semibold text-ink/70">
                   Ya estás logueado como <strong>{user.displayName}</strong>{user.phone ? ` (${user.phone})` : ""}.
                 </div>
-                <a className="btn w-fit" href="/mi-prode">
-                  Ir al Fixture
-                </a>
+                {payIntent ? (
+                  <div className="flex flex-wrap gap-2">
+                    <a className="btn w-fit" href="/ranking">Ir a pagar</a>
+                    <a className="btn secondary w-fit" href="/mi-prode">Luego</a>
+                  </div>
+                ) : (
+                  <a className="btn w-fit" href="/mi-prode">
+                    Ir a Pronósticos
+                  </a>
+                )}
               </div>
             ) : (
               <>
@@ -129,6 +140,12 @@ export default function LoginPage() {
                     Recuperar
                   </button>
                 </div>
+                {payIntent && (
+                  <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm font-semibold text-ink/70">
+                    Entrá y después tocá <strong>Pagar</strong> en Ranking para asociar MercadoPago a tu apodo.
+                    <a className="ml-2 font-black text-grass underline" href="/mi-prode">Lo hago luego</a>
+                  </div>
+                )}
 
                 {mode === "login" ? (
                   <div className="grid max-w-sm gap-3">
@@ -199,5 +216,13 @@ export default function LoginPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<section className="mx-auto max-w-4xl"><div className="panel p-6">Cargando...</div></section>}>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -5,6 +5,7 @@ import { formatArgentinaDate } from "@/lib/dates";
 import { matchFitsGroupFilters } from "@/lib/match-filters";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
 import { TeamLabel } from "@/components/team-label";
+import { DateFilter } from "@/components/date-filter";
 import { Calculator, ClipboardPaste, GitBranch, Lock, RotateCcw, Table2, Trophy } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -526,7 +527,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
           ))}
         </select>
         <input className="field" placeholder="Filtrar por seleccion" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
-        <input className="field" type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} />
+        <DateFilter value={dateFilter} onChange={setDateFilter} />
         <button className="btn secondary" type="button" onClick={() => { setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
           Limpiar
         </button>

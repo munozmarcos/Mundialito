@@ -4,6 +4,8 @@ import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const videoId = "rPrRa-EehAQ";
+const chorusStart = 54;
+const chorusEnd = 88;
 
 function youtubeCommand(command: "playVideo" | "pauseVideo" | "mute" | "unMute") {
   return JSON.stringify({ event: "command", func: command, args: [] });
@@ -11,12 +13,12 @@ function youtubeCommand(command: "playVideo" | "pauseVideo" | "mute" | "unMute")
 
 export function SoundToggle() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(true);
   const [origin, setOrigin] = useState("");
 
   useEffect(() => {
     setOrigin(window.location.origin);
-    setEnabled(window.localStorage.getItem("mundialito-music-enabled") === "true");
+    setEnabled(window.localStorage.getItem("mundialito-music-enabled") !== "false");
   }, []);
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export function SoundToggle() {
           aria-hidden="true"
           className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px opacity-0"
           ref={iframeRef}
-          src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(origin)}&playsinline=1&loop=1&playlist=${videoId}&controls=0&disablekb=1`}
+          src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(origin)}&playsinline=1&autoplay=1&loop=1&playlist=${videoId}&start=${chorusStart}&end=${chorusEnd}&controls=0&disablekb=1`}
           tabIndex={-1}
           title="Musica Mundialito"
         />

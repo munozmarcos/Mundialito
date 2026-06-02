@@ -12,12 +12,22 @@ const pages = [
 ];
 
 const jobs = [
-  { path: "/api/jobs/sync-fixtures", icon: RefreshCw, title: "Actualizar partidos", text: "Corre en este momento la búsqueda del calendario y cruces." },
-  { path: "/api/jobs/sync-results", icon: Trophy, title: "Actualizar resultados", text: "Busca resultados finales ahora y recalcula puntos." },
-  { path: "/api/jobs/send-reminders", icon: ListChecks, title: "Recordatorios 4h", text: "Envia WhatsApp ahora a quienes falten si hay partidos dentro de la ventana." },
-  { path: "/api/jobs/lock-matches", icon: LockKeyhole, title: "Bloquear 15m", text: "Bloquea ahora partidos que esten a 15 minutos o menos." },
-  { path: "/api/jobs/notify-kickoff", icon: MessageCircle, title: "Avisar inicio", text: "Envia WhatsApp ahora si hay partidos empezando en la ventana actual." },
-  { path: "/api/jobs/send-daily-ranking", icon: MessageCircle, title: "Enviar ranking por WhatsApp", text: "Manda el ranking actual por WhatsApp a todos los miembros registrados." }
+  { path: "/api/jobs/sync-fixtures", icon: RefreshCw, title: "Actualizar partidos", text: "Importa/actualiza el fixture y los cruces oficiales desde el proveedor configurado." },
+  { path: "/api/jobs/sync-results", icon: Trophy, title: "Actualizar resultados", text: "Consulta marcadores finales, guarda resultados reales y recalcula puntos." },
+  { path: "/api/jobs/send-reminders", icon: ListChecks, title: "Recordatorios 4h", text: "Envía WhatsApp solo a quienes no cargaron pronóstico para partidos que empiezan cerca de 4 horas." },
+  { path: "/api/jobs/lock-matches", icon: LockKeyhole, title: "Bloquear 15m", text: "Cierra partidos que estén a 15 minutos o menos y avisa por WhatsApp a quienes quedaron pendientes." },
+  { path: "/api/jobs/notify-kickoff", icon: MessageCircle, title: "Avisar inicio", text: "Notifica por WhatsApp los partidos que están por empezar en la ventana actual." },
+  { path: "/api/jobs/send-daily-ranking", icon: MessageCircle, title: "Enviar ranking por WhatsApp", text: "Manda el ranking actual a todos los miembros registrados, sin esperar el cron diario." }
+];
+
+const commands = [
+  { command: "$comandos", text: "Muestra esta ayuda. Ejemplo: $comandos" },
+  { command: "$ranking", text: "Devuelve el top del Mundialito. Ejemplo: $ranking" },
+  { command: "$reglas", text: "Explica la puntuación. Ejemplo: $reglas" },
+  { command: "$partidos", text: "Lista próximos partidos. Ejemplo: $partidos Francia" },
+  { command: "$resultados", text: "Muestra resultados reales. Ejemplo: $resultados Argentina" },
+  { command: "$pendientes", text: "Muestra pronósticos pendientes del usuario. Ejemplo: $pendientes" },
+  { command: "$pronosticos", text: "Devuelve el fixture cargado por el usuario para copiar. Ejemplo: $pronosticos" }
 ];
 
 export default function AdminPage() {
@@ -58,9 +68,9 @@ export default function AdminPage() {
       </section>
 
       <section className="panel p-5">
-        <h2 className="text-xl font-black">Ejecutar ahora</h2>
+        <h2 className="text-xl font-black">Jobs</h2>
         <p className="mt-1 text-sm font-semibold text-ink/60">
-          Estos botones corren acciones reales manualmente. Sirven para probar o forzar lo que despues puede quedar automatizado.
+          Estos botones ejecutan procesos reales manualmente para probar, forzar sincronización o mandar avisos fuera del cron.
         </p>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {jobs.map((job) => (
@@ -74,6 +84,19 @@ export default function AdminPage() {
           ))}
         </div>
         {message && <pre className="mt-4 overflow-x-auto rounded-lg bg-field p-3 text-xs">{message}</pre>}
+      </section>
+
+      <section className="panel p-5">
+        <h2 className="text-xl font-black">Comandos de WhatsApp</h2>
+        <p className="mt-1 text-sm font-semibold text-ink/60">Todos los participantes pueden escribirlos con $ al inicio.</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {commands.map((item) => (
+            <div className="rounded-lg border border-line bg-field p-4" key={item.command}>
+              <strong className="block text-lg text-grass">{item.command}</strong>
+              <span className="text-sm font-semibold text-ink/70">{item.text}</span>
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );

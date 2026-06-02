@@ -63,7 +63,7 @@ export default async function Home() {
           <section className="panel overflow-hidden">
             <div className="flex items-center justify-between border-b border-line p-4">
               <h2 className="text-xl font-black">Próximos partidos</h2>
-              <Link className="btn secondary min-h-9 px-3" href="/mi-prode">Fixture</Link>
+              <Link className="btn secondary min-h-9 px-3" href="/mi-prode">Pronósticos</Link>
             </div>
             {!matches.length ? (
               <EmptyState title="Todavía no hay partidos" text="Carga el calendario desde Admin para empezar." />

@@ -1,6 +1,7 @@
 "use client";
 
 import { StatusPill } from "@/components/status-pill";
+import { DateFilter } from "@/components/date-filter";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDate, formatArgentinaDateTime } from "@/lib/dates";
 import { matchFitsGroupFilters } from "@/lib/match-filters";
@@ -348,7 +349,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
           ))}
         </select>
         <input className="field" placeholder="Filtrar por seleccion" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
-        <input className="field" type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} />
+        <DateFilter value={dateFilter} onChange={setDateFilter} />
         <button className="btn secondary" type="button" onClick={() => { setStage("ALL"); setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
           Limpiar
         </button>

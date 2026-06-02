@@ -14,7 +14,7 @@ function money(value: number) {
   }).format(value);
 }
 
-export default async function RankingPage() {
+export default async function RankingPage({ searchParams }: { searchParams?: { payment?: string } }) {
   const [ranking, summary, participants] = await Promise.all([
     getRanking(),
     getPaymentSummary(),
@@ -29,6 +29,20 @@ export default async function RankingPage() {
         title="Ranking y pagos"
         subtitle="Posiciones generales, puntos acumulados, pozo del Mundialito y estado de pago de cada participante."
       />
+      {searchParams?.payment && (
+        <section className={`panel p-4 ${searchParams.payment === "success" ? "border-emerald-300 bg-emerald-50" : "border-sky-200 bg-sky-50"}`}>
+          <h2 className="text-lg font-black">
+            {searchParams.payment === "success" ? "Pago recibido" : searchParams.payment === "pending" ? "Pago pendiente" : "Pago no completado"}
+          </h2>
+          <p className="mt-1 text-sm font-semibold text-ink/70">
+            {searchParams.payment === "success"
+              ? "Si MercadoPago ya lo aprobo, tu estado aparece como Pago en Participantes y el pozo se actualiza solo."
+              : searchParams.payment === "pending"
+                ? "MercadoPago todavia lo esta procesando. Cuando quede aprobado, se actualiza solo."
+                : "No se registro un pago aprobado. Podes intentar de nuevo cuando quieras."}
+          </p>
+        </section>
+      )}
 
       <RankingContent
         ranking={ranking as RankingRow[]}

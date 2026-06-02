@@ -9,7 +9,7 @@ type SessionUser = {
 
 const links = [
   { href: "/", label: "Inicio" },
-  { href: "/mi-prode", label: "Fixture" },
+  { href: "/mi-prode", label: "Pronósticos" },
   { href: "/partidos", label: "Partidos" },
   { href: "/ranking", label: "Ranking" },
   { href: "/probar", label: "Simulador" },
