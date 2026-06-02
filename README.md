@@ -1,19 +1,144 @@
-# Mundialito
+# Mundialito 2026
 
-Prode del Mundial 2026 para jugar entre amigos: login por mail, predicciones, bloqueo 1 hora antes, ranking, admin, recordatorios y chat IA.
+App web para jugar un prode del Mundial 2026 entre amigos, con WhatsApp como canal principal, ranking automatico, fixture completo, simulador, pagos y administracion.
+
+Produccion: https://mundialito-mu.vercel.app
 
 ## Stack
 
-- Next.js + TypeScript
-- Supabase Auth/Postgres/RLS
-- Tailwind
-- OpenAI API
-- Resend para emails
-- Gmail SMTP opcional para emails
-- Adapter mock para WhatsApp
-- WorldCupAPI para sincronizar resultados automaticamente
+- Next.js 14 + TypeScript
+- Supabase Postgres/Auth-like session propia por WhatsApp
+- Tailwind CSS
+- UltraMsg para WhatsApp
+- MercadoPago Checkout Pro
+- Vercel deploy + cron jobs
+- Football-data / proveedor de resultados para sincronizar fixture y marcadores
 
-## Arranque local
+## Funcionalidad principal
+
+- Alta/login por apodo + WhatsApp.
+- Codigo de verificacion enviado por WhatsApp.
+- Apodos unicos, sin repetidos.
+- Participantes con rol `Admin` o `Participante`.
+- Fixture de Mundial 2026 con 48 equipos y 104 partidos.
+- Predicciones por partido desde la web.
+- En eliminatorias, si hay empate, se elige ganador.
+- Bloqueo automatico 15 minutos antes del inicio.
+- Tablas de grupos y llaves proyectadas.
+- Simulador para probar resultados y ver como avanza la llave.
+- Ranking con puntos, exactos, tendencias y participantes.
+- Pagos: entrada de $15.000 ARS, $10.000 al pozo y $5.000 al viaje misionero a Ecuador.
+- Premios: 70% primer puesto, 20% segundo, 10% tercero.
+- Creditos del proyecto.
+
+## Scoring
+
+Regla actual, simple para todo el torneo:
+
+- Tendencia correcta: 1 punto.
+- Resultado exacto: +2 puntos extra.
+- Maximo por partido: 3 puntos.
+- En eliminatorias cuenta el resultado de 120 minutos.
+- Si el partido empatado necesita ganador, se carga ganador para avanzar la llave.
+
+Ejemplos:
+
+- Real 2-1, prediccion 1-0: 1 punto.
+- Real 2-1, prediccion 2-1: 3 puntos.
+- Real 0-0, prediccion 1-1: 1 punto.
+- Real 0-0, prediccion 0-0: 3 puntos.
+
+## WhatsApp
+
+Webhook:
+
+```http
+POST /api/whatsapp/inbound
+```
+
+Comandos:
+
+- `$comandos`
+- `$ranking`
+- `$reglas`
+- `$partidos`
+- `$resultados`
+- `$pendientes`
+- `$pronosticos`
+
+Jobs por WhatsApp:
+
+- Recordatorios 4 horas antes.
+- Bloqueo/notificacion 15 minutos antes.
+- Aviso de inicio de partido.
+- Aviso de resultado final.
+- Ranking diario a las 23:00 Argentina durante el Mundial.
+- Broadcast manual desde Admin.
+
+## Pagos
+
+El pago automatico funciona con MercadoPago Checkout Pro:
+
+1. El usuario debe estar logueado.
+2. Toca `Pagar` en Ranking.
+3. La app crea una preferencia con `external_reference` igual al intento de pago.
+4. MercadoPago llama al webhook:
+
+```http
+POST /api/payments/mercadopago/webhook
+```
+
+5. Si el pago queda `approved`, se marca `profiles.paid = true`.
+6. El pozo y premios se recalculan automaticamente desde los participantes pagos.
+
+Si alguien paga por alias o por un link externo sin estar logueado, no hay forma confiable de asociarlo automaticamente al apodo. Ese caso queda para control manual del admin en `/admin/participantes`.
+
+## Admin
+
+Rutas principales:
+
+- `/admin`
+- `/admin/participantes`
+- `/admin/resultados`
+- `/admin/whatsapp`
+- `/admin/importar`
+
+Acciones manuales:
+
+- Actualizar partidos.
+- Actualizar resultados.
+- Enviar recordatorios.
+- Bloquear partidos.
+- Avisar inicio.
+- Enviar ranking por WhatsApp.
+- Broadcast de WhatsApp.
+- Editar participantes, rol y pago.
+- Editar resultados y apuestas.
+
+## Variables de entorno
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+APP_SESSION_SECRET=
+APP_URL=https://mundialito-mu.vercel.app
+CRON_SECRET=
+
+WHATSAPP_PROVIDER=ultramsg
+ULTRAMSG_INSTANCE_ID=
+ULTRAMSG_TOKEN=
+WHATSAPP_WEBHOOK_SECRET=
+
+MERCADOPAGO_ACCESS_TOKEN=
+
+RESULTS_PROVIDER=football-data
+FOOTBALL_DATA_API_KEY=
+```
+
+No exponer `SUPABASE_SERVICE_ROLE_KEY`, `MERCADOPAGO_ACCESS_TOKEN`, `ULTRAMSG_TOKEN` ni `CRON_SECRET` en frontend.
+
+## Desarrollo local
 
 ```bash
 npm install
@@ -21,176 +146,55 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Despues abri `http://localhost:3000`.
-
-## Supabase
-
-1. Crear proyecto en Supabase.
-2. Copiar `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` en `.env.local`.
-3. Ejecutar `supabase/schema.sql` en SQL Editor.
-4. Opcional: ejecutar `supabase/seed.sql` para tener partidos de prueba.
-
-## Variables
-
-`CRON_SECRET` protege:
-
-- `POST /api/jobs/send-reminders`
-- `POST /api/jobs/lock-matches`
-- `POST /api/jobs/sync-results`
-
-Usar header:
+Abrir:
 
 ```text
-Authorization: Bearer <CRON_SECRET>
+http://localhost:3000
 ```
 
-## Envio con Gmail
-
-Para enviar mails reales desde Gmail:
-
-1. Activar verificacion en 2 pasos en la cuenta.
-2. Crear una contraseña de aplicacion de Google.
-3. Crear `.env.local`:
-
-```env
-EMAIL_PROVIDER=gmail
-GMAIL_USER=gmunozmarcos@gmail.com
-GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
-FROM_EMAIL="Mundialito <gmunozmarcos@gmail.com>"
-```
-
-No uses tu contraseña normal de Gmail.
-
-## Scoring implementado
-
-El Excel `Prode Qatar 2022.xlsx` se usa solo como referencia de reglas.
-
-Fase de grupos:
-
-- Tendencia correcta: 1 punto.
-- Resultado exacto: +1 punto.
-- Maximo por partido de grupo: 2 puntos.
-
-Ejemplos:
-
-- Real 2-1, prediccion 1-0: 1 punto.
-- Real 2-1, prediccion 2-1: 2 puntos.
-- Real 0-0, prediccion 1-1: 1 punto.
-- Real 0-0, prediccion 0-0: 2 puntos.
-
-El motor deja preparadas reglas de eliminatorias, incluyendo empates con ponderacion especial segun el Excel.
-
-## Fixture 2026
-
-El archivo `data/worldcup-2026-fixture.sample.csv` es solo muestra. El fixture real de 104 partidos debe importarse desde fuente actualizada/oficial y luego cargarse con:
-
-```http
-POST /api/admin/import-fixture
-```
-
-Payload:
-
-```json
-{
-  "matches": [
-    {
-      "home_team": "Mexico",
-      "away_team": "South Africa",
-      "kickoff_at": "2026-06-11T16:00:00-05:00",
-      "stadium": "Estadio Azteca",
-      "stage": "GROUP",
-      "group_name": "A"
-    }
-  ]
-}
-```
-
-## Resultados automaticos
-
-La app trae un job para que no cargues resultados a mano:
-
-```http
-POST /api/jobs/sync-results
-Authorization: Bearer <CRON_SECRET>
-```
-
-Proveedor recomendado gratis: football-data.org, que lista Worldcup dentro del Free Tier. Variables:
-
-```env
-RESULTS_PROVIDER=football-data
-FOOTBALL_DATA_API_KEY=tu_api_key
-```
-
-Fallback compatible:
-
-```env
-RESULTS_PROVIDER=worldcupapi
-WORLD_CUP_API_KEY=tu_api_key
-```
-
-Cuando el job encuentra un partido terminado:
-
-- lo marca como `final`,
-- guarda goles reales,
-- bloquea el partido,
-- recalcula puntos.
-
-## Tests
+Tests:
 
 ```bash
 npm test
 ```
 
-Los tests cubren scoring de grupos y bloqueo 1 hora antes.
+Build:
 
-## Rutas
-
-- `/`
-- `/login`
-- `/dashboard`
-- `/partidos`
-- `/ranking`
-- `/admin`
-- `/admin/resultados`
-- `/admin/importar`
-- `/api/predictions`
-- `/api/results`
-- `/api/jobs/send-reminders`
-- `/api/jobs/lock-matches`
-- `/api/jobs/sync-results`
-- `/api/chat`
-- `/api/whatsapp/inbound`
-
-## WhatsApp
-
-`lib/whatsapp.ts` queda mockeado hasta conectar proveedor. Webhook:
-
-```http
-POST /api/whatsapp/inbound
+```bash
+npm run build
 ```
 
-Comandos preparados:
+## Supabase
 
-- `ranking`
-- `pendientes`
-- `$predigo Argentina vs Mexico 2-1`
-- `ayuda`
+Archivos:
 
-Para envio real con UltraMsg:
+- `supabase/schema.sql`
+- `supabase/migrations/*`
+- `supabase/seed.sql`
 
-1. Crear cuenta en `https://ultramsg.com`.
-2. Crear una instancia.
-3. Escanear QR hasta que la instancia quede autenticada.
-4. Completar `.env.local`:
+Tablas principales:
 
-```env
-WHATSAPP_PROVIDER=ultramsg
-ULTRAMSG_INSTANCE_ID=instanceXXXX
-ULTRAMSG_TOKEN=tu_token
-WHATSAPP_WEBHOOK_SECRET=dev-whatsapp-secret
+- `profiles`
+- `matches`
+- `predictions`
+- `notification_logs`
+- `payment_attempts`
+
+Funciones:
+
+- `ranking()`
+- `pending_predictions_for_user()`
+
+## Deploy
+
+Deploy productivo en Vercel:
+
+```bash
+vercel deploy --prod
 ```
 
-Prueba local:
+Cron configurado en `vercel.json`:
 
-- `/admin/whatsapp`
-- `POST /api/test/send-whatsapp`
+- `/api/jobs/send-daily-ranking`
+
+Otros jobs se ejecutan manualmente desde Admin o se pueden automatizar con Vercel/Cron externo usando `CRON_SECRET`.

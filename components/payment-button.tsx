@@ -11,6 +11,10 @@ export function PaymentButton() {
     try {
       const response = await fetch("/api/payments/start", { method: "POST" });
       const data = await response.json();
+      if (response.status === 401) {
+        window.location.href = "/login?next=/ranking";
+        return;
+      }
       if (data.url) window.location.href = data.url;
     } finally {
       setLoading(false);
