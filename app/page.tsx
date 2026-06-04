@@ -51,10 +51,10 @@ export default async function Home() {
       <section className="panel hero-pitch p-5 sm:p-8">
         <div className="relative z-10 max-w-3xl">
           <h1 className="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">
-            El prode con alma de Mundial.
+            Prode entre amigos
           </h1>
           <p className="mt-5 max-w-2xl text-lg font-semibold text-white/86">
-            Predicciones, tablas proyectadas, llave completa, ranking automático y WhatsApp para que nadie se olvide de cargar.
+            La experiencia de vivir el Mundial de manera divertida, con un fin solidario y una interfaz única.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <HomePrimaryAction />
@@ -166,3 +166,4 @@ export default async function Home() {
     </div>
   );
 }
+

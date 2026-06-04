@@ -11,7 +11,8 @@ const sponsors = [
     text: "Acompaña el Mundialito poniendo potencia, empuje y buena onda para que esta competencia entre amigos siga creciendo.",
     image: "/sponsor-icaro.jpeg",
     logo: "/sponsor-logo-icaro.png",
-    logoClass: "bg-slate-200"
+    logoBox: "bg-[#b8c9cf]",
+    logoSize: "h-16 w-28"
   },
   {
     name: "Mates y Compañía",
@@ -19,7 +20,8 @@ const sponsors = [
     text: "El ritual perfecto para mirar partidos, cargar pronósticos y discutir resultados con algo rico al lado.",
     image: "/sponsor-mates.jpeg",
     logo: "/sponsor-logo-mates.png",
-    logoClass: "bg-black"
+    logoBox: "bg-black",
+    logoSize: "h-14 w-32"
   }
 ];
 
@@ -51,7 +53,7 @@ export default function SponsorsPage() {
             <div className="border-b border-line bg-field p-5">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className={`grid h-14 w-24 shrink-0 place-items-center overflow-hidden rounded-lg border border-line p-1 ${sponsor.logoClass}`}>
+                  <span className={`grid ${sponsor.logoSize} shrink-0 place-items-center overflow-hidden rounded-lg border border-line p-1.5 ${sponsor.logoBox}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img alt={`Logo ${sponsor.name}`} className="max-h-full max-w-full object-contain" src={sponsor.logo} />
                   </span>
@@ -65,7 +67,7 @@ export default function SponsorsPage() {
             </div>
             <div className="grid min-h-[280px] place-items-center border-b border-line bg-slate-950/25 p-3 sm:min-h-[360px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt={`${sponsor.name} sponsor Mundialito`} className="max-h-[520px] w-full rounded-lg object-contain" src={sponsor.image} />
+              <img alt={`${sponsor.name} sponsor Mundialito`} className="max-h-[560px] w-full rounded-lg object-contain" src={sponsor.image} />
             </div>
             <div className="p-5">
               <p className="text-base font-semibold text-ink/75">{sponsor.text}</p>

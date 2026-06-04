@@ -359,7 +359,6 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
               <div className="grid gap-3" key={group}>
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="text-xl font-black">Grupo {group}</h2>
-                  <span className="badge">{items.length} partidos</span>
                 </div>
                 <div className="match-card-grid">
                   {items.map((match) => (
