@@ -9,7 +9,7 @@ import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-
 import { matchFitsBasicFilters } from "@/lib/match-filters";
 import { matchStatus } from "@/lib/scoring";
 import type { Match, MatchStage } from "@/lib/types";
-import { Calculator, GitBranch, Lock, Table2, Trophy, X } from "lucide-react";
+import { Calculator, CircleDot, GitBranch, Lock, Table2, Trophy, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type WinnerSide = "HOME" | "AWAY";
@@ -312,7 +312,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
 
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
-          ["todos", "Todos", Trophy],
+          ["todos", "Todos", CircleDot],
           ["grupos", "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llaves", "Llaves", GitBranch]

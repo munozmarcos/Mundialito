@@ -92,7 +92,7 @@ export default function WhatsAppAdminPage() {
     });
     const json = await res.json();
     setSending(false);
-    setStatus(res.ok ? `Enviados: ${json.sent}/${json.recipients}${json.failures?.length ? `\nFallos: ${json.failures.join("\n")}` : ""}` : json.error ?? "No se pudo enviar.");
+    setStatus(res.ok ? `Enviados: ${json.sent}/${json.recipients}${json.failures?.length ? `\nFallos:\n${json.failures.join("\n")}` : ""}` : json.error ?? "No se pudo enviar.");
   }
 
   return (

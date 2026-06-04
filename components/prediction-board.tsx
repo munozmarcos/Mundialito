@@ -10,7 +10,7 @@ import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-
 import { dateKey, matchFitsBasicFilters } from "@/lib/match-filters";
 import { matchStatus } from "@/lib/scoring";
 import type { Match, MatchStage, Prediction } from "@/lib/types";
-import { Calculator, Check, GitBranch, Lock, LogIn, Save, Table2, Trophy, X } from "lucide-react";
+import { Calculator, Check, CircleDot, GitBranch, Lock, LogIn, Save, Table2, Trophy, X } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
@@ -565,7 +565,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
 
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
-          ["todos", "Todos", Trophy],
+          ["todos", "Todos", CircleDot],
           ["cargar", "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llave", "Llaves", GitBranch]

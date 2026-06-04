@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       await sendWhatsApp(user.phone, input.body);
       sent += 1;
     } catch (error) {
-      failures.push(`${user.display_name}: ${error instanceof Error ? error.message : "unknown"}`);
+      failures.push(`${user.display_name} (${user.phone}): ${error instanceof Error ? error.message : "unknown"}`);
     }
   }
 

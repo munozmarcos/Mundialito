@@ -6,9 +6,14 @@ export async function sendWhatsApp(to: string, body: string) {
     return { ok: true, provider: "mock" };
   }
 
-  const instance = process.env.ULTRAMSG_INSTANCE_ID;
+  const rawInstance = process.env.ULTRAMSG_INSTANCE_ID;
   const token = process.env.ULTRAMSG_TOKEN;
-  if (!instance || !token) throw new Error("Missing UltraMsg environment variables");
+  if (!rawInstance || !token) throw new Error("Missing UltraMsg environment variables");
+
+  const instance = rawInstance
+    .trim()
+    .replace(/^https?:\/\/api\.ultramsg\.com\//i, "")
+    .replace(/^\/+|\/+$/g, "");
 
   const res = await fetch(`https://api.ultramsg.com/${instance}/messages/chat`, {
     method: "POST",
@@ -16,7 +21,10 @@ export async function sendWhatsApp(to: string, body: string) {
     body: new URLSearchParams({ token, to, body })
   });
 
-  if (!res.ok) throw new Error(`UltraMsg error ${res.status}`);
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`UltraMsg error ${res.status}${detail ? `: ${detail.slice(0, 180)}` : ""}`);
+  }
   return res.json();
 }
 

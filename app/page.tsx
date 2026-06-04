@@ -108,8 +108,12 @@ export default async function Home() {
                       label={isMatchBlockedUntilOfficial(match) ? "Bloqueado" : undefined}
                     />
                     <div className="grid grid-cols-[52px_52px] gap-2">
-                      <input className="field h-10 text-center text-sm font-black" readOnly value={match.home_goals ?? ""} aria-label={`Goles ${match.home_team}`} />
-                      <input className="field h-10 text-center text-sm font-black" readOnly value={match.away_goals ?? ""} aria-label={`Goles ${match.away_team}`} />
+                      <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black" aria-label={`Goles ${match.home_team}`}>
+                        {match.home_goals ?? ""}
+                      </div>
+                      <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black" aria-label={`Goles ${match.away_team}`}>
+                        {match.away_goals ?? ""}
+                      </div>
                     </div>
                   </div>
                 </article>

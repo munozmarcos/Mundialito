@@ -8,7 +8,7 @@ import { fifaGroupTeamOrder } from "@/lib/group-order";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
 import { TeamLabel } from "@/components/team-label";
 import { DateFilter } from "@/components/date-filter";
-import { Calculator, ClipboardPaste, GitBranch, Lock, RotateCcw, Table2, Trophy, X } from "lucide-react";
+import { Calculator, CircleDot, ClipboardPaste, GitBranch, Lock, RotateCcw, Table2, Trophy, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type SimPrediction = Prediction & { profiles?: Pick<Profile, "display_name"> | null };
@@ -567,7 +567,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
 
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
-          ["todos", "Todos", Trophy],
+          ["todos", "Todos", CircleDot],
           ["cargar", selectedGroup ? `Grupo ${selectedGroup}` : "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llave", "Llaves", GitBranch]

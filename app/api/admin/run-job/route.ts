@@ -1,4 +1,5 @@
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
+import { syncResultsFromProvider } from "@/lib/sync-results";
 import { requireAdmin, supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -47,18 +48,44 @@ export async function GET(req: Request) {
   return NextResponse.json({ runs: data ?? [], latest });
 }
 
+async function recordManual(path: (typeof paths)[number], ok: boolean, status: number, payload: unknown) {
+  const summary = summarizeJob(titles[path], payload);
+  await recordJobRun({
+    jobPath: path,
+    triggerType: "manual",
+    ok,
+    statusCode: status,
+    summary,
+    payload
+  });
+  return summary;
+}
+
 export async function POST(req: Request) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return NextResponse.json({ error: "Falta CRON_SECRET en Vercel" }, { status: 500 });
 
   const body = Body.parse(await req.json());
   const { path } = body;
   if (path === "/api/jobs/notify-results" && !body.matchId) {
     return NextResponse.json({ error: "Falta partido para notificar resultado." }, { status: 400 });
   }
+
+  if (path === "/api/jobs/sync-results") {
+    try {
+      const data = await syncResultsFromProvider();
+      const payload = { ok: true, status: 200, job: path, data };
+      const summary = await recordManual(path, true, 200, payload);
+      return NextResponse.json({ ...payload, summary });
+    } catch (error) {
+      const payload = { ok: false, status: 500, job: path, error: error instanceof Error ? error.message : "Error desconocido" };
+      const summary = await recordManual(path, false, 500, payload);
+      return NextResponse.json({ ...payload, summary }, { status: 500 });
+    }
+  }
+
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return NextResponse.json({ error: "Falta CRON_SECRET en Vercel" }, { status: 500 });
 
   const url = new URL(path, req.url);
   url.searchParams.set("manual", "1");
@@ -73,16 +100,7 @@ export async function POST(req: Request) {
   });
   const data = await res.json().catch(() => ({}));
   const payload = { ok: res.ok, status: res.status, job: path, data };
-  const summary = summarizeJob(titles[path], payload);
-
-  await recordJobRun({
-    jobPath: path,
-    triggerType: "manual",
-    ok: res.ok,
-    statusCode: res.status,
-    summary,
-    payload
-  });
+  const summary = await recordManual(path, res.ok, res.status, payload);
 
   return NextResponse.json({ ...payload, summary }, { status: res.ok ? 200 : res.status });
 }
