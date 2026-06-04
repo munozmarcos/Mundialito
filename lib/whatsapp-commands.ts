@@ -12,16 +12,25 @@ type PendingMatch = {
   home_country_code?: string | null;
   away_country_code?: string | null;
   kickoff_at: string;
+  stage?: string | null;
+  group_name?: string | null;
+  home_goals?: number | null;
+  away_goals?: number | null;
+  locked?: boolean | null;
+  status?: string | null;
 };
 
 type MatchLite = PendingMatch & {
   id: string;
   stage: string;
-  group_name?: string | null;
-  home_goals?: number | null;
-  away_goals?: number | null;
-  locked?: boolean;
 };
+
+function isPendingPredictionCandidate(match: PendingMatch) {
+  if (match.status === "locked" || match.status === "scheduled" || match.status === "closed" || match.status === "final") return false;
+  if (isMatchBlockedUntilOfficial({ stage: match.stage ?? "GROUP", status: match.status, home_team: match.home_team, away_team: match.away_team })) return false;
+  if (isPredictionLocked(match.kickoff_at, Boolean(match.locked))) return false;
+  return true;
+}
 
 export function stripSelfCommandPrefix(text: string) {
   return text.trim().replace(/^\$\s*/, "");
@@ -87,7 +96,7 @@ function teamsAreClose(query: string, team: string) {
 
 function flagEmoji(team: string, explicit?: string | null) {
   const code = countryCodeForTeam(team, explicit);
-  if (!code) return "[ ]";
+  if (!code) return "🏳️";
   if (code === "gb-sct") return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0073, 0xe0063, 0xe0074, 0xe007f);
   if (code === "gb-eng") return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0065, 0xe006e, 0xe0067, 0xe007f);
   return code
@@ -174,9 +183,10 @@ async function savePredictionFromWhatsApp(text: string, from?: string) {
   const match = (matches ?? []).find(
     (item) => teamsAreClose(prediction.homeTeam, item.home_team) && teamsAreClose(prediction.awayTeam, item.away_team)
   );
-  if (match && isMatchBlockedUntilOfficial(match)) return "Mundialito: ese cruce todavia no esta confirmado oficialmente.";
-  if (!match) return `⚽ *Mundialito*\nNo encontre partido abierto para ${prediction.homeTeam} vs ${prediction.awayTeam}.`;
+  if (match && isMatchBlockedUntilOfficial(match)) return "⚽ *Mundialito*\nEse cruce todavía no está confirmado oficialmente.";
+  if (!match) return `⚽ *Mundialito*\nNo encontré partido abierto para ${prediction.homeTeam} vs ${prediction.awayTeam}.`;
   if (isPredictionLocked(match.kickoff_at, match.locked)) return `⚽ *Mundialito*\nEse partido ya está cerrado: ${displayNameForTeam(match.home_team)} vs ${displayNameForTeam(match.away_team)}.`;
+
   const { error } = await db.from("predictions").upsert(
     {
       user_id: profile.id,
@@ -190,7 +200,7 @@ async function savePredictionFromWhatsApp(text: string, from?: string) {
   if (error) throw error;
 
   return [
-    "✅ *Prediccion guardada*",
+    "✅ *Predicción guardada*",
     matchLabel(match),
     `Tu apuesta: *${prediction.homeGoals}-${prediction.awayGoals}*`,
     `Jugador: ${profile.display_name}`
@@ -251,8 +261,8 @@ async function answerPending(from?: string) {
   const profile = await findProfileByPhone(from);
   if (!profile || !supabaseConfigured()) {
     const matches = (await getMatches()) as MatchLite[];
-    const pending = matches.filter((match) => match.home_goals == null).slice(0, 5);
-    if (!pending.length) return "⏳ *Pendientes*\nNo hay partidos pendientes.";
+    const pending = matches.filter((match) => match.home_goals == null && isPendingPredictionCandidate(match)).slice(0, 5);
+    if (!pending.length) return "⏳ *Pendientes*\nNo hay nada pendiente.";
     return [
       "⏳ *Pendientes*",
       ...pending.map((match) => `${matchLabel(match)}\n🕒 ${formatArgentinaDateTime(match.kickoff_at)}`)
@@ -262,7 +272,7 @@ async function answerPending(from?: string) {
   const db = supabaseAdmin();
   const { data: matches, error: matchesError } = await db
     .from("matches")
-    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,stage,group_name,home_goals,away_goals,locked")
+    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,stage,group_name,home_goals,away_goals,locked,status")
     .is("home_goals", null)
     .order("kickoff_at", { ascending: true });
   if (matchesError) throw matchesError;
@@ -274,8 +284,8 @@ async function answerPending(from?: string) {
   if (predictionsError) throw predictionsError;
 
   const predicted = new Set((predictions ?? []).map((prediction) => prediction.match_id));
-  const pending = ((matches ?? []) as PendingMatch[]).filter((match) => match.id && !predicted.has(match.id));
-  if (!pending.length) return "⏳ *Pendientes*\nNo tenés predicciones pendientes por ahora.";
+  const pending = ((matches ?? []) as PendingMatch[]).filter((match) => match.id && !predicted.has(match.id) && isPendingPredictionCandidate(match));
+  if (!pending.length) return "⏳ *Pendientes*\nNo hay nada pendiente.";
 
   return [
     "⏳ *Pendientes*",
@@ -285,7 +295,7 @@ async function answerPending(from?: string) {
 
 async function answerPronosticos(from?: string) {
   const profile = await findProfileByPhone(from);
-  if (!profile || !supabaseConfigured()) return "⚽ *Pronosticos*\nNo tengo registrado tu WhatsApp como participante.";
+  if (!profile || !supabaseConfigured()) return "⚽ *Pronósticos*\nNo tengo registrado tu WhatsApp como participante.";
 
   const db = supabaseAdmin();
   const { data, error } = await db
@@ -302,10 +312,10 @@ async function answerPronosticos(from?: string) {
     .filter((item) => item.match)
     .sort((a, b) => new Date(a.match!.kickoff_at).getTime() - new Date(b.match!.kickoff_at).getTime());
 
-  if (!rows.length) return "⚽ *Pronosticos*\nTodavia no tenes predicciones cargadas.";
+  if (!rows.length) return "⚽ *Pronósticos*\nTodavía no tenés predicciones cargadas.";
 
   return [
-    `⚽ *Pronosticos de ${profile.display_name}*`,
+    `⚽ *Pronósticos de ${profile.display_name}*`,
     "Copialo como historia o pegalo en la carga masiva del simulador:",
     "",
     ...rows.map(({ prediction, match }) => {
