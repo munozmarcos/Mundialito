@@ -20,9 +20,9 @@ function PasswordInput({ placeholder, value, onChange }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <input
-        className="field min-h-10 pr-12"
+        className="field min-h-10 w-full pr-12"
         type={visible ? "text" : "password"}
         placeholder={placeholder}
         value={value}
@@ -30,7 +30,7 @@ function PasswordInput({ placeholder, value, onChange }: PasswordInputProps) {
       />
       <button
         aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
-        className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-ink/60 hover:bg-white/10 hover:text-ink"
+        className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md border border-transparent bg-transparent text-ink/60 hover:border-line hover:bg-white/10 hover:text-ink"
         type="button"
         onClick={() => setVisible((current) => !current)}
       >
@@ -189,7 +189,7 @@ function LoginContent() {
                 ) : mode === "signup" ? (
                   <div className="grid max-w-sm gap-3">
                     <input className="field min-h-10" placeholder="Apodo" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-                    <input className="field min-h-10" inputMode="tel" placeholder="WhatsApp" value={phone} onChange={(event) => setPhone(event.target.value)} />
+                    <input className="field min-h-10" inputMode="tel" placeholder="+549-XXXX-XXXX" value={phone} onChange={(event) => setPhone(event.target.value)} />
                     {step === "request" && (
                       <button className="btn" disabled={loading} type="button" onClick={requestCode}>
                         <MessageCircle className="h-4 w-4" />
@@ -214,7 +214,7 @@ function LoginContent() {
                   </div>
                 ) : (
                   <div className="grid max-w-sm gap-3">
-                    <input className="field min-h-10" inputMode="tel" placeholder="WhatsApp registrado" value={phone} onChange={(event) => setPhone(event.target.value)} />
+                    <input className="field min-h-10" inputMode="tel" placeholder="WhatsApp +549-XXXX-XXXX" value={phone} onChange={(event) => setPhone(event.target.value)} />
                     {step === "request" && (
                       <button className="btn" disabled={loading} type="button" onClick={requestCode}>
                         <MessageCircle className="h-4 w-4" />
