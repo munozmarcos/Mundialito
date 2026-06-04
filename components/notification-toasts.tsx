@@ -9,7 +9,7 @@ type NotificationItem = {
   title: string;
   body: string;
   created_at: string;
-  type: "admin" | "points";
+  type: "admin" | "points" | "closing" | "closed" | "participant";
 };
 
 const storageKey = "mundialito-last-notification";

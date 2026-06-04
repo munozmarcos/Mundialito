@@ -2,9 +2,10 @@ import { EmptyState } from "@/components/empty-state";
 import { HomePrimaryAction } from "@/components/home-primary-action";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
-import { getMatches, getNewsItems, getRanking, getRecentActivity, type ActivityRow } from "@/lib/data";
+import { getMatches, getPaymentSummary, getRanking } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
+import { getLatestNotifications } from "@/lib/notifications";
 import { matchStatus } from "@/lib/scoring";
 import { CalendarDays, CreditCard, LockKeyhole, MessageCircle, Newspaper, Trophy } from "lucide-react";
 import Link from "next/link";
@@ -15,7 +16,7 @@ const features = [
   { icon: Trophy, title: "Ranking", text: "Top 3, puntos y premios." },
   { icon: LockKeyhole, title: "Estados", text: "Abierto, cerrado o bloqueado." },
   { icon: MessageCircle, title: "WhatsApp", text: "Comandos y recordatorios." },
-  { icon: Newspaper, title: "Novedades", text: "Avisos manuales y automáticos." },
+  { icon: Newspaper, title: "Novedades", text: "Avisos, puntos y movimientos." },
   { icon: CreditCard, title: "Pagos", text: "Pago asociado al apodo." }
 ];
 
@@ -34,46 +35,22 @@ function podiumClass(index: number) {
   return "border-line";
 }
 
-function firstRelation<T>(value: T | T[] | null | undefined): T | null {
-  if (!value) return null;
-  return Array.isArray(value) ? value[0] ?? null : value;
-}
-
-function activityText(item: ActivityRow) {
-  const profile = firstRelation(item.profiles);
-  const match = firstRelation(item.matches);
-  const name = profile?.display_name ?? "Un participante";
-  const points = item.points === 1 ? "1 punto" : `${item.points} pts`;
-  const hit = item.exact_hit ? "resultado exacto" : item.trend_hit ? "tendencia" : "pronóstico";
-
-  if (!match) return `${name} sumó ${points} por su ${hit}.`;
-
-  const result =
-    match.home_goals == null || match.away_goals == null
-      ? ""
-      : ` (${match.home_goals}-${match.away_goals})`;
-  return `${name} sumó ${points} por ${match.home_team} vs ${match.away_team}${result}: ${hit}.`;
+function money(value: number) {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0
+  }).format(value);
 }
 
 export default async function Home() {
-  const [allMatches, ranking, manualNews, activity] = await Promise.all([getMatches(), getRanking(), getNewsItems(5), getRecentActivity(5)]);
+  const [allMatches, ranking, paymentSummary, newsItems] = await Promise.all([
+    getMatches(),
+    getRanking(),
+    getPaymentSummary(),
+    getLatestNotifications(5)
+  ]);
   const matches = upcoming(allMatches, 6);
-  const newsItems = [
-    ...manualNews.map((item) => ({
-      id: item.id,
-      title: item.title,
-      body: item.body,
-      created_at: item.created_at
-    })),
-    ...activity.map((item) => ({
-      id: item.id,
-      title: "Puntos sumados",
-      body: activityText(item),
-      created_at: item.updated_at ?? new Date().toISOString()
-    }))
-  ]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 5);
 
   return (
     <div className="grid gap-6">
@@ -111,7 +88,7 @@ export default async function Home() {
             <Link className="btn secondary min-h-9 px-3" href="/mi-prode">Pronósticos</Link>
           </div>
           {!matches.length ? (
-            <EmptyState title="Todavía no hay partidos" text="Cargá el calendario desde Admin para empezar." />
+            <EmptyState title="Todavía no hay partidos" text="Carga el calendario desde Admin para empezar." />
           ) : (
             <div className="grid">
               {matches.map((match) => (
@@ -151,6 +128,11 @@ export default async function Home() {
               <Trophy className="h-5 w-5 text-gold" />
               <h2 className="text-xl font-black">Ranking</h2>
             </div>
+            <div className="border-b border-line p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Pozo acumulado</p>
+              <p className="mt-1 text-3xl font-black text-grass">{money(paymentSummary.prizePool)}</p>
+              <p className="mt-1 text-xs font-semibold text-ink/60">{paymentSummary.paidParticipants} pagos confirmados</p>
+            </div>
             {!ranking.length ? (
               <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay ranking.</p>
             ) : (
@@ -178,19 +160,17 @@ export default async function Home() {
             {!newsItems.length ? (
               <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay novedades.</p>
             ) : (
-              <>
-                {newsItems.map((item) => (
-                  <div className="border-b border-line p-4" key={item.id}>
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <h3 className="font-black">{item.title}</h3>
-                      <time className="text-xs font-black text-ink/45" dateTime={item.created_at}>
-                        {formatArgentinaDateTime(item.created_at)}
-                      </time>
-                    </div>
-                    <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-ink/70">{item.body}</p>
+              newsItems.map((item) => (
+                <div className="border-b border-line p-4 last:border-0" key={item.id}>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <h3 className="font-black">{item.title}</h3>
+                    <time className="text-xs font-black text-ink/45" dateTime={item.created_at}>
+                      {formatArgentinaDateTime(item.created_at)}
+                    </time>
                   </div>
-                ))}
-              </>
+                  <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-ink/70">{item.body}</p>
+                </div>
+              ))
             )}
           </section>
         </div>
