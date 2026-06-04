@@ -1,3 +1,4 @@
+import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { isPredictionLocked } from "@/lib/scoring";
 import { getUserFromRequest, supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
@@ -33,8 +34,12 @@ export async function POST(req: Request) {
   const { data: match, error: matchError } = await db.from("matches").select("*").eq("id", body.matchId).single();
   if (matchError) return NextResponse.json({ error: matchError.message }, { status: 404 });
 
+  if (isMatchBlockedUntilOfficial(match)) {
+    return NextResponse.json({ error: "Ese cruce todavia no esta confirmado oficialmente" }, { status: 409 });
+  }
+
   if (isPredictionLocked(match.kickoff_at, match.locked)) {
-    return NextResponse.json({ error: "El partido ya está cerrado" }, { status: 409 });
+    return NextResponse.json({ error: "El partido ya esta cerrado" }, { status: 409 });
   }
 
   const { data, error } = await db

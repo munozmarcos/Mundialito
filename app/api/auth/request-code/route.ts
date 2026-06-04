@@ -94,9 +94,9 @@ export async function POST(req: Request) {
               "Alta creada ✅",
               "Entrada del Mundialito: *$15.000 ARS*",
               "*$10.000* van al pozo y *$5.000* son para el admin que va a hacer un viaje misionero a Ecuador.",
-              "Alias MercadoPago: *MunozMarcosMP*",
-              "Link de pago:",
-              "https://mpago.la/2kV7LPV"
+              "Para que el pago quede asociado a tu apodo, entra a la app y toca *Pagar* en Ranking:",
+              "https://mundialito-mu.vercel.app/login?next=/pagos&pay=1",
+              "Si pagas por alias o link directo, avisanos para marcarlo manualmente."
             ]
           : [])
       ].join("\n")

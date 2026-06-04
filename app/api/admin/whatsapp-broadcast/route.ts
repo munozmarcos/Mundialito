@@ -4,8 +4,25 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const Body = z.object({
-  body: z.string().min(1).max(4096)
+  body: z.string().min(1).max(4096),
+  recipientIds: z.array(z.string().uuid()).optional()
 });
+
+export async function GET(req: Request) {
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const db = supabaseAdmin();
+  const { data, error } = await db
+    .from("profiles")
+    .select("id,display_name,phone,role,paid")
+    .not("phone", "is", null)
+    .in("role", ["participant", "admin"])
+    .order("display_name");
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ recipients: data ?? [] });
+}
 
 export async function POST(req: Request) {
   const admin = await requireAdmin(req);
@@ -13,13 +30,18 @@ export async function POST(req: Request) {
 
   const input = Body.parse(await req.json());
   const db = supabaseAdmin();
-  const { data: users, error } = await db
+  let query = db
     .from("profiles")
-    .select("display_name,phone,role")
+    .select("id,display_name,phone,role,paid")
     .not("phone", "is", null)
     .in("role", ["participant", "admin"])
     .order("display_name");
 
+  if (input.recipientIds?.length) {
+    query = query.in("id", input.recipientIds);
+  }
+
+  const { data: users, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   let sent = 0;

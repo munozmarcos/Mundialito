@@ -22,7 +22,7 @@ export async function syncResultsFromProvider() {
 
   const db = supabaseAdmin();
   const providerResults = await fetchProviderResults();
-  const { data: matches, error } = await db.from("matches").select("*").neq("status", "final");
+  const { data: matches, error } = await db.from("matches").select("*").neq("status", "closed");
   if (error) throw error;
 
   let updated = 0;
@@ -46,7 +46,7 @@ export async function syncResultsFromProvider() {
         away_goals: awayGoals,
         penalty_winner: result.penaltyWinner,
         locked: true,
-        status: "final",
+        status: "closed",
         provider_match_id: result.providerMatchId
       })
       .eq("id", local.id);
@@ -63,4 +63,3 @@ export async function syncResultsFromProvider() {
     unmatched: unmatched.map((item) => `${item.homeTeam} vs ${item.awayTeam}`)
   };
 }
-

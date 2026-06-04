@@ -1,16 +1,16 @@
 const groupOrder: Record<string, string[]> = {
-  A: ["Mexico", "South Korea", "Czechia", "South Africa"],
-  B: ["Switzerland", "Canada", "Qatar", "Bosnia and Herzegovina"],
-  C: ["Brazil", "Morocco", "Scotland", "Haiti"],
-  D: ["United States", "Turkey", "Australia", "Paraguay"],
-  E: ["Germany", "Ecuador", "Ivory Coast", "Curacao"],
-  F: ["Netherlands", "Japan", "Sweden", "Tunisia"],
-  G: ["Belgium", "Iran", "Egypt", "New Zealand"],
-  H: ["Spain", "Uruguay", "Saudi Arabia", "Cape Verde"],
-  I: ["France", "Senegal", "Norway", "Iraq"],
-  J: ["Argentina", "Austria", "Algeria", "Jordan"],
-  K: ["Portugal", "Colombia", "DR Congo", "Uzbekistan"],
-  L: ["England", "Croatia", "Panama", "Ghana"]
+  A: ["Mexico", "South Africa", "South Korea", "Czechia"],
+  B: ["Canada", "Bosnia and Herzegovina", "Qatar", "Switzerland"],
+  C: ["Brazil", "Morocco", "Haiti", "Scotland"],
+  D: ["United States", "Paraguay", "Australia", "Turkey"],
+  E: ["Germany", "Curacao", "Ivory Coast", "Ecuador"],
+  F: ["Netherlands", "Japan", "Tunisia", "Sweden"],
+  G: ["Belgium", "Egypt", "Iran", "New Zealand"],
+  H: ["Spain", "Cape Verde", "Saudi Arabia", "Uruguay"],
+  I: ["France", "Senegal", "Iraq", "Norway"],
+  J: ["Argentina", "Algeria", "Austria", "Jordan"],
+  K: ["Portugal", "DR Congo", "Uzbekistan", "Colombia"],
+  L: ["England", "Croatia", "Ghana", "Panama"]
 };
 
 const aliases: Record<string, string> = {

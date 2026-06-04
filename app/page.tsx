@@ -2,11 +2,11 @@ import { EmptyState } from "@/components/empty-state";
 import { HomePrimaryAction } from "@/components/home-primary-action";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
-import { getRecentActivity, getRanking, getUpcomingMatches } from "@/lib/data";
+import { getMatches, getNewsItems, getRanking } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
-import { displayNameForTeam } from "@/lib/flags";
+import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { matchStatus } from "@/lib/scoring";
-import { LockKeyhole, MessageCircle, MessageSquareText, Sparkles, Trophy } from "lucide-react";
+import { CalendarDays, LockKeyhole, MessageCircle, MessageSquareText, Trophy } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -14,18 +14,33 @@ export const dynamic = "force-dynamic";
 const features = [
   { icon: Trophy, title: "Ranking vivo", text: "Puntos, exactos, tendencias e historial por partido." },
   { icon: LockKeyhole, title: "Cierre automático", text: "Cada predicción se bloquea 15 minutos antes del inicio." },
-  { icon: MessageCircle, title: "WhatsApp bot", text: "Recordatorios, ranking y carga rápida desde el chat." },
-  { icon: MessageSquareText, title: "Chat IA", text: "Preguntas sobre tabla, pendientes y próximos partidos." }
+  { icon: MessageCircle, title: "WhatsApp bot", text: "Recordatorios, ranking y carga rapida desde el chat." },
+  { icon: MessageSquareText, title: "Chat IA", text: "Preguntas sobre tabla, pendientes y proximos partidos." }
 ];
 
+function upcoming(matches: Awaited<ReturnType<typeof getMatches>>, limit: number) {
+  const now = Date.now();
+  return matches
+    .filter((match) => new Date(match.kickoff_at).getTime() >= now && match.home_goals == null)
+    .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime())
+    .slice(0, limit);
+}
+
+function thisWeek(matches: Awaited<ReturnType<typeof getMatches>>) {
+  const now = Date.now();
+  const weekEnd = now + 7 * 24 * 60 * 60 * 1000;
+  return matches
+    .filter((match) => {
+      const kickoff = new Date(match.kickoff_at).getTime();
+      return kickoff >= now && kickoff <= weekEnd && match.home_goals == null;
+    })
+    .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime());
+}
+
 export default async function Home() {
-  const [matches, ranking, activity] = await Promise.all([
-    getUpcomingMatches(6),
-    getRanking(),
-    getRecentActivity(6)
-  ]);
-  const profileName = (profile: (typeof activity)[number]["profiles"]) => Array.isArray(profile) ? profile[0]?.display_name : profile?.display_name;
-  const matchInfo = (match: (typeof activity)[number]["matches"]) => Array.isArray(match) ? match[0] : match;
+  const [allMatches, ranking, newsItems] = await Promise.all([getMatches(), getRanking(), getNewsItems(5)]);
+  const matches = upcoming(allMatches, 6);
+  const weekMatches = thisWeek(allMatches);
 
   return (
     <div className="grid gap-6">
@@ -41,6 +56,9 @@ export default async function Home() {
             <HomePrimaryAction />
             <Link className="btn secondary" href="/ranking">
               Ver ranking
+            </Link>
+            <Link className="btn secondary" href="/probar">
+              Ir al simulador
             </Link>
           </div>
         </div>
@@ -59,85 +77,93 @@ export default async function Home() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
-        <div className="grid gap-4">
-          <section className="panel overflow-hidden">
-            <div className="flex items-center justify-between border-b border-line p-4">
-              <h2 className="text-xl font-black">Próximos partidos</h2>
-              <Link className="btn secondary min-h-9 px-3" href="/mi-prode">Pronósticos</Link>
+        <section className="panel overflow-hidden">
+          <div className="flex items-center justify-between border-b border-line p-4">
+            <h2 className="text-xl font-black">Próximos partidos</h2>
+            <Link className="btn secondary min-h-9 px-3" href="/mi-prode">Pronósticos</Link>
+          </div>
+          {!matches.length ? (
+            <EmptyState title="Todavía no hay partidos" text="Cargá el calendario desde Admin para empezar." />
+          ) : (
+            <div className="grid">
+              {matches.map((match) => (
+                <article className="grid gap-3 border-b border-line p-4 last:border-0 sm:grid-cols-[1fr_auto] sm:items-center" key={match.id}>
+                  <div>
+                    <div className="text-sm font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</div>
+                    <h3 className="flex flex-wrap items-center gap-2 text-xl font-black">
+                      <TeamLabel name={match.home_team} code={match.home_country_code} />
+                      <span className="text-ink/40">vs</span>
+                      <TeamLabel name={match.away_team} code={match.away_country_code} />
+                    </h3>
+                    <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : match.stage, match.stadium].filter(Boolean).join(" - ")}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <StatusPill
+                      status={isMatchBlockedUntilOfficial(match) ? "locked" : matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status)}
+                      label={isMatchBlockedUntilOfficial(match) ? "Bloqueado" : undefined}
+                    />
+                  </div>
+                </article>
+              ))}
             </div>
-            {!matches.length ? (
-              <EmptyState title="Todavía no hay partidos" text="Carga el calendario desde Admin para empezar." />
+          )}
+        </section>
+
+        <div className="grid gap-4 content-start">
+          <section className="panel overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-line p-4">
+              <Trophy className="h-5 w-5 text-gold" />
+              <h2 className="text-xl font-black">Ranking</h2>
+            </div>
+            {!ranking.length ? (
+              <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay ranking.</p>
             ) : (
-              <div className="grid">
-                {matches.map((match) => (
-                  <article className="grid gap-3 border-b border-line p-4 last:border-0 sm:grid-cols-[1fr_auto] sm:items-center" key={match.id}>
-                    <div>
-                      <div className="text-sm font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</div>
-                      <h3 className="flex flex-wrap items-center gap-2 text-xl font-black">
-                        <TeamLabel name={match.home_team} code={match.home_country_code} />
-                        <span className="text-ink/40">vs</span>
-                        <TeamLabel name={match.away_team} code={match.away_country_code} />
-                      </h3>
-                      <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : match.stage, match.stadium].filter(Boolean).join(" - ")}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {match.home_goals == null ? null : <strong className="text-xl">{match.home_goals}-{match.away_goals}</strong>}
-                      <StatusPill status={matchStatus(match.kickoff_at, match.locked, match.home_goals != null)} />
-                    </div>
-                  </article>
-                ))}
-              </div>
+              ranking.slice(0, 3).map((row, index) => (
+                <div className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-line p-4 last:border-0" key={row.user_id}>
+                  <strong className="text-gold">#{index + 1}</strong>
+                  <div>
+                    <strong>{row.display_name}</strong>
+                    <p className="text-xs text-ink/60">{row.exact_hits} exactos - {row.trend_hits} tendencias</p>
+                  </div>
+                  <strong>{row.total_points}</strong>
+                </div>
+              ))
             )}
+            <div className="p-4">
+              <Link className="btn secondary w-full" href="/ranking">Ver ranking completo</Link>
+            </div>
           </section>
 
           <section className="panel overflow-hidden">
             <div className="flex items-center gap-2 border-b border-line p-4">
-              <Sparkles className="h-5 w-5 text-gold" />
+              <CalendarDays className="h-5 w-5 text-gold" />
               <h2 className="text-xl font-black">Novedades</h2>
             </div>
-            {!activity.length ? (
-              <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay puntos cargados. Cuando haya resultados, acá aparecen las jugadas destacadas.</p>
+            {!newsItems.length && !weekMatches.length ? (
+              <p className="p-5 text-sm font-semibold text-ink/65">No quedan partidos pendientes esta semana.</p>
             ) : (
-              activity.map((item) => (
-                <div className="border-b border-line p-4 last:border-0" key={item.id}>
-                  <p className="font-bold">
-                    {profileName(item.profiles) ?? "Un jugador"} gano <span className="text-grass">{item.points} puntos</span>
-                    {item.exact_hit ? " por resultado exacto" : item.trend_hit ? " por tendencia" : ""}.
-                  </p>
-                  {matchInfo(item.matches) && (
-                    <p className="mt-1 text-sm text-ink/60">
-                      {displayNameForTeam(matchInfo(item.matches)!.home_team)} {matchInfo(item.matches)!.home_goals}-{matchInfo(item.matches)!.away_goals} {displayNameForTeam(matchInfo(item.matches)!.away_team)}
+              <>
+                {newsItems.map((item) => (
+                  <div className="border-b border-line p-4" key={item.id}>
+                    <p className="text-xs font-black uppercase text-gold">🗞️ Aviso Mundialito</p>
+                    <h3 className="mt-1 font-black">{item.title}</h3>
+                    <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-ink/70">{item.body}</p>
+                  </div>
+                ))}
+                {weekMatches.map((match) => (
+                  <div className="border-b border-line p-4 last:border-0" key={match.id}>
+                    <p className="text-xs font-black uppercase text-ink/45">🏟️ {formatArgentinaDateTime(match.kickoff_at)}</p>
+                    <p className="mt-1 flex flex-wrap items-center gap-2 font-bold">
+                      <TeamLabel name={match.home_team} code={match.home_country_code} />
+                      <span className="text-ink/40">vs</span>
+                      <TeamLabel name={match.away_team} code={match.away_country_code} />
                     </p>
-                  )}
-                </div>
-              ))
+                  </div>
+                ))}
+              </>
             )}
           </section>
         </div>
-
-        <section className="panel overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-line p-4">
-            <Trophy className="h-5 w-5 text-gold" />
-            <h2 className="text-xl font-black">Ranking</h2>
-          </div>
-          {!ranking.length ? (
-            <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay ranking.</p>
-          ) : (
-            ranking.slice(0, 8).map((row, index) => (
-              <div className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-line p-4 last:border-0" key={row.user_id}>
-                <strong className="text-gold">#{index + 1}</strong>
-                <div>
-                  <strong>{row.display_name}</strong>
-                  <p className="text-xs text-ink/60">{row.exact_hits} exactos - {row.trend_hits} tendencias</p>
-                </div>
-                <strong>{row.total_points}</strong>
-              </div>
-            ))
-          )}
-          <div className="p-4">
-            <Link className="btn secondary w-full" href="/ranking">Ver ranking completo</Link>
-          </div>
-        </section>
       </section>
     </div>
   );

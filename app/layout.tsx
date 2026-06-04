@@ -21,20 +21,22 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <TournamentRibbon />
         <header className="sticky top-0 z-20 border-b border-line bg-white text-ink shadow-lg shadow-sky-950/8">
-          <nav className="shell grid min-h-16 gap-3 py-3 xl:grid-cols-[auto_1fr_auto] xl:items-center">
-            <div className="flex items-center">
+          <nav className="shell grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 py-3 sm:gap-3">
+            <div className="flex items-center justify-start">
+              <MainNav />
+            </div>
+            <div className="flex items-center justify-center">
               <Link href="/">
                 <MundialitoMark />
               </Link>
             </div>
-            <MainNav />
-            <div className="flex items-center gap-2 xl:justify-end">
+            <div className="flex items-center justify-end gap-2">
               <SoundToggle />
               <SessionNav />
             </div>
           </nav>
         </header>
-        <main className="shell py-8">{children}</main>
+        <main className="shell app-shell-main py-8">{children}</main>
       </body>
     </html>
   );

@@ -5,7 +5,7 @@ export type ProviderResult = {
   homeGoals: number;
   awayGoals: number;
   penaltyWinner?: string | null;
-  status: "final";
+  status: "closed";
   playedAt?: string | null;
 };
 
@@ -115,7 +115,7 @@ function normalizeWorldCupApiMatch(match: WorldCupApiMatch): ProviderResult | nu
     homeGoals: score.home,
     awayGoals: score.away,
     penaltyWinner,
-    status: "final",
+    status: "closed",
     playedAt: match.date ?? null
   };
 }
@@ -214,7 +214,7 @@ export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
       homeGoals: score.home,
       awayGoals: score.away,
       penaltyWinner: null,
-      status: "final",
+      status: "closed",
       playedAt: match.utcDate
     });
   }

@@ -10,6 +10,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   background:
     linear-gradient(180deg, rgba(1, 8, 20, 0.94), rgba(2, 11, 24, 0.86) 260px, rgba(2, 11, 24, 0.98) 680px),
     radial-gradient(circle at 12% 0%, rgba(237, 22, 33, 0.42), transparent 28%),
@@ -34,6 +35,70 @@ textarea {
 .shell {
   width: min(1120px, calc(100% - 32px));
   margin: 0 auto;
+}
+
+.app-shell-main {
+  transition: width 180ms ease, margin 180ms ease;
+}
+
+.app-sidebar {
+  position: fixed;
+  top: 76px;
+  left: 0;
+  bottom: 0;
+  z-index: 18;
+  width: 292px;
+  border-right: 1px solid rgba(97, 139, 184, 0.24);
+  background: rgba(2, 11, 24, 0.98);
+  color: #f4f8ff;
+  padding: 16px;
+  box-shadow: 18px 0 38px rgba(0, 0, 0, 0.32);
+  transform: translateX(-100%);
+  transition: transform 180ms ease;
+  overflow-y: auto;
+}
+
+.app-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  border: 0;
+  background: rgba(2, 11, 24, 0.32);
+  padding: 0;
+}
+
+.app-sidebar-open {
+  transform: translateX(0);
+  z-index: 45;
+}
+
+.app-sidebar-closed {
+  pointer-events: none;
+}
+
+@media (max-width: 979px) {
+  .app-sidebar {
+    top: 0;
+    width: min(288px, 82vw);
+    padding-top: 20px;
+    z-index: 45;
+    box-shadow: 18px 0 42px rgba(0, 0, 0, 0.52);
+  }
+}
+
+@media (max-width: 520px) {
+  .shell {
+    width: min(100% - 16px, 1120px);
+  }
+
+  .brand-logo-frame {
+    width: 94px !important;
+    height: 40px !important;
+  }
+
+  .brand-lockup {
+    gap: 6px;
+  }
 }
 
 .panel {
@@ -64,6 +129,12 @@ textarea {
   border-color: rgba(97, 139, 184, 0.34);
 }
 
+.btn.group-tab-active {
+  border-color: #ed1621;
+  background: linear-gradient(135deg, #b00018, #ed1621);
+  box-shadow: 0 10px 22px rgba(237, 22, 33, 0.22);
+}
+
 .btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(32, 182, 67, 0.22);
@@ -91,17 +162,47 @@ textarea {
   background: rgba(3, 13, 28, 0.86);
   color: #f4f8ff;
   padding: 0 12px;
+  text-align: center;
+}
+
+input.field,
+input[type="number"].field {
+  text-align: center;
+  text-align-last: center;
+}
+
+input[type="number"].field::-webkit-outer-spin-button,
+input[type="number"].field::-webkit-inner-spin-button {
+  margin: 0;
+}
+
+select.field {
+  text-align-last: center;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   border-radius: 999px;
   background: linear-gradient(135deg, rgba(237, 22, 33, 0.28), rgba(24, 142, 241, 0.28), rgba(32, 182, 67, 0.28));
   color: #f4f8ff;
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 700;
+}
+
+.match-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
+  gap: 12px;
+  align-items: start;
+}
+
+@media (max-width: 520px) {
+  .match-card-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .nav-tabs a {

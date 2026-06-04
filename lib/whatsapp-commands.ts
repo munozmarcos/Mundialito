@@ -1,6 +1,7 @@
 import { getMatches, getRanking } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { countryCodeForTeam, displayNameForTeam } from "@/lib/flags";
+import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { isPredictionLocked } from "@/lib/scoring";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 
@@ -173,6 +174,7 @@ async function savePredictionFromWhatsApp(text: string, from?: string) {
   const match = (matches ?? []).find(
     (item) => teamsAreClose(prediction.homeTeam, item.home_team) && teamsAreClose(prediction.awayTeam, item.away_team)
   );
+  if (match && isMatchBlockedUntilOfficial(match)) return "Mundialito: ese cruce todavia no esta confirmado oficialmente.";
   if (!match) return `⚽ *Mundialito*\nNo encontre partido abierto para ${prediction.homeTeam} vs ${prediction.awayTeam}.`;
   if (isPredictionLocked(match.kickoff_at, match.locked)) return `⚽ *Mundialito*\nEse partido ya está cerrado: ${displayNameForTeam(match.home_team)} vs ${displayNameForTeam(match.away_team)}.`;
   const { error } = await db.from("predictions").upsert(

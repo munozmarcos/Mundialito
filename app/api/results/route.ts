@@ -12,7 +12,7 @@ const ResultBody = z.object({
 
 const StateBody = z.object({
   matchId: z.string().uuid(),
-  action: z.enum(["lock", "open", "clear"])
+  action: z.enum(["lock", "block", "open", "clear"])
 });
 
 export async function POST(req: Request) {
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       home_goals: body.homeGoals,
       away_goals: body.awayGoals,
       penalty_winner: body.penaltyWinner ?? null,
-      status: "final",
+      status: "closed",
       locked: true
     })
     .eq("id", body.matchId);
@@ -55,9 +55,11 @@ export async function PATCH(req: Request) {
   const update =
     body.action === "lock"
       ? { locked: true, status: "closed" }
-      : body.action === "open"
-        ? { locked: false, status: "open" }
-        : { locked: false, status: "open", home_goals: null, away_goals: null, penalty_winner: null };
+      : body.action === "block"
+        ? { locked: true, status: "locked" }
+        : body.action === "open"
+          ? { locked: false, status: "open" }
+          : { locked: false, status: "open", home_goals: null, away_goals: null, penalty_winner: null };
 
   const { error } = await db.from("matches").update(update).eq("id", body.matchId);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

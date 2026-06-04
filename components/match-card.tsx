@@ -1,18 +1,20 @@
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
+import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { matchStatus } from "@/lib/scoring";
 import type { Match } from "@/lib/types";
 
 export function MatchCard({ match }: { match: Match }) {
-  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null);
+  const blocked = isMatchBlockedUntilOfficial(match);
+  const status = blocked ? "locked" : matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
   const result = match.home_goals == null ? null : `${match.home_goals}-${match.away_goals}`;
 
   return (
     <article className="rounded-lg border border-line bg-white p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-xs font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</span>
-        <StatusPill status={status} />
+        <StatusPill status={status} label={blocked ? "Bloqueado" : undefined} />
       </div>
 
       <div className="grid gap-2">

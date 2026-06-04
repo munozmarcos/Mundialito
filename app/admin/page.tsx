@@ -1,21 +1,21 @@
-﻿"use client";
+"use client";
 
-import { FileUp, ListChecks, LockKeyhole, MessageCircle, RefreshCw, Trophy, UsersRound } from "lucide-react";
+import { ListChecks, LockKeyhole, MessageCircle, Newspaper, Play, RefreshCw, Trophy, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 const pages = [
-  { href: "/admin/participantes", icon: UsersRound, title: "Participantes", text: "Cargar jugadores, WhatsApp y clave web." },
-  { href: "/admin/resultados", icon: Trophy, title: "Resultados", text: "Cargar resultados reales y recalcular ranking." },
-  { href: "/admin/whatsapp", icon: MessageCircle, title: "WhatsApp", text: "Probar envio de mensajes y comandos." },
-  { href: "/admin/importar", icon: FileUp, title: "Cargar partidos", text: "Herramienta de respaldo para actualizar el calendario." }
+  { href: "/admin/participantes", icon: UsersRound, title: "Participantes", text: "Edición de participantes, WhatsApp, rol y estado de pago." },
+  { href: "/admin/resultados", icon: Trophy, title: "Resultados", text: "Cargar resultados reales, abrir/cerrar/bloquear partidos y recalcular ranking." },
+  { href: "/admin/whatsapp", icon: MessageCircle, title: "Mensaje Broadcast", text: "Envío de mensaje general por WhatsApp a todos los participantes." },
+  { href: "/admin/novedades", icon: Newspaper, title: "Crear novedad", text: "Publicar avisos que aparecen en Novedades de la pantalla de inicio." }
 ];
 
 const jobs = [
   { path: "/api/jobs/sync-fixtures", icon: RefreshCw, title: "Actualizar partidos", text: "Importa/actualiza el fixture y los cruces oficiales desde el proveedor configurado." },
   { path: "/api/jobs/sync-results", icon: Trophy, title: "Actualizar resultados", text: "Consulta marcadores finales, guarda resultados reales y recalcula puntos." },
   { path: "/api/jobs/send-reminders", icon: ListChecks, title: "Recordatorios 4h", text: "Envía WhatsApp solo a quienes no cargaron pronóstico para partidos que empiezan cerca de 4 horas." },
-  { path: "/api/jobs/lock-matches", icon: LockKeyhole, title: "Bloquear 15m", text: "Cierra partidos que estén a 15 minutos o menos y avisa por WhatsApp a quienes quedaron pendientes." },
+  { path: "/api/jobs/lock-matches", icon: LockKeyhole, title: "Cerrar 15m", text: "Cierra partidos que estén a 15 minutos o menos y avisa por WhatsApp a quienes quedaron pendientes." },
   { path: "/api/jobs/notify-kickoff", icon: MessageCircle, title: "Avisar inicio", text: "Notifica por WhatsApp los partidos que están por empezar en la ventana actual." },
   { path: "/api/jobs/send-daily-ranking", icon: MessageCircle, title: "Enviar ranking por WhatsApp", text: "Manda el ranking actual a todos los miembros registrados, sin esperar el cron diario." }
 ];
@@ -29,6 +29,20 @@ const commands = [
   { command: "$pendientes", text: "Muestra pronósticos pendientes del usuario. Ejemplo: $pendientes" },
   { command: "$pronosticos", text: "Devuelve el fixture cargado por el usuario para copiar. Ejemplo: $pronosticos" }
 ];
+
+function jobSummary(title: string, payload: any) {
+  const data = payload?.data ?? payload ?? {};
+  if (!payload?.ok && payload?.error) return `${title}: error - ${payload.error}`;
+  const parts = [`${title}: ejecutado`];
+  if (typeof data.matches === "number") parts.push(`${data.matches} partidos detectados`);
+  if (typeof data.locked === "number") parts.push(`${data.locked} partidos cerrados`);
+  if (typeof data.sent === "number") parts.push(`${data.sent} mensajes enviados`);
+  if (typeof data.notifications === "number") parts.push(`${data.notifications} avisos enviados`);
+  if (typeof data.updated === "number") parts.push(`${data.updated} actualizados`);
+  if (typeof data.inserted === "number") parts.push(`${data.inserted} creados`);
+  if (typeof data.failures?.length === "number" && data.failures.length) parts.push(`${data.failures.length} fallos`);
+  return parts.join(" · ");
+}
 
 export default function AdminPage() {
   const [message, setMessage] = useState("");
@@ -45,7 +59,7 @@ export default function AdminPage() {
     });
     const data = await res.json();
     setRunning(null);
-    setMessage(`${title}: ${JSON.stringify(data)}`);
+    setMessage(jobSummary(title, data));
   }
 
   return (
@@ -70,20 +84,25 @@ export default function AdminPage() {
       <section className="panel p-5">
         <h2 className="text-xl font-black">Jobs</h2>
         <p className="mt-1 text-sm font-semibold text-ink/60">
-          Estos botones ejecutan procesos reales manualmente para probar, forzar sincronización o mandar avisos fuera del cron.
+          Ejecutan procesos reales manualmente para probar, forzar sincronización o mandar avisos fuera del cron.
         </p>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {jobs.map((job) => (
-            <button className="panel flex gap-4 p-4 text-left" disabled={running === job.path} key={job.path} onClick={() => runJob(job.path, job.title)} type="button">
-              <job.icon className="mt-1 h-5 w-5 shrink-0 text-grass" />
-              <span>
-                <strong className="block text-lg">{job.title}</strong>
-                <span className="text-sm text-ink/70">{job.text}</span>
+            <div className="panel grid grid-cols-[1fr_auto] gap-4 p-4" key={job.path}>
+              <span className="flex gap-4 text-left">
+                <job.icon className="mt-1 h-5 w-5 shrink-0 text-grass" />
+                <span>
+                  <strong className="block text-lg">{job.title}</strong>
+                  <span className="text-sm text-ink/70">{job.text}</span>
+                </span>
               </span>
-            </button>
+              <button className="btn min-h-10 px-3" disabled={running === job.path} onClick={() => runJob(job.path, job.title)} title={`Ejecutar ${job.title}`} type="button">
+                <Play className="h-4 w-4" />
+              </button>
+            </div>
           ))}
         </div>
-        {message && <pre className="mt-4 overflow-x-auto rounded-lg bg-field p-3 text-xs">{message}</pre>}
+        {message && <p className="mt-4 rounded-lg bg-field p-3 text-sm font-bold text-ink/70">{message}</p>}
       </section>
 
       <section className="panel p-5">

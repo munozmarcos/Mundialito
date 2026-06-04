@@ -2,7 +2,7 @@
 
 import { scorePrediction } from "@/lib/scoring";
 import { formatArgentinaDate } from "@/lib/dates";
-import { matchFitsGroupFilters } from "@/lib/match-filters";
+import { matchFitsBasicFilters } from "@/lib/match-filters";
 import { displayNameForTeam } from "@/lib/flags";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
@@ -50,8 +50,14 @@ const stageLabels: Record<string, string> = {
 
 const knockoutOrder: MatchStage[] = ["R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
 
-function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string, groupFilter: string) {
-  return matchFitsGroupFilters(match, teamFilter, dateFilter, groupFilter);
+function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string) {
+  return matchFitsBasicFilters(match, teamFilter, dateFilter);
+}
+
+function parseGoalInput(value: string) {
+  if (!/^\d*$/.test(value)) return null;
+  if (value === "") return "";
+  return Number(value);
 }
 
 type Props = {
@@ -317,7 +323,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
-  const [groupFilter, setGroupFilter] = useState("ALL");
+  const [activeGroup, setActiveGroup] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
@@ -330,12 +336,13 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
     ? activeKnockoutStage
     : availableKnockoutStages[0];
   const selectedKnockoutMatches = selectedKnockoutStage
-    ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter, groupFilter))
+    ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter))
     : [];
   const availableGroups = Object.keys(byGroup).sort();
+  const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
   const filteredGroups = Object.entries(byGroup)
-    .filter(([group]) => groupFilter === "ALL" || group === groupFilter)
-    .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter, groupFilter))] as const)
+    .filter(([group]) => activeTab === "tablas" || !selectedGroup || group === selectedGroup)
+    .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
     .filter(([, items]) => items.length);
 
   useEffect(() => {
@@ -478,11 +485,35 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         <div className="grid gap-2">
           <div className="grid grid-cols-[1fr_82px] items-center gap-3 rounded-md bg-field p-2">
             <TeamOrLock team={display.home} />
-            <input className="field text-center font-black" aria-label={`Goles ${display.home.name}`} min={0} type="number" value={result?.home ?? ""} onChange={(event) => setResult(match.id, "home", event.target.value)} />
+            <input
+              className="field text-center font-black"
+              aria-label={`Goles ${display.home.name}`}
+              inputMode="numeric"
+              maxLength={2}
+              pattern="[0-9]*"
+              type="text"
+              value={result?.home ?? ""}
+              onChange={(event) => {
+                const value = parseGoalInput(event.target.value);
+                if (value !== null && (value === "" || value <= 30)) setResult(match.id, "home", String(value));
+              }}
+            />
           </div>
           <div className="grid grid-cols-[1fr_82px] items-center gap-3 rounded-md bg-field p-2">
             <TeamOrLock team={display.away} />
-            <input className="field text-center font-black" aria-label={`Goles ${display.away.name}`} min={0} type="number" value={result?.away ?? ""} onChange={(event) => setResult(match.id, "away", event.target.value)} />
+            <input
+              className="field text-center font-black"
+              aria-label={`Goles ${display.away.name}`}
+              inputMode="numeric"
+              maxLength={2}
+              pattern="[0-9]*"
+              type="text"
+              value={result?.away ?? ""}
+              onChange={(event) => {
+                const value = parseGoalInput(event.target.value);
+                if (value !== null && (value === "" || value <= 30)) setResult(match.id, "away", String(value));
+              }}
+            />
           </div>
         </div>
         {isKnockoutTie && (
@@ -539,55 +570,68 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         ))}
       </section>
 
-      <section className="panel grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-[240px_150px_112px_44px] lg:items-center">
-        <select className="field" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
-          <option value="ALL">Todos los grupos</option>
-          {availableGroups.map((group) => (
-            <option key={group} value={group}>Grupo {group}</option>
-          ))}
-        </select>
+      {activeTab === "cargar" && (
+        <section className="panel overflow-x-auto p-2">
+          <div className="flex w-max flex-nowrap gap-2">
+            {availableGroups.map((group) => (
+              <button
+                className={`btn min-w-11 px-0 ${selectedGroup === group ? "group-tab-active" : "secondary"}`}
+                key={group}
+                onClick={() => setActiveGroup(group)}
+                type="button"
+              >
+                {group}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="panel grid gap-2 p-3 sm:grid-cols-[1fr_auto_auto] lg:grid-cols-[150px_112px_44px] lg:items-center">
         <input className="field" placeholder="Pais" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
         <DateFilter value={dateFilter} onChange={setDateFilter} />
-        <button className="btn secondary aspect-square px-0" type="button" title="Limpiar filtros" onClick={() => { setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
+        <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
           <X className="h-4 w-4" />
         </button>
       </section>
 
       {activeTab === "cargar" && (
-      <section className="grid gap-4 lg:grid-cols-[1fr_420px]">
-        <div className="grid gap-4">
-          {filteredGroups.map(([group, items]) => (
-            <article className="panel p-4" key={group}>
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h2 className="text-xl font-black">Grupo {group}</h2>
-                <span className="badge">{items.length} partidos</span>
-              </div>
-              <div className="grid gap-2">
-                {items.map((match) => resultCard(match))}
-              </div>
-            </article>
-          ))}
-        </div>
-
-        <div className="grid gap-4 content-start">
-          <section className="panel overflow-hidden">
-            <div className="border-b border-line p-4">
-              <h2 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-5 w-5 text-gold" />Ranking simulado</h2>
-            </div>
-            {ranking.map((row, index) => (
-              <div className="grid grid-cols-[42px_1fr_auto] gap-3 border-b border-line p-3 last:border-0" key={row.userId}>
-                <strong className="text-gold">#{index + 1}</strong>
-                <div>
-                  <strong>{row.name}</strong>
-                  <p className="text-xs text-ink/60">{row.exacts} exactos - {row.trends} tendencias - {row.played} partidos puntuados</p>
+      <section className="grid gap-4">
+        <div>
+          <h3 className="text-2xl font-black">Partidos de grupos</h3>
+          <p className="mb-3 mt-1 text-sm font-semibold text-ink/60">Carga marcadores de prueba y mira como se mueve el torneo simulado.</p>
+          <div className="grid gap-4">
+            {filteredGroups.map(([group, items]) => (
+              <div className="grid gap-3" key={group}>
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-xl font-black">Grupo {group}</h2>
+                  <span className="badge">{items.length} partidos</span>
                 </div>
-                <strong>{row.points}</strong>
+                <div className="match-card-grid">
+                  {items.map((match) => resultCard(match))}
+                </div>
               </div>
             ))}
-          </section>
-
-          <button className="btn secondary w-fit" onClick={() => setResults(initialResults(matches))} type="button"><RotateCcw className="h-4 w-4" />Reiniciar</button>
+          </div>
         </div>
+
+        <section className="panel overflow-hidden">
+          <div className="border-b border-line p-4">
+            <h2 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-5 w-5 text-gold" />Ranking simulado</h2>
+          </div>
+          {ranking.map((row, index) => (
+            <div className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-line p-3 last:border-0" key={row.userId}>
+              <strong className="text-center text-gold">#{index + 1}</strong>
+              <div>
+                <strong>{row.name}</strong>
+                <p className="text-xs text-ink/60">{row.exacts} exactos - {row.trends} tendencias - {row.played} puntuados</p>
+              </div>
+              <strong className="text-center">{row.points} Pts</strong>
+            </div>
+          ))}
+        </section>
+
+        <button className="btn secondary w-fit" onClick={() => setResults(initialResults(matches))} type="button"><RotateCcw className="h-4 w-4" />Reiniciar</button>
       </section>
       )}
 
@@ -633,15 +677,13 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
             ))}
           </div>
 
-          <article className="panel overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-line bg-field p-4">
-              <Trophy className="h-4 w-4 text-gold" />
-              <h2 className="text-lg font-black">{selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves"}</h2>
-            </div>
-            <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
-              {selectedKnockoutMatches.map((match) => resultCard(match))}
-            </div>
-          </article>
+          <div className="flex items-center gap-2 text-lg font-black">
+            <Trophy className="h-4 w-4 text-gold" />
+            <h2>{selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves"}</h2>
+          </div>
+          <div className="match-card-grid">
+            {selectedKnockoutMatches.map((match) => resultCard(match))}
+          </div>
         </section>
       )}
 

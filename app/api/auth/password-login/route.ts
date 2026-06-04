@@ -1,4 +1,5 @@
 import { createSessionToken, SESSION_COOKIE } from "@/lib/app-auth";
+import { displayNameKey } from "@/lib/profiles";
 import { supabaseAdmin } from "@/lib/supabase";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
@@ -10,7 +11,7 @@ const Body = z.object({
 });
 
 function normalize(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  return displayNameKey(value);
 }
 
 export async function POST(req: Request) {

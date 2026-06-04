@@ -118,7 +118,7 @@ function LoginContent() {
                 </div>
                 {payIntent ? (
                   <div className="flex flex-wrap gap-2">
-                    <a className="btn w-fit" href="/ranking">Ir a pagar</a>
+                    <a className="btn w-fit" href="/pagos">Ir a pagar</a>
                     <a className="btn secondary w-fit" href="/mi-prode">Luego</a>
                   </div>
                 ) : (

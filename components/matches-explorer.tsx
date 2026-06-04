@@ -3,12 +3,13 @@
 import { StatusPill } from "@/components/status-pill";
 import { DateFilter } from "@/components/date-filter";
 import { TeamLabel } from "@/components/team-label";
-import { formatArgentinaDate, formatArgentinaDateTime } from "@/lib/dates";
+import { formatArgentinaDateTime } from "@/lib/dates";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
-import { matchFitsGroupFilters } from "@/lib/match-filters";
+import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
+import { matchFitsBasicFilters } from "@/lib/match-filters";
 import { matchStatus } from "@/lib/scoring";
 import type { Match, MatchStage } from "@/lib/types";
-import { GitBranch, Lock, Table2, Trophy, X } from "lucide-react";
+import { Calculator, GitBranch, Lock, Table2, Trophy, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type WinnerSide = "HOME" | "AWAY";
@@ -47,10 +48,8 @@ const stageLabels: Record<string, string> = {
 };
 
 const knockoutOrder: MatchStage[] = ["R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
-const stages = ["ALL", "GROUP", "R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
-
-function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string, groupFilter: string) {
-  return matchFitsGroupFilters(match, teamFilter, dateFilter, groupFilter);
+function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string) {
+  return matchFitsBasicFilters(match, teamFilter, dateFilter);
 }
 
 function initialResults(matches: Match[]): ResultMap {
@@ -140,16 +139,11 @@ function resolveGroupSlot(slot: string, groupTables: Record<string, GroupRow[]>,
 }
 
 function isPlaceholderTeam(team: DisplayTeam) {
-  const clean = team.name.trim();
-  return (
-    clean === "Por definir" ||
-    /^([123])([A-L])$/i.test(clean) ||
-    /^3[A-L](?:\/[A-L])+$/i.test(clean) ||
-    /^(?:Ganador|Winner Match|W|Perdedor|Loser Match|L)\s*#?\d+$/i.test(clean)
-  );
+  return isPlaceholderTeamName(team.name);
 }
 
 function isMatchUnavailable(match: Match, display?: DisplayMatch) {
+  if (isMatchBlockedUntilOfficial(match)) return true;
   if (match.stage === "GROUP") return false;
   const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
   const away = display?.away ?? { name: match.away_team, code: match.away_country_code };
@@ -238,10 +232,11 @@ function deriveBracket(groupMatches: Match[], knockoutMatches: Match[], results:
 }
 
 function MatchCard({ match, display }: { match: Match; display?: DisplayMatch }) {
-  const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
-  const away = display?.away ?? { name: match.away_team, code: match.away_country_code };
-  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null);
+  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
   const unavailable = isMatchUnavailable(match, display);
+  const useOfficialPlaceholder = isMatchBlockedUntilOfficial(match);
+  const home = useOfficialPlaceholder ? { name: match.home_team, code: match.home_country_code } : display?.home ?? { name: match.home_team, code: match.home_country_code };
+  const away = useOfficialPlaceholder ? { name: match.away_team, code: match.away_country_code } : display?.away ?? { name: match.away_team, code: match.away_country_code };
 
   return (
     <article className="rounded-lg border border-line bg-white p-3 shadow-sm">
@@ -270,7 +265,8 @@ function MatchCard({ match, display }: { match: Match; display?: DisplayMatch })
 
 export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const [activeTab, setActiveTab] = useState<"grupos" | "tablas" | "llaves">("grupos");
-  const [groupFilter, setGroupFilter] = useState("ALL");
+  const [activeGroup, setActiveGroup] = useState("");
+  const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [teamFilter, setTeamFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const results = useMemo(() => initialResults(matches), [matches]);
@@ -279,13 +275,17 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
   const byStage = groupBy(knockoutMatches, (match) => match.stage);
   const bracket = useMemo(() => deriveBracket(groupMatches, knockoutMatches, results), [groupMatches, knockoutMatches, results]);
-  const totalOpen = matches.filter((match) => match.home_goals == null && !isMatchUnavailable(match) && matchStatus(match.kickoff_at, match.locked, false) !== "locked").length;
+  const totalOpen = matches.filter((match) => match.home_goals == null && !isMatchUnavailable(match) && matchStatus(match.kickoff_at, match.locked, false, new Date(), match.status) === "open").length;
   const totalBlocked = matches.filter((match) => isMatchUnavailable(match)).length;
-  const totalClosed = matches.filter((match) => match.home_goals != null || (!isMatchUnavailable(match) && matchStatus(match.kickoff_at, match.locked, match.home_goals != null) === "locked")).length;
+  const totalClosed = matches.filter((match) => match.home_goals != null || (!isMatchUnavailable(match) && matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status) === "closed")).length;
   const availableGroups = Object.keys(byGroup).sort();
+  const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
+  const availableKnockoutStages = knockoutOrder.filter((stage) => byStage[stage]?.length);
+  const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
+  const selectedKnockoutMatches = selectedKnockoutStage ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter)) : [];
   const filteredGroups = Object.entries(byGroup)
-    .filter(([group]) => groupFilter === "ALL" || group === groupFilter)
-    .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter, groupFilter))] as const)
+    .filter(([group]) => activeTab === "tablas" || !selectedGroup || group === selectedGroup)
+    .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
     .filter(([, items]) => items.length);
 
   return (
@@ -311,9 +311,9 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
 
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
-          ["grupos", "Grupos", Trophy],
-          ["tablas", "Tablas", Trophy],
-          ["llaves", "Llaves", Trophy]
+          ["grupos", "Grupos", Calculator],
+          ["tablas", "Tablas", Table2],
+          ["llaves", "Llaves", GitBranch]
         ].map(([key, label, Icon]) => (
           <button
             className={`btn ${activeTab === key ? "" : "secondary"}`}
@@ -327,35 +327,46 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
         ))}
       </section>
 
-      <section className="panel grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-[240px_150px_112px_44px] lg:items-center">
-        <select className="field" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
-          <option value="ALL">Todos los grupos</option>
-          {availableGroups.map((group) => (
-            <option key={group} value={group}>Grupo {group}</option>
-          ))}
-        </select>
+      {activeTab === "grupos" && (
+        <section className="panel overflow-x-auto p-2">
+          <div className="flex w-max flex-nowrap gap-2">
+            {availableGroups.map((group) => (
+              <button
+                className={`btn min-w-11 px-0 ${selectedGroup === group ? "group-tab-active" : "secondary"}`}
+                key={group}
+                onClick={() => setActiveGroup(group)}
+                type="button"
+              >
+                {group}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="panel grid gap-2 p-3 sm:grid-cols-[1fr_auto_auto] lg:grid-cols-[150px_112px_44px] lg:items-center">
         <input className="field" placeholder="Pais" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
         <DateFilter value={dateFilter} onChange={setDateFilter} />
-        <button className="btn secondary aspect-square px-0" type="button" title="Limpiar filtros" onClick={() => { setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
+        <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
           <X className="h-4 w-4" />
         </button>
       </section>
 
       {activeTab === "grupos" && (
         <section className="grid gap-4">
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4">
             {filteredGroups.map(([group, items]) => (
-              <article className="panel overflow-hidden" key={group}>
-                <div className="flex items-center justify-between gap-2 border-b border-line bg-field p-4">
+              <div className="grid gap-3" key={group}>
+                <div className="flex items-center justify-between gap-2">
                   <h2 className="text-xl font-black">Grupo {group}</h2>
                   <span className="badge">{items.length} partidos</span>
                 </div>
-                <div className="grid gap-3 p-4">
+                <div className="match-card-grid">
                   {items.map((match) => (
                     <MatchCard key={match.id} match={match} />
                   ))}
                 </div>
-              </article>
+              </div>
             ))}
           </div>
         </section>
@@ -375,8 +386,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
                 <article className="panel overflow-hidden" key={group}>
                   <div className="flex items-center justify-between gap-2 border-b border-line bg-field p-4">
                     <div>
-                      <span className="badge">Grupo {group}</span>
-                      <h2 className="mt-2 text-xl font-black">Tabla de posiciones</h2>
+                      <h2 className="text-xl font-black">Grupo {group}</h2>
                     </div>
                     <span className="text-sm font-black text-ink/60">{groupCompleted}/{items.length}</span>
                   </div>
@@ -411,43 +421,34 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
             <h2 className="text-2xl font-black">Llaves reales</h2>
             <p className="mt-1 text-sm font-semibold text-ink/60">Los cruces se muestran cuando esten confirmados oficialmente.</p>
           </div>
-          <div className="overflow-x-auto pb-2">
-            <div className="flex min-w-max gap-4">
-            {knockoutOrder
-              .filter((item) => byStage[item]?.length)
-              .map((item) => (
-                <article className="panel w-[300px] flex-none overflow-hidden" key={item}>
-                  <h2 className="flex items-center gap-2 border-b border-line bg-field p-4 text-lg font-black">
+          {knockoutMatches.length ? (
+            <div className="grid gap-4">
+              <div className="panel flex flex-wrap gap-2 p-2">
+                {availableKnockoutStages.map((stage) => (
+                  <button
+                    className={`btn ${selectedKnockoutStage === stage ? "" : "secondary"}`}
+                    key={stage}
+                    onClick={() => setActiveKnockoutStage(stage)}
+                    type="button"
+                  >
                     <Trophy className="h-4 w-4 text-gold" />
-                    {stageLabels[item]}
-                  </h2>
-                  <div className="grid gap-3 p-4">
-                    {byStage[item].map((match) => {
-                      const display = {
-                        home: { name: match.home_team, code: match.home_country_code },
-                        away: { name: match.away_team, code: match.away_country_code }
-                      };
-                      const result = results[match.id];
-                      const winner = winnerFromResult(display, result);
-                      return (
-                        <div className="rounded-lg border border-line bg-white p-3 shadow-sm" key={match.id}>
-                          <div className="mb-2 text-xs font-bold text-ink/55">{formatArgentinaDate(match.kickoff_at)}</div>
-                          <div className={`flex items-center justify-between gap-2 rounded-md border border-line p-2 ${winner?.name === display.home.name ? "bg-mint" : "bg-field"}`}>
-                            <TeamOrLock team={display.home} />
-                            <strong>{result?.home === "" ? "" : result?.home}</strong>
-                          </div>
-                          <div className={`mt-1 flex items-center justify-between gap-2 rounded-md border border-line p-2 ${winner?.name === display.away.name ? "bg-mint" : "bg-field"}`}>
-                            <TeamOrLock team={display.away} />
-                            <strong>{result?.away === "" ? "" : result?.away}</strong>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </article>
-              ))}
+                    {stageLabels[stage]}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 text-lg font-black">
+                <Trophy className="h-4 w-4 text-gold" />
+                <h3>{selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves"}</h3>
+              </div>
+              <div className="match-card-grid">
+                {selectedKnockoutMatches.map((match) => (
+                  <MatchCard key={match.id} match={match} display={bracket.displays[match.id]} />
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="panel p-6 text-sm text-ink/70">Las llaves aparecen cuando esten disponibles los cruces de cada fase.</div>
+          )}
         </section>
       )}
     </div>

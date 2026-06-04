@@ -1,28 +1,29 @@
 import { PageHero } from "@/components/page-hero";
+import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
-import { BadgeCheck, CircleEqual, ListChecks, Target, Trophy } from "lucide-react";
+import { BadgeCheck, CircleEqual, Clock, ListChecks, LockKeyhole, PlayCircle, Target, Trophy, UnlockKeyhole } from "lucide-react";
 
 const examples = [
   {
-    title: "Acertas tendencia",
+    title: "Acertás tendencia",
     real: ["Argentina", "Mexico", "2-1"],
     pick: ["Argentina", "Mexico", "1-0"],
     points: "1 punto",
     note: "Misma tendencia: gana Argentina."
   },
   {
-    title: "Acertas exacto",
+    title: "Acertás exacto",
     real: ["Brazil", "Morocco", "3-1"],
     pick: ["Brazil", "Morocco", "3-1"],
     points: "3 puntos",
     note: "1 por tendencia + 2 extra por marcador exacto."
   },
   {
-    title: "Acertas empate",
+    title: "Acertás empate",
     real: ["Spain", "Uruguay", "0-0"],
     pick: ["Spain", "Uruguay", "1-1"],
     points: "1 punto",
-    note: "El resultado no es exacto, pero la tendencia empate si."
+    note: "El resultado no es exacto, pero la tendencia empate sí."
   },
   {
     title: "Empate exacto",
@@ -40,7 +41,7 @@ function ScoreLine({ label, home, away, score }: { label: string; home: string; 
       <div className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-ink/45">{label}</div>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
         <TeamLabel name={home} />
-        <strong className="rounded-md bg-white px-3 py-2 text-center text-lg shadow-sm">
+        <strong className="rounded-md bg-slate-950/50 px-3 py-2 text-center text-lg shadow-sm">
           {homeGoals}-{awayGoals}
         </strong>
         <span className="justify-self-end">
@@ -68,13 +69,43 @@ function ExampleCard({ example }: { example: (typeof examples)[number] }) {
   );
 }
 
+function StatusExample({ status, title, text }: { status: "open" | "locked" | "closed"; title: string; text: string }) {
+  return (
+    <article className="panel grid gap-3 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-xl font-black">{title}</h3>
+          <p className="mt-1 text-sm font-semibold text-ink/68">{text}</p>
+        </div>
+        <StatusPill status={status} />
+      </div>
+      <div className="rounded-lg border border-line bg-field p-3">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <span className="text-xs font-black uppercase text-ink/45">Ejemplo visual</span>
+          <StatusPill status={status} />
+        </div>
+        <div className="grid gap-2">
+          <div className="grid grid-cols-[1fr_58px] items-center gap-3">
+            <TeamLabel name="Argentina" />
+            <input className="field h-10 px-2 text-center font-black" disabled={status !== "open"} readOnly value={status === "locked" ? "" : "2"} />
+          </div>
+          <div className="grid grid-cols-[1fr_58px] items-center gap-3">
+            <TeamLabel name="Mexico" />
+            <input className="field h-10 px-2 text-center font-black" disabled={status !== "open"} readOnly value={status === "locked" ? "" : "1"} />
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function RulesPage() {
   return (
     <div className="grid gap-6">
       <PageHero
         badge="Reglas"
         icon={ListChecks}
-        title="Como se suman los puntos"
+        title="Cómo se suman los puntos"
         subtitle="Regla simple: 1 punto por tendencia y 2 puntos extra si el resultado es exacto."
       />
 
@@ -92,10 +123,10 @@ export default function RulesPage() {
           <strong className="mt-4 block text-3xl text-gold">+2</strong>
         </article>
         <article className="panel p-5">
-          <Trophy className="h-6 w-6 text-blue-700" />
+          <Trophy className="h-6 w-6 text-blue-300" />
           <h2 className="mt-3 text-xl font-black">Máximo</h2>
           <p className="mt-2 text-sm text-ink/70">Aplica igual en grupos y eliminatorias, contando 120 minutos.</p>
-          <strong className="mt-4 block text-3xl text-blue-700">3 pts</strong>
+          <strong className="mt-4 block text-3xl text-blue-300">3 pts</strong>
         </article>
       </section>
 
@@ -105,6 +136,44 @@ export default function RulesPage() {
           {examples.map((example) => (
             <ExampleCard example={example} key={example.title} />
           ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-2xl font-black">Estados de partidos</h2>
+        <div className="grid gap-3 lg:grid-cols-3">
+          <StatusExample
+            status="open"
+            title="Abierto"
+            text="El partido está disponible y podés ingresar o modificar tu predicción."
+          />
+          <StatusExample
+            status="locked"
+            title="Bloqueado"
+            text="Todavía no se puede pronosticar porque la llave o los equipos no están definidos oficialmente."
+          />
+          <StatusExample
+            status="closed"
+            title="Cerrado"
+            text="Se cierra 15 minutos antes del inicio. Cuando termina, queda cerrado con resultado final."
+          />
+        </div>
+      </section>
+
+      <section className="panel p-5 md:p-8">
+        <div className="mb-4 flex items-center gap-3">
+          <PlayCircle className="h-6 w-6 text-red-400" />
+          <div>
+            <h2 className="text-2xl font-black">Video explicativo</h2>
+            <p className="text-sm font-semibold text-ink/65">Acá va el video de YouTube con el funcionamiento de la app y las reglas.</p>
+          </div>
+        </div>
+        <div className="grid aspect-video place-items-center rounded-lg border border-line bg-field text-center">
+          <div className="p-5">
+            <PlayCircle className="mx-auto h-12 w-12 text-red-400" />
+            <p className="mt-3 text-lg font-black">Video pendiente</p>
+            <p className="mt-1 text-sm font-semibold text-ink/60">Cuando tengas el link de YouTube, lo pegamos acá.</p>
+          </div>
         </div>
       </section>
     </div>

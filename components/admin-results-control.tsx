@@ -2,8 +2,9 @@
 
 import { TeamLabel } from "@/components/team-label";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
-import type { Match, Prediction, Profile } from "@/lib/types";
-import { GitBranch, Lock, LockOpen, Save, Table2, Trash2, Trophy } from "lucide-react";
+import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
+import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
+import { Calculator, GitBranch, Save, Table2, Trash2, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type AdminPrediction = Prediction & { profiles?: Pick<Profile, "display_name"> | null };
@@ -16,6 +17,27 @@ type Props = {
 
 type ScoreDraft = Record<string, { home: number | ""; away: number | ""; penaltyWinner?: string | null }>;
 type PredictionDraft = Record<string, { home: number | ""; away: number | ""; penaltyWinner?: string | null }>;
+
+const stageLabels: Record<MatchStage, string> = {
+  GROUP: "Grupos",
+  R32: "16vos",
+  R16: "8vos",
+  QF: "4tos",
+  SF: "Semis",
+  THIRD_PLACE: "3ros",
+  FINAL: "Final"
+};
+
+const knockoutOrder: MatchStage[] = ["R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
+
+function groupBy<T>(items: T[], key: (item: T) => string) {
+  return items.reduce<Record<string, T[]>>((acc, item) => {
+    const group = key(item);
+    acc[group] ??= [];
+    acc[group].push(item);
+    return acc;
+  }, {});
+}
 
 function initialScores(matches: Match[]) {
   return matches.reduce<ScoreDraft>((acc, match) => {
@@ -39,16 +61,35 @@ function initialPredictionDrafts(predictions: AdminPrediction[]) {
   }, {});
 }
 
+function parseGoalInput(value: string) {
+  if (!/^\d*$/.test(value)) return null;
+  if (value === "") return "";
+  return Number(value);
+}
+
 export function AdminResultsControl({ initialMatches, profiles, predictions }: Props) {
   const [matches, setMatches] = useState(initialMatches);
   const [scores, setScores] = useState<ScoreDraft>(() => initialScores(initialMatches));
   const [drafts, setDrafts] = useState<PredictionDraft>(() => initialPredictionDrafts(predictions));
   const [activeTab, setActiveTab] = useState<"grupos" | "tablas" | "llaves">("grupos");
+  const [activeGroup, setActiveGroup] = useState("");
+  const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [selectedMatchId, setSelectedMatchId] = useState(initialMatches[0]?.id ?? "");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const tabMatches = activeTab === "llaves" ? matches.filter((match) => match.stage !== "GROUP") : matches.filter((match) => match.stage === "GROUP");
+  const groupMatches = matches.filter((match) => match.stage === "GROUP");
+  const knockoutMatches = matches.filter((match) => match.stage !== "GROUP");
+  const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
+  const byStage = groupBy(knockoutMatches, (match) => match.stage);
+  const availableGroups = Object.keys(byGroup).sort();
+  const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
+  const availableKnockoutStages = knockoutOrder.filter((stage) => byStage[stage]?.length);
+  const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
+  const tabMatches =
+    activeTab === "llaves"
+      ? selectedKnockoutStage ? byStage[selectedKnockoutStage] ?? [] : []
+      : selectedGroup ? byGroup[selectedGroup] ?? [] : groupMatches;
   const selectedMatch = tabMatches.find((match) => match.id === selectedMatchId) ?? tabMatches[0] ?? matches[0];
   const predictionMap = useMemo(() => {
     return predictions.reduce<Record<string, AdminPrediction>>((acc, prediction) => {
@@ -86,7 +127,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
     setMessage("");
     try {
       await request("/api/results", "POST", { matchId: match.id, homeGoals: score.home, awayGoals: score.away, penaltyWinner: score.penaltyWinner ?? null });
-      updateLocalMatch(match.id, { home_goals: score.home, away_goals: score.away, penalty_winner: score.penaltyWinner ?? null, locked: true, status: "final" });
+      updateLocalMatch(match.id, { home_goals: score.home, away_goals: score.away, penalty_winner: score.penaltyWinner ?? null, locked: true, status: "closed" });
       const notification = await request("/api/admin/run-job", "POST", { path: "/api/jobs/notify-results", matchId: match.id });
       setMessage(`Resultado guardado y puntos recalculados. WhatsApp enviados: ${notification.data?.sent ?? 0}.`);
     } catch (error) {
@@ -96,18 +137,19 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
     }
   }
 
-  async function changeState(match: Match, action: "lock" | "open" | "clear") {
+  async function changeState(match: Match, action: "lock" | "block" | "open" | "clear") {
     setSaving(true);
     setMessage("");
     try {
       await request("/api/results", "PATCH", { matchId: match.id, action });
-      if (action === "lock") updateLocalMatch(match.id, { locked: true, status: "locked" });
+      if (action === "lock") updateLocalMatch(match.id, { locked: true, status: "closed" });
+      if (action === "block") updateLocalMatch(match.id, { locked: true, status: "locked" });
       if (action === "open") updateLocalMatch(match.id, { locked: false, status: "open" });
       if (action === "clear") {
         updateLocalMatch(match.id, { locked: false, status: "open", home_goals: null, away_goals: null, penalty_winner: null });
         setScores((current) => ({ ...current, [match.id]: { home: "", away: "", penaltyWinner: null } }));
       }
-      setMessage(action === "lock" ? "Partido cerrado." : action === "open" ? "Partido abierto." : "Resultado eliminado.");
+      setMessage(action === "lock" ? "Partido cerrado." : action === "block" ? "Partido bloqueado." : action === "open" ? "Partido abierto." : "Resultado eliminado.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo actualizar.");
     } finally {
@@ -152,6 +194,136 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
     }
   }
 
+  function matchButton(match: Match) {
+    const score = scores[match.id];
+    const selected = selectedMatch.id === match.id;
+    const blocked = isMatchBlockedUntilOfficial(match);
+    const tieNeedsWinner =
+      match.stage !== "GROUP" &&
+      score?.home !== "" &&
+      score?.away !== "" &&
+      score?.home === score?.away;
+    const statusText = match.status as string;
+    const statusValue = blocked || statusText === "locked" || statusText === "scheduled" ? "blocked" : statusText === "closed" || statusText === "final" || match.locked ? "closed" : "open";
+    return (
+      <article
+        className={`rounded-lg border p-3 shadow-sm transition ${selected ? "border-grass bg-field ring-2 ring-grass/35" : "border-line bg-field hover:border-grass/60"}`}
+        key={match.id}
+        onClick={() => setSelectedMatchId(match.id)}
+      >
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <span className="text-xs font-bold text-ink/55">{match.group_name ? `Grupo ${match.group_name}` : stageLabels[match.stage]}</span>
+          <select
+            className="field min-h-9 w-28 px-2 text-xs font-black"
+            disabled={saving}
+            value={statusValue}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value === "open") void changeState(match, "open");
+              if (value === "closed") void changeState(match, "lock");
+              if (value === "blocked") void changeState(match, "block");
+            }}
+          >
+            <option value="open">Abierto</option>
+            <option value="closed">Cerrado</option>
+            <option value="blocked">Bloqueado</option>
+          </select>
+        </div>
+
+        <div className="grid gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_64px] items-center gap-3 rounded-lg border border-line bg-slate-950/25 p-2">
+            <TeamLabel name={match.home_team} code={match.home_country_code} />
+            <input
+              className="field h-10 px-2 text-center font-black"
+              disabled={saving}
+              inputMode="numeric"
+              maxLength={2}
+              pattern="[0-9]*"
+              type="text"
+              value={score?.home ?? ""}
+              onChange={(event) => {
+                const value = parseGoalInput(event.target.value);
+                if (value !== null && (value === "" || value <= 30)) setScores((current) => ({ ...current, [match.id]: { ...current[match.id], home: value } }));
+              }}
+            />
+          </div>
+          <div className="grid grid-cols-[minmax(0,1fr)_64px] items-center gap-3 rounded-lg border border-line bg-slate-950/25 p-2">
+            <TeamLabel name={match.away_team} code={match.away_country_code} />
+            <input
+              className="field h-10 px-2 text-center font-black"
+              disabled={saving}
+              inputMode="numeric"
+              maxLength={2}
+              pattern="[0-9]*"
+              type="text"
+              value={score?.away ?? ""}
+              onChange={(event) => {
+                const value = parseGoalInput(event.target.value);
+                if (value !== null && (value === "" || value <= 30)) setScores((current) => ({ ...current, [match.id]: { ...current[match.id], away: value } }));
+              }}
+            />
+          </div>
+        </div>
+
+        {tieNeedsWinner && (
+          <div className="mt-3 grid gap-2 rounded-lg border border-line bg-slate-950/25 p-2">
+            <span className="text-xs font-black uppercase text-ink/45">Ganador</span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className={`btn min-h-9 ${score?.penaltyWinner === match.home_team ? "" : "secondary"}`}
+                disabled={saving}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setScores((current) => ({ ...current, [match.id]: { ...current[match.id], penaltyWinner: match.home_team } }));
+                }}
+                type="button"
+              >
+                <TeamLabel name={match.home_team} code={match.home_country_code} />
+              </button>
+              <button
+                className={`btn min-h-9 ${score?.penaltyWinner === match.away_team ? "" : "secondary"}`}
+                disabled={saving}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setScores((current) => ({ ...current, [match.id]: { ...current[match.id], penaltyWinner: match.away_team } }));
+                }}
+                type="button"
+              >
+                <TeamLabel name={match.away_team} code={match.away_country_code} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            className="btn min-h-9 px-3"
+            disabled={saving}
+            onClick={(event) => {
+              event.stopPropagation();
+              void saveResult(match);
+            }}
+            type="button"
+          >
+            <Save className="h-4 w-4" />
+            Guardar
+          </button>
+          <button
+            className="btn secondary min-h-9 px-3"
+            disabled={saving}
+            onClick={(event) => {
+              event.stopPropagation();
+              void changeState(match, "clear");
+            }}
+            type="button"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </article>
+    );
+  }
+
   const groupTables = useMemo(() => {
     const rowsByGroup = new Map<string, Map<string, { team: string; code?: string | null; order: number; points: number; played: number; diff: number }>>();
     for (const match of matches.filter((item) => item.stage === "GROUP")) {
@@ -183,18 +355,11 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
     }));
   }, [matches, scores]);
   if (!selectedMatch) return null;
-  const selectedScore = scores[selectedMatch.id];
-  const selectedTieNeedsWinner =
-    selectedMatch.stage !== "GROUP" &&
-    selectedScore?.home !== "" &&
-    selectedScore?.away !== "" &&
-    selectedScore?.home === selectedScore?.away;
-
   return (
     <div className="grid gap-4">
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
-          ["grupos", "Grupos", Trophy],
+          ["grupos", "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llaves", "Llaves", GitBranch]
         ].map(([key, label, Icon]) => (
@@ -210,13 +375,45 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
         ))}
       </section>
 
+      {activeTab === "grupos" && (
+        <section className="panel overflow-x-auto p-2">
+          <div className="flex w-max flex-nowrap gap-2">
+            {availableGroups.map((group) => (
+              <button
+                className={`btn min-w-11 px-0 ${selectedGroup === group ? "group-tab-active" : "secondary"}`}
+                key={group}
+                onClick={() => setActiveGroup(group)}
+                type="button"
+              >
+                {group}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activeTab === "llaves" && (
+        <section className="panel flex flex-wrap gap-2 p-2">
+          {availableKnockoutStages.map((stage) => (
+            <button
+              className={`btn ${selectedKnockoutStage === stage ? "" : "secondary"}`}
+              key={stage}
+              onClick={() => setActiveKnockoutStage(stage)}
+              type="button"
+            >
+              <Trophy className="h-4 w-4 text-gold" />
+              {stageLabels[stage]}
+            </button>
+          ))}
+        </section>
+      )}
+
       {activeTab === "tablas" ? (
         <section className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
           {groupTables.map(({ group, rows }) => (
             <article className="panel p-4" key={group}>
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h2 className="text-xl font-black">Grupo {group}</h2>
-                <span className="badge">Tabla</span>
               </div>
               <div className="grid gap-2 text-sm">
                 {rows.map((row, index) => (
@@ -233,106 +430,16 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
           ))}
         </section>
       ) : (
-    <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-      <section className="panel overflow-hidden">
-        <div className="border-b border-line p-4">
-          <h2 className="text-xl font-black">{activeTab === "llaves" ? "Llaves" : "Grupos"}</h2>
+    <section className="grid gap-4">
+      <div className="grid gap-3">
+        <h2 className="text-xl font-black">{activeTab === "llaves" ? (selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves") : `Grupo ${selectedGroup}`}</h2>
+        <div className="match-card-grid">
+          {tabMatches.map((match) => matchButton(match))}
         </div>
-        <div className="max-h-[760px] overflow-y-auto">
-          {tabMatches.map((match) => (
-            <button
-              className={`w-full border-b border-line p-3 text-left last:border-0 ${selectedMatch.id === match.id ? "bg-mint" : "bg-white"}`}
-              key={match.id}
-              onClick={() => setSelectedMatchId(match.id)}
-              type="button"
-            >
-              <div className="flex flex-wrap items-center gap-2 text-sm font-black">
-                <TeamLabel name={match.home_team} code={match.home_country_code} />
-                <span className="text-ink/40">vs</span>
-                <TeamLabel name={match.away_team} code={match.away_country_code} />
-              </div>
-              <p className="mt-1 text-xs font-semibold text-ink/55">
-                {match.group_name ? `Grupo ${match.group_name}` : match.stage} - {match.status}
-              </p>
-            </button>
-          ))}
-        </div>
-      </section>
+      </div>
 
       <section className="grid gap-4 content-start">
-        <article className="panel p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="flex flex-wrap items-center gap-2 text-2xl font-black">
-              <TeamLabel name={selectedMatch.home_team} code={selectedMatch.home_country_code} />
-              <span className="text-ink/40">vs</span>
-              <TeamLabel name={selectedMatch.away_team} code={selectedMatch.away_country_code} />
-            </h2>
-            <span className="badge">{selectedMatch.locked ? "Cerrado" : "Abierto"}</span>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-[90px_90px_auto] sm:items-end">
-            <label className="grid gap-1 text-sm font-bold">
-              Local
-              <input
-                className="field text-center"
-                min={0}
-                type="number"
-                value={scores[selectedMatch.id]?.home ?? ""}
-                onChange={(event) => setScores((current) => ({ ...current, [selectedMatch.id]: { ...current[selectedMatch.id], home: event.target.value === "" ? "" : Number(event.target.value) } }))}
-              />
-            </label>
-            <label className="grid gap-1 text-sm font-bold">
-              Visitante
-              <input
-                className="field text-center"
-                min={0}
-                type="number"
-                value={scores[selectedMatch.id]?.away ?? ""}
-                onChange={(event) => setScores((current) => ({ ...current, [selectedMatch.id]: { ...current[selectedMatch.id], away: event.target.value === "" ? "" : Number(event.target.value) } }))}
-              />
-            </label>
-            <button className="btn" disabled={saving} onClick={() => saveResult(selectedMatch)} type="button">
-              <Save className="h-4 w-4" />
-              Guardar resultado
-            </button>
-          </div>
-
-          {selectedTieNeedsWinner && (
-            <div className="mt-4 rounded-lg border border-line bg-field p-3">
-              <div className="mb-2 text-xs font-black uppercase text-ink/45">Ganador</div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className={`btn ${selectedScore?.penaltyWinner === selectedMatch.home_team ? "" : "secondary"}`}
-                  disabled={saving}
-                  onClick={() => setScores((current) => ({ ...current, [selectedMatch.id]: { ...current[selectedMatch.id], penaltyWinner: selectedMatch.home_team } }))}
-                  type="button"
-                >
-                  <TeamLabel name={selectedMatch.home_team} code={selectedMatch.home_country_code} />
-                </button>
-                <button
-                  className={`btn ${selectedScore?.penaltyWinner === selectedMatch.away_team ? "" : "secondary"}`}
-                  disabled={saving}
-                  onClick={() => setScores((current) => ({ ...current, [selectedMatch.id]: { ...current[selectedMatch.id], penaltyWinner: selectedMatch.away_team } }))}
-                  type="button"
-                >
-                  <TeamLabel name={selectedMatch.away_team} code={selectedMatch.away_country_code} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button className="btn secondary" disabled={saving} onClick={() => changeState(selectedMatch, selectedMatch.locked ? "open" : "lock")} type="button">
-              {selectedMatch.locked ? <LockOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-              {selectedMatch.locked ? "Abrir partido" : "Cerrar partido"}
-            </button>
-            <button className="btn secondary" disabled={saving} onClick={() => changeState(selectedMatch, "clear")} type="button">
-              <Trash2 className="h-4 w-4" />
-              Quitar resultado
-            </button>
-          </div>
-          {message && <p className="mt-3 text-sm font-bold text-ink/70">{message}</p>}
-        </article>
+        {message && <p className="panel p-3 text-sm font-bold text-ink/70">{message}</p>}
 
         <article className="panel overflow-hidden">
           <div className="border-b border-line p-4">
@@ -359,17 +466,27 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
                   </div>
                   <input
                     className="field text-center"
-                    min={0}
-                    type="number"
+                    inputMode="numeric"
+                    maxLength={2}
+                    pattern="[0-9]*"
+                    type="text"
                     value={draft.home}
-                    onChange={(event) => setDrafts((current) => ({ ...current, [key]: { ...draft, home: event.target.value === "" ? "" : Number(event.target.value) } }))}
+                    onChange={(event) => {
+                      const value = parseGoalInput(event.target.value);
+                      if (value !== null && (value === "" || value <= 30)) setDrafts((current) => ({ ...current, [key]: { ...draft, home: value } }));
+                    }}
                   />
                   <input
                     className="field text-center"
-                    min={0}
-                    type="number"
+                    inputMode="numeric"
+                    maxLength={2}
+                    pattern="[0-9]*"
+                    type="text"
                     value={draft.away}
-                    onChange={(event) => setDrafts((current) => ({ ...current, [key]: { ...draft, away: event.target.value === "" ? "" : Number(event.target.value) } }))}
+                    onChange={(event) => {
+                      const value = parseGoalInput(event.target.value);
+                      if (value !== null && (value === "" || value <= 30)) setDrafts((current) => ({ ...current, [key]: { ...draft, away: value } }));
+                    }}
                   />
                   {predictionTieNeedsWinner && (
                     <div className="flex flex-wrap gap-1 md:col-span-3">
@@ -404,7 +521,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
           </div>
         </article>
       </section>
-    </div>
+    </section>
       )}
     </div>
   );

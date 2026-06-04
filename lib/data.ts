@@ -38,6 +38,14 @@ export type ParticipantPaymentRow = {
   role: "admin" | "participant";
 };
 
+export type NewsItem = {
+  id: string;
+  title: string;
+  body: string;
+  published: boolean;
+  created_at: string;
+};
+
 export async function getMatches() {
   if (!supabaseConfigured()) return demoMatches;
 
@@ -152,6 +160,25 @@ export async function getParticipantPayments(): Promise<ParticipantPaymentRow[]>
     return (data ?? []) as ParticipantPaymentRow[];
   } catch (error) {
     console.warn("[participants:fallback]", error);
+    return [];
+  }
+}
+
+export async function getNewsItems(limit = 5): Promise<NewsItem[]> {
+  if (!supabaseConfigured()) return [];
+
+  try {
+    const db = supabaseAdmin();
+    const { data, error } = await db
+      .from("news_items")
+      .select("id,title,body,published,created_at")
+      .eq("published", true)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []) as NewsItem[];
+  } catch (error) {
+    console.warn("[news:fallback]", error);
     return [];
   }
 }

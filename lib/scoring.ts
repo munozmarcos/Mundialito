@@ -74,9 +74,11 @@ export function isPredictionLocked(kickoffAt: string | Date, locked: boolean, no
   return kickoff - now.getTime() <= 15 * 60 * 1000;
 }
 
-export function matchStatus(kickoffAt: string | Date, locked: boolean, hasResult: boolean, now = new Date()) {
-  if (hasResult) return "final";
-  if (isPredictionLocked(kickoffAt, locked, now)) return "locked";
+export function matchStatus(kickoffAt: string | Date, locked: boolean, hasResult: boolean, now = new Date(), dbStatus?: string | null) {
+  if (dbStatus === "locked" || dbStatus === "scheduled") return "locked";
+  if (dbStatus === "closed" || dbStatus === "final") return "closed";
+  if (hasResult) return "closed";
+  if (isPredictionLocked(kickoffAt, locked, now)) return "closed";
   const msToKickoff = new Date(kickoffAt).getTime() - now.getTime();
   if (msToKickoff <= 4 * 60 * 60 * 1000) return "closing_soon";
   return "open";

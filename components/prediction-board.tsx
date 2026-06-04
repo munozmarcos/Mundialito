@@ -6,6 +6,7 @@ import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
+import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { dateKey, matchFitsBasicFilters } from "@/lib/match-filters";
 import { matchStatus } from "@/lib/scoring";
 import type { Match, MatchStage, Prediction } from "@/lib/types";
@@ -82,6 +83,12 @@ function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string) 
   return matchFitsBasicFilters(match, teamFilter, dateFilter);
 }
 
+function parseGoalInput(value: string) {
+  if (!/^\d*$/.test(value)) return null;
+  if (value === "") return "";
+  return Number(value);
+}
+
 function projectedGroupTable(matches: Match[], predictions: Record<string, PredictionWithUpdated>) {
   const rows = new Map<string, GroupRow>();
   const group = matches[0]?.group_name ?? null;
@@ -131,16 +138,11 @@ function displayFromRow(row?: GroupRow, fallback = "Por definir"): DisplayTeam {
 }
 
 function isPlaceholderTeam(team: DisplayTeam) {
-  const clean = team.name.trim();
-  return (
-    clean === "Por definir" ||
-    /^([123])([A-L])$/i.test(clean) ||
-    /^3[A-L](?:\/[A-L])+$/i.test(clean) ||
-    /^(?:Ganador|Winner Match|W|Perdedor|Loser Match|L)\s*#?\d+$/i.test(clean)
-  );
+  return isPlaceholderTeamName(team.name);
 }
 
 function isMatchUnavailable(match: Match, display?: DisplayMatch) {
+  if (isMatchBlockedUntilOfficial(match)) return true;
   if (match.stage === "GROUP") return false;
   const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
   const away = display?.away ?? { name: match.away_team, code: match.away_country_code };
@@ -261,9 +263,9 @@ function PredictionCard({
   loggedIn: boolean;
   onSaved: (prediction: PredictionWithUpdated) => void;
 }) {
-  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null);
+  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
   const unavailable = isMatchUnavailable(match, display);
-  const locked = status === "locked" || status === "final" || unavailable;
+  const locked = status === "locked" || status === "closed" || unavailable;
   const [homeGoals, setHomeGoals] = useState<number | "">(prediction?.home_goals ?? "");
   const [awayGoals, setAwayGoals] = useState<number | "">(prediction?.away_goals ?? "");
   const [message, setMessage] = useState("");
@@ -325,11 +327,15 @@ function PredictionCard({
               aria-label={`Goles ${home.name}`}
               className="field text-center font-black"
               disabled={!loggedIn || locked}
-              min={0}
-              max={30}
-              type="number"
+              inputMode="numeric"
+              maxLength={2}
+              pattern="[0-9]*"
+              type="text"
               value={homeGoals}
-              onChange={(event) => setHomeGoals(event.target.value === "" ? "" : Number(event.target.value))}
+              onChange={(event) => {
+                const value = parseGoalInput(event.target.value);
+                if (value !== null && (value === "" || value <= 30)) setHomeGoals(value);
+              }}
             />
           </div>
           <div className="grid grid-cols-[1fr_68px] items-center gap-3">
@@ -338,11 +344,15 @@ function PredictionCard({
               aria-label={`Goles ${away.name}`}
               className="field text-center font-black"
               disabled={!loggedIn || locked}
-              min={0}
-              max={30}
-              type="number"
+              inputMode="numeric"
+              maxLength={2}
+              pattern="[0-9]*"
+              type="text"
               value={awayGoals}
-              onChange={(event) => setAwayGoals(event.target.value === "" ? "" : Number(event.target.value))}
+              onChange={(event) => {
+                const value = parseGoalInput(event.target.value);
+                if (value !== null && (value === "" || value <= 30)) setAwayGoals(value);
+              }}
             />
           </div>
         </div>
@@ -405,7 +415,7 @@ function GroupProjection({ group, matches, predictions }: { group: string; match
 }
 
 function BracketCard({ match, prediction, display }: { match: Match; prediction?: PredictionWithUpdated; display?: DisplayMatch }) {
-  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null);
+  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
   const hasResult = match.home_goals != null && match.away_goals != null;
   const realResult = hasResult ? `${match.home_goals}-${match.away_goals}` : "Pendiente";
   const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
@@ -458,7 +468,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"cargar" | "tablas" | "llave">("cargar");
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
-  const [groupFilter, setGroupFilter] = useState("ALL");
+  const [activeGroup, setActiveGroup] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const predictionMap = useMemo(() => byId(predictions), [predictions]);
@@ -474,14 +484,15 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const pending = matches.filter((match) => {
     if (predictionMap[match.id]) return false;
     if (isMatchUnavailable(match)) return false;
-    return matchStatus(match.kickoff_at, match.locked, match.home_goals != null) === "open" || matchStatus(match.kickoff_at, match.locked, match.home_goals != null) === "closing_soon";
+    return matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status) === "open" || matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status) === "closing_soon";
   }).length;
   const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0);
-  const groupEntries = Object.entries(byGroup).filter(([group]) => groupFilter === "ALL" || group === groupFilter);
+  const availableGroups = Object.keys(byGroup).sort();
+  const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
+  const groupEntries = activeTab === "tablas" ? Object.entries(byGroup) : selectedGroup ? Object.entries(byGroup).filter(([group]) => group === selectedGroup) : [];
   const filteredGroupEntries = groupEntries
     .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
     .filter(([, items]) => items.length);
-  const availableGroups = Object.keys(byGroup).sort();
 
   async function loadPredictions() {
     const res = await fetch("/api/predictions", { cache: "no-store" });
@@ -522,7 +533,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         </div>
         <div className="panel p-4">
           <span className="text-sm font-bold text-ink/60">Puntos acumulados</span>
-          <strong className="block text-3xl">{totalPoints}</strong>
+          <strong className="block text-3xl">{totalPoints} Pts</strong>
         </div>
       </section>
       {!user && !loading && (
@@ -555,13 +566,24 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         ))}
       </section>
 
-      <section className="panel grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-[240px_150px_112px_44px] lg:items-center">
-        <select className="field" value={groupFilter} onChange={(event) => setGroupFilter(event.target.value)}>
-          <option value="ALL">Todos los grupos</option>
-          {availableGroups.map((group) => (
-            <option key={group} value={group}>Grupo {group}</option>
-          ))}
-        </select>
+      {activeTab === "cargar" && (
+        <section className="panel overflow-x-auto p-2">
+          <div className="flex w-max flex-nowrap gap-2">
+            {availableGroups.map((group) => (
+              <button
+                className={`btn min-w-11 px-0 ${selectedGroup === group ? "group-tab-active" : "secondary"}`}
+                key={group}
+                onClick={() => setActiveGroup(group)}
+                type="button"
+              >
+                {group}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="panel grid gap-2 p-3 sm:grid-cols-[1fr_auto_auto] lg:grid-cols-[150px_112px_44px] lg:items-center">
         <input
           className="field"
           placeholder="Pais"
@@ -569,7 +591,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           onChange={(event) => setTeamFilter(event.target.value)}
         />
         <DateFilter value={dateFilter} onChange={setDateFilter} />
-        <button className="btn secondary aspect-square px-0" type="button" title="Limpiar filtros" onClick={() => { setGroupFilter("ALL"); setTeamFilter(""); setDateFilter(""); }}>
+        <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
           <X className="h-4 w-4" />
         </button>
       </section>
@@ -579,13 +601,11 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         <div>
           <h3 className="text-2xl font-black">Partidos de grupos</h3>
           <p className="mb-3 mt-1 text-sm font-semibold text-ink/60">Carga tus marcadores y mira abajo como se mueve tu torneo proyectado.</p>
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4">
             {filteredGroupEntries.map(([group, items]) => (
-              <div className="panel overflow-hidden" key={group}>
-                <div className="border-b border-line bg-field p-4">
-                  <span className="badge">Grupo {group}</span>
-                </div>
-                <div className="grid gap-3 p-4">
+              <div className="grid gap-3" key={group}>
+                <h4 className="text-xl font-black">Grupo {group}</h4>
+                <div className="match-card-grid">
                   {items.map((match) => (
                     <PredictionCard loggedIn={Boolean(user)} match={match} onSaved={upsertSaved} prediction={predictionMap[match.id]} key={match.id} />
                   ))}
@@ -605,7 +625,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {filteredGroupEntries.map(([group, items]) => (
               <div className="panel overflow-hidden p-4" key={`table-${group}`}>
-                <span className="badge">Grupo {group}</span>
+                <h3 className="text-xl font-black">Grupo {group}</h3>
                 <GroupProjection group={group} matches={items} predictions={predictionMap} />
               </div>
             ))}
@@ -633,22 +653,20 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
                   </button>
                 ))}
               </div>
-              <div className="panel overflow-hidden">
-                <h3 className="flex items-center gap-2 border-b border-line bg-field p-4 text-lg font-black">
-                  <Trophy className="h-4 w-4 text-gold" />
-                  {selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves"}
-                </h3>
-                <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
-                  {selectedKnockoutMatches.map((match) => (
-                    <PredictionCard
-                      match={match}
-                      loggedIn={Boolean(user)}
-                      onSaved={upsertSaved}
-                      prediction={predictionMap[match.id]}
-                      key={match.id}
-                    />
-                  ))}
-                </div>
+              <div className="flex items-center gap-2 text-lg font-black">
+                <Trophy className="h-4 w-4 text-gold" />
+                <h3>{selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves"}</h3>
+              </div>
+              <div className="match-card-grid">
+                {selectedKnockoutMatches.map((match) => (
+                  <PredictionCard
+                    match={match}
+                    loggedIn={Boolean(user)}
+                    onSaved={upsertSaved}
+                    prediction={predictionMap[match.id]}
+                    key={match.id}
+                  />
+                ))}
               </div>
             </div>
           ) : (

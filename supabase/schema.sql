@@ -2,7 +2,7 @@ create extension if not exists "uuid-ossp";
 
 create type user_role as enum ('admin', 'participant');
 create type match_stage as enum ('GROUP', 'R32', 'R16', 'QF', 'SF', 'THIRD_PLACE', 'FINAL');
-create type match_status as enum ('scheduled', 'open', 'closing_soon', 'locked', 'final');
+create type match_status as enum ('open', 'locked', 'closed');
 
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -71,6 +71,14 @@ create table if not exists payment_attempts (
   raw jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+create table if not exists news_items (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  body text not null,
+  published boolean not null default true,
+  created_at timestamptz not null default now()
 );
 
 create or replace function touch_updated_at()
@@ -147,6 +155,7 @@ alter table matches enable row level security;
 alter table predictions enable row level security;
 alter table notification_logs enable row level security;
 alter table payment_attempts enable row level security;
+alter table news_items enable row level security;
 
 drop policy if exists "profiles read own" on profiles;
 create policy "profiles read own" on profiles
@@ -159,6 +168,10 @@ for update using (auth.uid() = id);
 drop policy if exists "matches readable" on matches;
 create policy "matches readable" on matches
 for select using (true);
+
+drop policy if exists "news items readable" on news_items;
+create policy "news items readable" on news_items
+for select using (published = true);
 
 drop policy if exists "predictions read own" on predictions;
 create policy "predictions read own" on predictions
