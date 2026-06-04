@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckSquare, MessageCircle, Search, Send, Square } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Recipient = {
   id: string;
@@ -31,6 +31,7 @@ export default function WhatsAppAdminPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   const [sending, setSending] = useState(false);
+  const didLoadRecipients = useRef(false);
 
   useEffect(() => {
     fetch("/api/admin/whatsapp-broadcast", { cache: "no-store" })
@@ -39,6 +40,7 @@ export default function WhatsAppAdminPage() {
         const next = data.recipients ?? [];
         setRecipients(next);
         setSelectedIds(next.map((item: Recipient) => item.id));
+        didLoadRecipients.current = true;
       })
       .catch(() => setStatus("No se pudieron cargar los destinatarios."));
   }, []);
@@ -60,6 +62,11 @@ export default function WhatsAppAdminPage() {
   }, [filter, query, recipients]);
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  useEffect(() => {
+    if (!didLoadRecipients.current) return;
+    setSelectedIds(filteredRecipients.map((recipient) => recipient.id));
+  }, [filter, query, filteredRecipients]);
 
   function toggle(id: string) {
     setSelectedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
