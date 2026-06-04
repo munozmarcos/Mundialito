@@ -18,16 +18,16 @@ async function findOrCreateProfile(displayName: string | undefined, phone: strin
 
   const existing = (profiles ?? []).find((profile) => normalizePhone(profile.phone ?? "") === phone);
   if (existing) {
-    if (mode === "signup") throw new Error("Ese WhatsApp ya tiene usuario. Usa 'Ya tengo usuario'.");
+    if (mode === "signup") throw new Error("Ese WhatsApp ya tiene usuario. Usá 'Ya tengo usuario'.");
     return { profile: existing, created: false };
   }
 
-  if (mode === "login" || mode === "reset") throw new Error("No encontre ese WhatsApp. Si es tu primera vez, entra por 'Soy nuevo'.");
-  if (!displayName || displayName.length < 2) throw new Error("Carga un apodo para crear el usuario.");
+  if (mode === "login" || mode === "reset") throw new Error("No encontré ese WhatsApp. Si es tu primera vez, entrá por 'Soy nuevo'.");
+  if (!displayName || displayName.length < 2) throw new Error("Cargá un apodo para crear el usuario.");
   const cleanDisplayName = normalizeDisplayName(displayName);
   const displayNameError = validateDisplayName(cleanDisplayName);
   if (displayNameError) throw new Error(displayNameError);
-  if (await displayNameExists(db, cleanDisplayName)) throw new Error("Ese apodo ya esta usado. Elegi otro.");
+  if (await displayNameExists(db, cleanDisplayName)) throw new Error("Ese apodo ya está usado. Elegí otro.");
 
   const authEmail = internalEmailForPhone(phone);
   const { data: created, error: createError } = await db.auth.admin.createUser({
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
   try {
     const body = Body.parse(await req.json());
     const phone = normalizePhone(body.phone);
-    if (phone.length < 10) return NextResponse.json({ error: "Revisa el numero de WhatsApp." }, { status: 400 });
+    if (phone.length < 10) return NextResponse.json({ error: "Revisá el número de WhatsApp." }, { status: 400 });
 
     const { profile, created } = await findOrCreateProfile(body.displayName, phone, body.mode);
     const code = randomLoginCode();
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
       [
         "🏆 *Mundialito*",
         "",
-        `Hola ${profile.display_name}. Tu codigo para entrar es:`,
+        `Hola ${profile.display_name}. Tu código para entrar es:`,
         `*${code}*`,
         "",
         "Vence en 10 minutos.",
@@ -96,9 +96,9 @@ export async function POST(req: Request) {
               "Alta creada ✅",
               "Entrada del Mundialito: *$15.000 ARS*",
               "*$10.000* van al pozo y *$5.000* son para el admin que va a hacer un viaje misionero a Ecuador.",
-              "Para que el pago quede asociado a tu apodo, entra a la app y toca *Pagar* en Ranking:",
-              "https://mundialito-mu.vercel.app/login?next=/pagos&pay=1",
-              "Si pagas por alias o link directo, avisanos para marcarlo manualmente."
+              "Pagá desde la app con el botón *Pagar* o por este link:",
+              "https://mpago.la/2kV7LPV",
+              "Si pagás por alias o link directo sin iniciar sesión, avisale a Marcos para marcarlo manualmente."
             ]
           : [])
       ].join("\n")
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, phone: publicPhone(phone), created });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "No se pudo enviar el codigo.";
+    const message = error instanceof Error ? error.message : "No se pudo enviar el código.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

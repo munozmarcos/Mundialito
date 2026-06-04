@@ -142,7 +142,7 @@ function LoginContent() {
                 </div>
                 {payIntent && (
                   <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm font-semibold text-ink/70">
-                    Entrá y después tocá <strong>Pagar</strong> en Ranking para asociar MercadoPago a tu apodo.
+                    Entrá para asociar MercadoPago a tu apodo automáticamente, o pagá luego desde la app.
                     <a className="ml-2 font-black text-grass underline" href="/mi-prode">Lo hago luego</a>
                   </div>
                 )}
