@@ -9,7 +9,16 @@ export function MundialitoMark({ compact = false }: { compact?: boolean }) {
       </div>
       <div className={`brand-wordmark leading-tight ${compact ? "brand-wordmark-compact" : ""}`}>
         <div className="text-base font-black uppercase tracking-[0.08em]">Mundialito</div>
-        <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-ink/55">{compact ? "2026" : "Prode entre amigos"}</div>
+        {compact ? (
+          <div className="brand-year" aria-label="2026">
+            <span className="text-red-500">2</span>
+            <span className="text-emerald-500">0</span>
+            <span className="text-blue-500">2</span>
+            <span className="text-white">6</span>
+          </div>
+        ) : (
+          <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-ink/55">Prode entre amigos</div>
+        )}
       </div>
     </div>
   );

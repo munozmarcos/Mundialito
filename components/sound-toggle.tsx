@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 const videoId = "rPrRa-EehAQ";
 const chorusStart = 78;
 const chorusEnd = 112;
+const youtubeOrigin = "https://www.youtube.com";
 
 function youtubeCommand(command: string, args: unknown[] = []) {
   return JSON.stringify({ event: "command", func: command, args });
@@ -25,7 +26,7 @@ export function SoundToggle() {
   }, []);
 
   function send(command: string, args: unknown[] = []) {
-    iframeRef.current?.contentWindow?.postMessage(youtubeCommand(command, args), "https://www.youtube.com");
+    iframeRef.current?.contentWindow?.postMessage(youtubeCommand(command, args), youtubeOrigin);
   }
 
   function playChorus() {
@@ -55,16 +56,16 @@ export function SoundToggle() {
 
   const src =
     origin && enabled
-      ? `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(origin)}&playsinline=1&autoplay=1&mute=0&loop=1&playlist=${videoId}&start=${chorusStart}&end=${chorusEnd}&controls=0&disablekb=1&rel=0&v=${nonce}`
+      ? `${youtubeOrigin}/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(origin)}&playsinline=1&autoplay=1&mute=0&loop=1&playlist=${videoId}&start=${chorusStart}&end=${chorusEnd}&controls=0&disablekb=1&rel=0&v=${nonce}`
       : "";
 
   return (
     <>
       <button
-        aria-label={enabled ? "Mutear música" : "Activar música"}
+        aria-label={enabled ? "Mutear musica" : "Activar musica"}
         className="btn secondary header-icon-btn min-h-9 px-3"
         onClick={toggle}
-        title={enabled ? "Mutear música" : "Activar música"}
+        title={enabled ? "Mutear musica" : "Activar musica"}
         type="button"
       >
         {enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
@@ -78,7 +79,7 @@ export function SoundToggle() {
           ref={iframeRef}
           src={src}
           tabIndex={-1}
-          title="Música Mundialito"
+          title="Musica Mundialito"
         />
       )}
     </>

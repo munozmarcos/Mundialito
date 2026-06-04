@@ -106,6 +106,7 @@ textarea {
 
   .brand-lockup {
     gap: 4px;
+    min-width: 0;
   }
 
   .brand-wordmark {
@@ -345,6 +346,15 @@ select.field {
   min-width: 84px;
 }
 
+.brand-year {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 1000;
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+
 .brand-logo {
   height: 100%;
   width: 100%;
@@ -409,24 +419,17 @@ select.field {
   .hero-pitch {
     display: flex;
     align-items: center;
-    min-height: 560px;
+    min-height: 420px;
     background:
       linear-gradient(90deg, rgba(1, 14, 30, 0.9) 0%, rgba(1, 14, 30, 0.5) 42%, rgba(1, 14, 30, 0.12) 100%),
       url("/mundialito-hero-wide.png") center center / cover no-repeat,
       #061426;
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    border-left: 0;
-    border-right: 0;
-    border-radius: 0;
-    padding-left: max(32px, calc((100vw - 1120px) / 2 + 32px));
-    padding-right: max(32px, calc((100vw - 1120px) / 2 + 32px));
   }
 }
 
 @media (min-width: 1280px) {
   .hero-pitch {
-    min-height: 640px;
+    min-height: 460px;
     background:
       linear-gradient(90deg, rgba(1, 14, 30, 0.9) 0%, rgba(1, 14, 30, 0.48) 38%, rgba(1, 14, 30, 0.1) 100%),
       url("/mundialito-hero-wide.png") center center / cover no-repeat,
@@ -436,7 +439,7 @@ select.field {
 
 @media (min-width: 1680px) {
   .hero-pitch {
-    min-height: 700px;
+    min-height: 500px;
     background:
       linear-gradient(90deg, rgba(1, 14, 30, 0.9) 0%, rgba(1, 14, 30, 0.44) 36%, rgba(1, 14, 30, 0.08) 100%),
       url("/mundialito-hero-wide.png") center center / cover no-repeat,
