@@ -92,7 +92,7 @@ textarea {
   }
 
   .app-header-grid {
-    grid-template-columns: 42px minmax(116px, 1fr) auto;
+    grid-template-columns: 42px minmax(84px, 1fr) auto;
     gap: 3px;
     min-height: 54px;
     padding-top: 8px;
@@ -153,8 +153,8 @@ textarea {
   }
 
   .header-icon-btn svg {
-    width: 24px;
-    height: 24px;
+    width: 26px !important;
+    height: 26px !important;
   }
 
   .header-login-btn {
@@ -172,6 +172,7 @@ textarea {
     flex: 0 0 auto;
     gap: 4px;
     padding: 3px 4px;
+    min-width: 108px;
   }
 
   .session-pill .header-icon-btn {
@@ -184,11 +185,8 @@ textarea {
   }
 
   .session-name {
-    max-width: 84px;
-  }
-
-  .header-actions > .header-icon-btn:first-child {
-    display: none;
+    max-width: 58px;
+    font-size: 13px;
   }
 }
 
@@ -207,13 +205,13 @@ textarea {
   }
 
   .session-name {
-    max-width: 72px;
+    max-width: 52px;
   }
 }
 
 @media (max-width: 350px) {
   .app-header-grid {
-    grid-template-columns: 38px minmax(82px, 1fr) auto;
+    grid-template-columns: 38px minmax(50px, 1fr) auto;
   }
 
   .header-actions {
@@ -233,10 +231,11 @@ textarea {
   .session-pill {
     border-radius: 8px;
     padding: 3px;
+    min-width: 100px;
   }
 
   .session-name {
-    max-width: 58px;
+    max-width: 46px;
   }
 
   .brand-wordmark {
@@ -516,8 +515,8 @@ select.field {
   }
 
   .brand-logo-frame {
-    width: 42px !important;
-    height: 42px !important;
+    width: 34px !important;
+    height: 34px !important;
     border-radius: 999px;
   }
 
@@ -526,36 +525,36 @@ select.field {
   }
 
   .brand-wordmark-compact {
-    min-width: 74px !important;
+    min-width: 58px !important;
   }
 
   .brand-wordmark .text-base {
-    font-size: 11px;
+    font-size: 9px;
   }
 
   .brand-year {
-    gap: 5px;
-    font-size: 11px;
+    gap: 4px;
+    font-size: 10px;
   }
 }
 
 @media (max-width: 350px) {
   .brand-logo-frame {
-    width: 38px !important;
-    height: 38px !important;
+    width: 30px !important;
+    height: 30px !important;
   }
 
   .brand-wordmark-compact {
     display: block;
-    min-width: 68px !important;
+    min-width: 52px !important;
   }
 
   .brand-wordmark .text-base {
-    font-size: 10px;
+    font-size: 8px;
   }
 
   .brand-year {
-    font-size: 10px;
+    font-size: 9px;
   }
 }
 
