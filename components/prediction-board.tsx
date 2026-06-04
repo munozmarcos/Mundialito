@@ -312,7 +312,10 @@ function PredictionCard({
   return (
     <article className="rounded-lg border border-line bg-white p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="text-xs font-bold text-ink/60">{formatKickoff(match.kickoff_at)}</span>
+        <div>
+          <span className="badge">{match.group_name ? `Grupo ${match.group_name}` : stageLabels[match.stage]}</span>
+          <p className="mt-2 text-xs font-bold text-ink/60">{formatKickoff(match.kickoff_at)}</p>
+        </div>
         <div className="flex flex-wrap justify-end gap-2">
           {prediction?.updated_at && <span className="self-center text-[11px] italic text-ink/45">Actualizado - {formatKickoff(prediction.updated_at)}</span>}
           <StatusPill status={unavailable ? "locked" : status} label={unavailable ? "Bloqueado" : undefined} />
@@ -569,6 +572,19 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         ))}
       </section>
 
+      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(220px,1fr)_auto_auto] lg:grid-cols-[220px_112px_44px] lg:items-center">
+        <input
+          className="field"
+          placeholder="Pais"
+          value={teamFilter}
+          onChange={(event) => setTeamFilter(event.target.value)}
+        />
+        <DateFilter value={dateFilter} onChange={setDateFilter} />
+        <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
+          <X className="h-4 w-4" />
+        </button>
+      </section>
+
       {activeTab === "todos" && (
         <section className="grid gap-4">
           <div>
@@ -606,19 +622,6 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           </div>
         </section>
       )}
-
-      <section className="panel grid gap-2 p-3 sm:grid-cols-[1fr_auto_auto] lg:grid-cols-[150px_112px_44px] lg:items-center">
-        <input
-          className="field"
-          placeholder="Pais"
-          value={teamFilter}
-          onChange={(event) => setTeamFilter(event.target.value)}
-        />
-        <DateFilter value={dateFilter} onChange={setDateFilter} />
-        <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
-          <X className="h-4 w-4" />
-        </button>
-      </section>
 
       {activeTab === "cargar" && (
       <section className="grid gap-4">

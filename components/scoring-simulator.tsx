@@ -556,7 +556,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
           ["todos", "Todos", Trophy],
-          ["cargar", "Grupos", Calculator],
+          ["cargar", selectedGroup ? `Grupo ${selectedGroup}` : "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llave", "Llaves", GitBranch]
         ].map(([key, label, Icon]) => (
@@ -570,6 +570,14 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
             {label as string}
           </button>
         ))}
+      </section>
+
+      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(220px,1fr)_auto_auto] lg:grid-cols-[220px_112px_44px] lg:items-center">
+        <input className="field" placeholder="Pais" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
+        <DateFilter value={dateFilter} onChange={setDateFilter} />
+        <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
+          <X className="h-4 w-4" />
+        </button>
       </section>
 
       {activeTab === "todos" && (
@@ -601,14 +609,6 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         </section>
       )}
 
-      <section className="panel grid gap-2 p-3 sm:grid-cols-[1fr_auto_auto] lg:grid-cols-[150px_112px_44px] lg:items-center">
-        <input className="field" placeholder="Pais" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
-        <DateFilter value={dateFilter} onChange={setDateFilter} />
-        <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
-          <X className="h-4 w-4" />
-        </button>
-      </section>
-
       {activeTab === "cargar" && (
       <section className="grid gap-4">
         <div>
@@ -617,10 +617,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
           <div className="grid gap-4">
             {filteredGroups.map(([group, items]) => (
               <div className="grid gap-3" key={group}>
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-xl font-black">Grupo {group}</h2>
-                  <span className="badge">{items.length} partidos</span>
-                </div>
+                <h2 className="text-xl font-black">Grupo {group}</h2>
                 <div className="match-card-grid">
                   {items.map((match) => resultCard(match))}
                 </div>
