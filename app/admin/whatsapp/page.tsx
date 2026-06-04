@@ -125,9 +125,9 @@ export default function WhatsAppAdminPage() {
               onChange={(event) => setBody(event.target.value)}
             />
           </label>
-          <button className="btn w-fit" disabled={sending || !selectedIds.length} type="button" onClick={sendBroadcast}>
+          <button className="btn w-[180px]" disabled={sending || !selectedIds.length} type="button" onClick={sendBroadcast}>
             <Send className="h-4 w-4" />
-            Enviar a {selectedIds.length}
+            <span className="tabular-nums">Enviar a {selectedIds.length}</span>
           </button>
           {status && <pre className="overflow-x-auto rounded-lg bg-field p-3 text-sm">{status}</pre>}
         </div>

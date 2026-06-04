@@ -1,3 +1,4 @@
+alter type match_status add value if not exists 'locked';
 alter type match_status add value if not exists 'closed';
 
 update matches
