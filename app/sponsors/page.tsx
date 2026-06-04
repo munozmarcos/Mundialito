@@ -1,4 +1,4 @@
-import { BatteryCharging, Coffee, Handshake, Megaphone, Trophy } from "lucide-react";
+import { BatteryCharging, Coffee, Handshake, Trophy } from "lucide-react";
 
 export const metadata = {
   title: "Sponsors | Mundialito"
@@ -11,7 +11,8 @@ const sponsors = [
     text: "Acompaña el Mundialito poniendo potencia, empuje y buena onda para que esta competencia entre amigos siga creciendo.",
     image: "/sponsor-icaro.jpeg",
     icon: BatteryCharging,
-    accent: "text-sky-300"
+    accent: "text-sky-300",
+    logoBg: "bg-sky-400/12"
   },
   {
     name: "Mates y Compañía",
@@ -19,7 +20,8 @@ const sponsors = [
     text: "El ritual perfecto para mirar partidos, cargar pronósticos y discutir resultados con algo rico al lado.",
     image: "/sponsor-mates.jpeg",
     icon: Coffee,
-    accent: "text-gold"
+    accent: "text-gold",
+    logoBg: "bg-gold/12"
   }
 ];
 
@@ -50,23 +52,23 @@ export default function SponsorsPage() {
           const Icon = sponsor.icon;
           return (
             <article className="panel overflow-hidden" key={sponsor.name}>
-              <div className="relative aspect-[4/3] overflow-hidden border-b border-line bg-field">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img alt={`${sponsor.name} sponsor Mundialito`} className="h-full w-full object-cover" src={sponsor.image} />
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent p-5">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-slate-950/75 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-white">
-                    <Megaphone className="h-4 w-4 text-red-400" />
-                    Sponsor oficial
-                  </div>
-                </div>
-              </div>
               <div className="border-b border-line bg-field p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <Icon className={`h-8 w-8 ${sponsor.accent}`} />
-                  <Trophy className="h-5 w-5 text-gold" />
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-line ${sponsor.logoBg}`}>
+                      <Icon className={`h-7 w-7 ${sponsor.accent}`} />
+                    </span>
+                    <div className="min-w-0">
+                      <h2 className="truncate text-2xl font-black sm:text-3xl">{sponsor.name}</h2>
+                      <p className="mt-1 text-sm font-black uppercase tracking-[0.18em] text-ink/45">{sponsor.category}</p>
+                    </div>
+                  </div>
+                  <Trophy className="h-5 w-5 shrink-0 text-gold" />
                 </div>
-                <h2 className="mt-4 text-3xl font-black">{sponsor.name}</h2>
-                <p className="mt-1 text-sm font-black uppercase tracking-[0.18em] text-ink/45">{sponsor.category}</p>
+              </div>
+              <div className="grid min-h-[280px] place-items-center border-b border-line bg-slate-950/25 p-3 sm:min-h-[360px]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img alt={`${sponsor.name} sponsor Mundialito`} className="max-h-[520px] w-full rounded-lg object-contain" src={sponsor.image} />
               </div>
               <div className="p-5">
                 <p className="text-base font-semibold text-ink/75">{sponsor.text}</p>

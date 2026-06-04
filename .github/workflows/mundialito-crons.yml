@@ -1,0 +1,17 @@
+name: Mundialito automatic jobs
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  orchestrator:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Mundialito orchestrator
+        run: |
+          curl --fail-with-body --request POST \
+            --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --header "Content-Type: application/json" \
+            https://mundialito-mu.vercel.app/api/jobs/orchestrator

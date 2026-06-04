@@ -4,6 +4,14 @@ export function normalizeDisplayName(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
+export function validateDisplayName(value: string) {
+  const normalized = normalizeDisplayName(value);
+  if (normalized.length < 2) return "El apodo tiene que tener al menos 2 caracteres.";
+  if (normalized.length > 40) return "El apodo no puede tener mas de 40 caracteres.";
+  if (!/^[\p{L}\p{N} ]+$/u.test(normalized)) return "El apodo solo puede usar letras, numeros y espacios.";
+  return null;
+}
+
 export function displayNameKey(value: string) {
   return normalizeDisplayName(value)
     .normalize("NFD")

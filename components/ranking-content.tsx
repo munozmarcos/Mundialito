@@ -13,6 +13,13 @@ function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
+function podiumClass(index: number) {
+  if (index === 0) return "border-yellow-300/50 bg-yellow-300/12 text-yellow-200";
+  if (index === 1) return "border-slate-200/50 bg-slate-200/12 text-slate-100";
+  if (index === 2) return "border-orange-300/50 bg-orange-400/12 text-orange-200";
+  return "border-line";
+}
+
 export function RankingContent({ ranking }: Props) {
   const [query, setQuery] = useState("");
   const normalizedQuery = normalize(query);
@@ -40,8 +47,8 @@ export function RankingContent({ ranking }: Props) {
           </div>
         ) : (
           filteredRanking.map((row, index) => (
-            <div className="grid grid-cols-[48px_1fr_auto] items-center gap-3 border-b border-line p-4 last:border-0" key={row.user_id}>
-              <div className="text-2xl font-black text-gold">#{index + 1}</div>
+            <div className={`grid grid-cols-[48px_1fr_auto] items-center gap-3 border-b p-4 last:border-0 ${podiumClass(index)}`} key={row.user_id}>
+              <div className={`text-2xl font-black ${index < 3 ? "" : "text-gold"}`}>#{index + 1}</div>
               <div>
                 <h3 className="font-black">{row.display_name}</h3>
                 <p className="text-sm text-ink/60">{row.exact_hits} exactos - {row.trend_hits} tendencias</p>

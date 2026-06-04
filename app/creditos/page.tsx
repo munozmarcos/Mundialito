@@ -67,7 +67,7 @@ export default async function CreditsPage() {
             <div className="overflow-hidden rounded-lg border border-line bg-field">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img alt="Bandera de Ecuador" className="h-20 w-full object-cover" src="https://flagcdn.com/w640/ec.png" />
-              <div className="p-4">
+              <div className="p-4 text-center">
                 <span className="text-xs font-black uppercase text-yellow-300">Recaudado para Ecuador</span>
                 <strong className="mt-1 block text-3xl text-yellow-300">{money(summary.missionFund)}</strong>
               </div>

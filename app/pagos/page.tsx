@@ -15,10 +15,7 @@ function money(value: number) {
 }
 
 export default async function PaymentsPage({ searchParams }: { searchParams?: { payment?: string } }) {
-  const [summary, participants] = await Promise.all([
-    getPaymentSummary(),
-    getParticipantPayments()
-  ]);
+  const [summary, participants] = await Promise.all([getPaymentSummary(), getParticipantPayments()]);
 
   return (
     <div className="grid gap-6">
@@ -44,31 +41,31 @@ export default async function PaymentsPage({ searchParams }: { searchParams?: { 
         </section>
       )}
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
+      <section className="grid gap-4 lg:grid-cols-[1fr_260px]">
         <article className="panel p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
             <div>
               <h2 className="text-2xl font-black">Pozo y premios</h2>
               <p className="mt-1 text-sm font-semibold text-ink/65">Cada entrada suma $10.000 al pozo.</p>
             </div>
-            <div className="rounded-lg bg-mint px-4 py-3 text-right">
-              <Trophy className="ml-auto h-5 w-5 text-grass" />
-              <strong className="mt-1 block text-3xl">{money(summary.prizePool)}</strong>
-              <span className="text-xs font-black uppercase text-grass">pozo</span>
+            <div className="rounded-lg border border-grass/35 bg-grass/15 px-5 py-4 text-center shadow-[0_18px_38px_rgba(32,182,67,0.16)]">
+              <Trophy className="mx-auto h-7 w-7 text-grass" />
+              <strong className="mt-2 block text-4xl font-black text-grass sm:text-5xl">{money(summary.prizePool)}</strong>
+              <span className="text-xs font-black uppercase tracking-[0.18em] text-grass">Pozo</span>
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
-            <div className="rounded-lg bg-mint p-4">
-              <span className="text-xs font-black uppercase text-grass">1er puesto - 70%</span>
-              <strong className="mt-1 block text-2xl">{money(summary.firstPrize)}</strong>
+            <div className="rounded-lg border border-yellow-300/45 bg-yellow-300/12 p-4 text-center">
+              <span className="text-xs font-black uppercase text-yellow-200">1er puesto - 70%</span>
+              <strong className="mt-1 block text-2xl text-yellow-200">{money(summary.firstPrize)}</strong>
             </div>
-            <div className="rounded-lg bg-field p-4">
-              <span className="text-xs font-black uppercase text-ink/55">2do puesto - 20%</span>
-              <strong className="mt-1 block text-2xl">{money(summary.secondPrize)}</strong>
+            <div className="rounded-lg border border-slate-200/45 bg-slate-200/12 p-4 text-center">
+              <span className="text-xs font-black uppercase text-slate-100">2do puesto - 20%</span>
+              <strong className="mt-1 block text-2xl text-slate-100">{money(summary.secondPrize)}</strong>
             </div>
-            <div className="rounded-lg bg-field p-4">
-              <span className="text-xs font-black uppercase text-ink/55">3ros - 10%</span>
-              <strong className="mt-1 block text-2xl">{money(summary.thirdPrize)}</strong>
+            <div className="rounded-lg border border-orange-300/45 bg-orange-400/12 p-4 text-center">
+              <span className="text-xs font-black uppercase text-orange-200">3ros - 10%</span>
+              <strong className="mt-1 block text-2xl text-orange-200">{money(summary.thirdPrize)}</strong>
             </div>
           </div>
         </article>

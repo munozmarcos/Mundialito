@@ -1,6 +1,6 @@
 import { hashLoginCode, internalEmailForPhone, normalizePhone, publicPhone, randomLoginCode, randomPassword } from "@/lib/app-auth";
 import { sendWhatsApp } from "@/lib/whatsapp";
-import { displayNameExists, normalizeDisplayName } from "@/lib/profiles";
+import { displayNameExists, normalizeDisplayName, validateDisplayName } from "@/lib/profiles";
 import { supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -25,6 +25,8 @@ async function findOrCreateProfile(displayName: string | undefined, phone: strin
   if (mode === "login" || mode === "reset") throw new Error("No encontre ese WhatsApp. Si es tu primera vez, entra por 'Soy nuevo'.");
   if (!displayName || displayName.length < 2) throw new Error("Carga un apodo para crear el usuario.");
   const cleanDisplayName = normalizeDisplayName(displayName);
+  const displayNameError = validateDisplayName(cleanDisplayName);
+  if (displayNameError) throw new Error(displayNameError);
   if (await displayNameExists(db, cleanDisplayName)) throw new Error("Ese apodo ya esta usado. Elegi otro.");
 
   const authEmail = internalEmailForPhone(phone);

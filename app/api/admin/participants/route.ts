@@ -1,5 +1,5 @@
 import { internalEmailForPhone, normalizePhone, publicPhone, randomPassword } from "@/lib/app-auth";
-import { displayNameExists, normalizeDisplayName } from "@/lib/profiles";
+import { displayNameExists, normalizeDisplayName, validateDisplayName } from "@/lib/profiles";
 import { requireAdmin, supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -39,6 +39,8 @@ export async function POST(req: Request) {
   const body = Body.parse(await req.json());
   const db = supabaseAdmin();
   const displayName = normalizeDisplayName(body.displayName);
+  const displayNameError = validateDisplayName(displayName);
+  if (displayNameError) return NextResponse.json({ error: displayNameError }, { status: 400 });
   if (await displayNameExists(db, displayName)) return NextResponse.json({ error: "Ese apodo ya esta usado. Elegi otro." }, { status: 409 });
   const normalizedPhone = normalizePhone(body.phone ?? "");
   const authEmail = body.authEmail || (normalizedPhone ? internalEmailForPhone(normalizedPhone) : "");
@@ -96,6 +98,8 @@ export async function PUT(req: Request) {
   const body = UpdateBody.parse(await req.json());
   const db = supabaseAdmin();
   const displayName = normalizeDisplayName(body.displayName);
+  const displayNameError = validateDisplayName(displayName);
+  if (displayNameError) return NextResponse.json({ error: displayNameError }, { status: 400 });
   if (await displayNameExists(db, displayName, body.id)) return NextResponse.json({ error: "Ese apodo ya esta usado. Elegi otro." }, { status: 409 });
   const normalizedPhone = normalizePhone(body.phone ?? "");
 

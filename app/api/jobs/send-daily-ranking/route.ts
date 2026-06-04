@@ -1,4 +1,5 @@
 import { getRanking } from "@/lib/data";
+import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
@@ -29,7 +30,18 @@ export async function POST(req: Request) {
   const url = new URL(req.url);
   const manual = url.searchParams.get("manual") === "1";
   const today = url.searchParams.get("date") ?? argentinaDate();
-  if (!manual && !inWorldCupWindow(today)) return NextResponse.json({ skipped: true, reason: "outside-world-cup-window", date: today });
+  if (!manual && !inWorldCupWindow(today)) {
+    const skipped = { skipped: true, reason: "outside-world-cup-window", date: today };
+    await recordJobRun({
+      jobPath: "/api/jobs/send-daily-ranking",
+      triggerType: "automatic",
+      ok: true,
+      statusCode: 200,
+      summary: summarizeJob("Enviar ranking por WhatsApp", { ok: true, data: skipped }),
+      payload: skipped
+    });
+    return NextResponse.json(skipped);
+  }
 
   const db = supabaseAdmin();
   const ranking = await getRanking();
@@ -75,7 +87,18 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ date: today, manual, sent, failures });
+  const result = { date: today, manual, sent, failures };
+  if (!manual) {
+    await recordJobRun({
+      jobPath: "/api/jobs/send-daily-ranking",
+      triggerType: "automatic",
+      ok: true,
+      statusCode: 200,
+      summary: summarizeJob("Enviar ranking por WhatsApp", { ok: true, data: result }),
+      payload: result
+    });
+  }
+  return NextResponse.json(result);
 }
 
 export async function GET(req: Request) {

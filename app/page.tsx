@@ -6,16 +6,17 @@ import { getMatches, getNewsItems, getRanking } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { matchStatus } from "@/lib/scoring";
-import { CalendarDays, LockKeyhole, MessageCircle, MessageSquareText, Trophy } from "lucide-react";
+import { CalendarDays, CreditCard, LockKeyhole, MessageCircle, Newspaper, Trophy } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 const features = [
-  { icon: Trophy, title: "Ranking vivo", text: "Puntos, exactos, tendencias e historial por partido." },
-  { icon: LockKeyhole, title: "Cierre automático", text: "Cada predicción se bloquea 15 minutos antes del inicio." },
-  { icon: MessageCircle, title: "WhatsApp bot", text: "Recordatorios, ranking y carga rapida desde el chat." },
-  { icon: MessageSquareText, title: "Chat IA", text: "Preguntas sobre tabla, pendientes y proximos partidos." }
+  { icon: Trophy, title: "Ranking y premios", text: "Top 3, puntos, exactos y pozo actualizado con pagos." },
+  { icon: LockKeyhole, title: "Estados claros", text: "Abierto, cerrado o bloqueado segun el momento del partido." },
+  { icon: MessageCircle, title: "WhatsApp bot", text: "Comandos para ranking, pendientes, partidos y resultados." },
+  { icon: Newspaper, title: "Novedades", text: "Avisos del admin y partidos importantes de la semana." },
+  { icon: CreditCard, title: "Pago asociado", text: "Mercado Pago vinculado al apodo cuando el usuario paga logueado." }
 ];
 
 function upcoming(matches: Awaited<ReturnType<typeof getMatches>>, limit: number) {
@@ -54,17 +55,11 @@ export default async function Home() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <HomePrimaryAction />
-            <Link className="btn secondary" href="/ranking">
-              Ver ranking
-            </Link>
-            <Link className="btn secondary" href="/probar">
-              Ir al simulador
-            </Link>
           </div>
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         {features.map((feature) => (
           <article className="panel flex gap-4 p-4" key={feature.title}>
             <feature.icon className="mt-1 h-5 w-5 shrink-0 text-grass" />

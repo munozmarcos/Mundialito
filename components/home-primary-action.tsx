@@ -15,7 +15,7 @@ export function HomePrimaryAction() {
 
   return (
     <Link className="btn" href={loggedIn ? "/mi-prode" : "/login"}>
-      {loggedIn ? "Ir a Pronósticos" : "Iniciar sesión"}
+      Pronósticos
     </Link>
   );
 }

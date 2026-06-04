@@ -70,6 +70,7 @@ function ExampleCard({ example }: { example: (typeof examples)[number] }) {
 }
 
 function StatusExample({ status, title, text }: { status: "open" | "locked" | "closed"; title: string; text: string }) {
+  const locked = status === "locked";
   return (
     <article className="panel grid gap-3 p-4">
       <div className="flex items-start justify-between gap-3">
@@ -86,11 +87,29 @@ function StatusExample({ status, title, text }: { status: "open" | "locked" | "c
         </div>
         <div className="grid gap-2">
           <div className="grid grid-cols-[1fr_58px] items-center gap-3">
-            <TeamLabel name="Argentina" />
+            {locked ? (
+              <span className="inline-flex items-center gap-2 font-bold text-ink/45">
+                <span className="grid h-6 w-8 place-items-center rounded bg-line/30">
+                  <LockKeyhole className="h-4 w-4" />
+                </span>
+                Equipo por definir
+              </span>
+            ) : (
+              <TeamLabel name="Argentina" />
+            )}
             <input className="field h-10 px-2 text-center font-black" disabled={status !== "open"} readOnly value={status === "locked" ? "" : "2"} />
           </div>
           <div className="grid grid-cols-[1fr_58px] items-center gap-3">
-            <TeamLabel name="Mexico" />
+            {locked ? (
+              <span className="inline-flex items-center gap-2 font-bold text-ink/45">
+                <span className="grid h-6 w-8 place-items-center rounded bg-line/30">
+                  <LockKeyhole className="h-4 w-4" />
+                </span>
+                Equipo por definir
+              </span>
+            ) : (
+              <TeamLabel name="Mexico" />
+            )}
             <input className="field h-10 px-2 text-center font-black" disabled={status !== "open"} readOnly value={status === "locked" ? "" : "1"} />
           </div>
         </div>
@@ -110,23 +129,23 @@ export default function RulesPage() {
       />
 
       <section className="grid gap-3 md:grid-cols-3">
-        <article className="panel p-5">
+        <article className="panel flex h-full flex-col p-5">
           <Target className="h-6 w-6 text-grass" />
           <h2 className="mt-3 text-xl font-black">Tendencia</h2>
           <p className="mt-2 text-sm text-ink/70">Gana local, gana visitante o empate.</p>
-          <strong className="mt-4 block text-3xl text-grass">+1</strong>
+          <strong className="mt-auto block pt-4 text-3xl text-grass">+1</strong>
         </article>
-        <article className="panel p-5">
+        <article className="panel flex h-full flex-col p-5">
           <BadgeCheck className="h-6 w-6 text-gold" />
           <h2 className="mt-3 text-xl font-black">Resultado exacto</h2>
           <p className="mt-2 text-sm text-ink/70">Si además acertaste los goles exactos.</p>
-          <strong className="mt-4 block text-3xl text-gold">+2</strong>
+          <strong className="mt-auto block pt-4 text-3xl text-gold">+2</strong>
         </article>
-        <article className="panel p-5">
+        <article className="panel flex h-full flex-col p-5">
           <Trophy className="h-6 w-6 text-blue-300" />
           <h2 className="mt-3 text-xl font-black">Máximo</h2>
-          <p className="mt-2 text-sm text-ink/70">Aplica igual en grupos y eliminatorias, contando 120 minutos.</p>
-          <strong className="mt-4 block text-3xl text-blue-300">3 pts</strong>
+          <p className="mt-2 text-sm text-ink/70">Grupos y eliminatorias, 120 minutos.</p>
+          <strong className="mt-auto block pt-4 text-3xl text-blue-300">3 pts</strong>
         </article>
       </section>
 

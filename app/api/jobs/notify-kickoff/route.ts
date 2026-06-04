@@ -1,12 +1,18 @@
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { countryCodeForTeam } from "@/lib/flags";
+import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
 
+function isAutomatic(req: Request) {
+  return req.headers.get("x-vercel-cron") === "1";
+}
+
 function assertCron(req: Request) {
   const secret = process.env.CRON_SECRET;
-  return secret && req.headers.get("authorization") === `Bearer ${secret}`;
+  const authOk = secret && req.headers.get("authorization") === `Bearer ${secret}`;
+  return authOk || isAutomatic(req);
 }
 
 function flagEmoji(team: string, explicit?: string | null) {
@@ -77,7 +83,18 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ sent, matches: matches?.length ?? 0, failures });
+  const result = { sent, matches: matches?.length ?? 0, failures };
+  if (isAutomatic(req)) {
+    await recordJobRun({
+      jobPath: "/api/jobs/notify-kickoff",
+      triggerType: "automatic",
+      ok: true,
+      statusCode: 200,
+      summary: summarizeJob("Avisar inicio", { ok: true, data: result }),
+      payload: result
+    });
+  }
+  return NextResponse.json(result);
 }
 
 export async function GET(req: Request) {

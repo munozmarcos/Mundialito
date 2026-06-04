@@ -2,11 +2,14 @@
 import { sendWhatsApp } from "@/lib/whatsapp";
 import { countryCodeForTeam } from "@/lib/flags";
 import { formatArgentinaDateTime } from "@/lib/dates";
+import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { NextResponse } from "next/server";
 
 function assertCron(req: Request) {
   const secret = process.env.CRON_SECRET;
-  return secret && req.headers.get("authorization") === `Bearer ${secret}`;
+  const authOk = secret && req.headers.get("authorization") === `Bearer ${secret}`;
+  const vercelOk = req.headers.get("x-vercel-cron") === "1";
+  return authOk || vercelOk;
 }
 
 function flagEmoji(team: string, explicit?: string | null) {
@@ -101,7 +104,18 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ locked: data?.length ?? 0, notifications: sent, failures });
+  const result = { locked: data?.length ?? 0, notifications: sent, failures };
+  if (req.headers.get("x-vercel-cron") === "1") {
+    await recordJobRun({
+      jobPath: "/api/jobs/lock-matches",
+      triggerType: "automatic",
+      ok: true,
+      statusCode: 200,
+      summary: summarizeJob("Cerrar 15m", { ok: true, data: result }),
+      payload: result
+    });
+  }
+  return NextResponse.json(result);
 }
 
 export async function GET(req: Request) {
