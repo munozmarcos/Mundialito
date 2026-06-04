@@ -156,6 +156,11 @@ function answerCommands() {
   ].join("\n");
 }
 
+function rankingLine(row: { display_name: string; total_points: number }, index: number) {
+  const prefix = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`;
+  return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
+}
+
 async function findProfileByPhone(from?: string) {
   if (!from || !supabaseConfigured()) return null;
   const db = supabaseAdmin();
@@ -342,7 +347,8 @@ export async function answerWhatsAppCommand(text: string, from?: string) {
     if (!ranking.length) return "🏆 *Ranking Mundialito*\nTodavía no hay participantes en el ranking.";
     return [
       "🏆 *Ranking Mundialito*",
-      ...ranking.slice(0, 5).map((row, index) => `${index + 1}. ${row.display_name} - *${row.total_points} pts*`)
+      "",
+      ...ranking.map((row, index) => rankingLine(row, index))
     ].join("\n");
   }
 

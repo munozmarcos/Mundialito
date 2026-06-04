@@ -24,6 +24,11 @@ function inWorldCupWindow(date: string) {
   return date >= "2026-06-11" && date <= "2026-07-19";
 }
 
+function rankingLine(row: { display_name: string; total_points: number }, index: number) {
+  const prefix = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`;
+  return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
+}
+
 export async function POST(req: Request) {
   if (!assertCron(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -45,16 +50,15 @@ export async function POST(req: Request) {
 
   const db = supabaseAdmin();
   const ranking = await getRanking();
-  const top = ranking.slice(0, 10);
   const body = [
     "🏆 *Ranking diario Mundialito*",
     `📅 ${today}`,
     "",
-    top.length
-      ? top.map((row, index) => `${index + 1}. ${row.display_name} - *${row.total_points} pts*`).join("\n")
-      : "Todavia no hay puntos cargados.",
+    ranking.length
+      ? ranking.map((row, index) => rankingLine(row, index)).join("\n")
+      : "Todavía no hay puntos cargados.",
     "",
-    "Responde *$ranking* para ver el top cuando quieras."
+    "Responde *$ranking* para ver la tabla completa cuando quieras."
   ].join("\n");
 
   const { data: users, error } = await db
