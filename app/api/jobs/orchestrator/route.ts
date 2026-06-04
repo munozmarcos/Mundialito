@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 
 const always = [
   "/api/jobs/lock-matches",
-  "/api/jobs/notify-kickoff"
+  "/api/jobs/notify-kickoff",
+  "/api/jobs/sync-results"
 ];
 
 const every15 = [
-  "/api/jobs/sync-results",
   "/api/jobs/send-reminders"
 ];
 

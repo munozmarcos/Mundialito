@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <TournamentRibbon />
         <header className="sticky top-0 z-20 border-b border-line bg-white text-ink shadow-lg shadow-sky-950/8">
-          <nav className="shell grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 py-3 sm:gap-3">
+          <nav className="shell app-header-grid grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 py-3 sm:gap-3">
             <div className="flex items-center justify-start">
               <MainNav />
             </div>
@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <MundialitoMark />
               </Link>
             </div>
-            <div className="flex items-center justify-end gap-2">
+            <div className="header-actions flex items-center justify-end gap-2">
               <SoundToggle />
               <SessionNav />
             </div>

@@ -56,7 +56,7 @@ export function MainNav() {
 
   return (
     <>
-      <button className="btn secondary min-h-10 px-3" onClick={() => setMenu(!open)} type="button">
+      <button className="btn secondary header-icon-btn min-h-10 px-3" onClick={() => setMenu(!open)} type="button">
         <Menu className="h-5 w-5" />
         <span className="hidden sm:inline">{"Men\u00fa"}</span>
       </button>

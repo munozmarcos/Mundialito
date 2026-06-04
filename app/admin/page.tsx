@@ -16,28 +16,28 @@ const jobs = [
     path: "/api/jobs/sync-fixtures",
     icon: RefreshCw,
     title: "Actualizar partidos",
-    text: "Trae fixture y cruces oficiales cuando el proveedor cambia sedes, horarios, equipos o llaves.",
+    text: "Trae fixture y cruces oficiales cuando cambian sedes, horarios, equipos o llaves.",
     cron: "Automático: todos los días 03:00 Argentina"
   },
   {
     path: "/api/jobs/sync-results",
     icon: Trophy,
     title: "Actualizar resultados",
-    text: "Trae marcadores reales ya jugados, guarda resultados y recalcula puntos.",
-    cron: "Automático: cada 15 minutos"
+    text: "Trae marcadores reales, guarda resultados y recalcula puntos.",
+    cron: "Automático: cada 5 minutos"
   },
   {
     path: "/api/jobs/send-reminders",
     icon: ListChecks,
     title: "Recordatorios 4h",
-    text: "Envía WhatsApp a quienes no cargaron pronóstico para partidos que empiezan cerca de 4 horas.",
+    text: "Envía WhatsApp a quienes no cargaron pronóstico.",
     cron: "Automático: cada 15 minutos"
   },
   {
     path: "/api/jobs/lock-matches",
     icon: LockKeyhole,
     title: "Cerrar 15m",
-    text: "Cierra partidos que empiezan en 15 minutos o menos y avisa pendientes.",
+    text: "Cierra partidos que empiezan en 15 minutos o menos.",
     cron: "Automático: cada 5 minutos"
   },
   {
@@ -154,13 +154,13 @@ export default function AdminPage() {
       <section className="panel p-5">
         <h2 className="text-xl font-black">Jobs</h2>
         <p className="mt-1 text-sm font-semibold text-ink/60">
-          Todos corren automáticamente. El botón de play sirve para contingencia manual o pruebas controladas.
+          Todos corren automáticamente. El play sirve para contingencia manual o pruebas controladas.
         </p>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {jobs.map((job) => {
             const run = latestRuns[job.path];
             return (
-              <div className="panel grid grid-cols-[1fr_auto] gap-4 p-4" key={job.path}>
+              <div className="panel grid grid-cols-[1fr_42px] gap-3 p-4" key={job.path}>
                 <span className="flex gap-4 text-left">
                   <job.icon className="mt-1 h-5 w-5 shrink-0 text-grass" />
                   <span>
@@ -180,7 +180,7 @@ export default function AdminPage() {
                     </span>
                   </span>
                 </span>
-                <button className="btn min-h-10 px-3" disabled={running === job.path} onClick={() => runJob(job.path, job.title)} title={`Ejecutar ${job.title}`} type="button">
+                <button className="btn h-9 min-h-9 w-9 self-start px-0" disabled={running === job.path} onClick={() => runJob(job.path, job.title)} title={`Ejecutar ${job.title}`} type="button">
                   <Play className="h-4 w-4" />
                 </button>
               </div>

@@ -52,7 +52,7 @@ export function SoundToggle() {
     <>
       <button
         aria-label={enabled ? "Mutear música" : "Activar música"}
-        className="btn secondary min-h-9 px-3"
+        className="btn secondary header-icon-btn min-h-9 px-3"
         onClick={toggle}
         title={enabled ? "Mutear música" : "Activar música"}
         type="button"

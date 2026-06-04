@@ -88,16 +88,60 @@ textarea {
 
 @media (max-width: 520px) {
   .shell {
-    width: min(100% - 16px, 1120px);
+    width: min(100% - 10px, 1120px);
+  }
+
+  .app-header-grid {
+    grid-template-columns: auto minmax(70px, 1fr) auto;
+    gap: 4px;
+    min-height: 54px;
+    padding-top: 8px;
+    padding-bottom: 8px;
   }
 
   .brand-logo-frame {
-    width: 94px !important;
-    height: 40px !important;
+    width: 76px !important;
+    height: 32px !important;
   }
 
   .brand-lockup {
-    gap: 6px;
+    gap: 4px;
+  }
+
+  .header-actions {
+    gap: 4px;
+  }
+
+  .header-icon-btn {
+    width: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .header-login-btn {
+    width: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .session-pill {
+    gap: 4px;
+    padding-left: 6px;
+    padding-right: 4px;
+  }
+
+  .session-pill .header-icon-btn {
+    width: 30px;
+    min-width: 30px;
+    min-height: 30px;
+  }
+
+  .session-name {
+    max-width: 42px;
   }
 }
 
