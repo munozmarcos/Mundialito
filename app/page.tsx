@@ -51,6 +51,10 @@ export default async function Home() {
     getLatestNotifications(5)
   ]);
   const matches = upcoming(allMatches, 6);
+  const freshNewsItems = newsItems.filter((item) => {
+    const createdAt = new Date(item.created_at).getTime();
+    return Number.isFinite(createdAt) && Date.now() - createdAt <= 24 * 60 * 60 * 1000;
+  });
 
   return (
     <div className="grid gap-6">
@@ -123,15 +127,16 @@ export default async function Home() {
         </section>
 
         <div className="grid content-start gap-4">
+          <section className="panel p-4">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Pozo acumulado</p>
+            <p className="mt-1 text-3xl font-black text-grass">{money(paymentSummary.prizePool)}</p>
+            <p className="mt-1 text-xs font-semibold text-ink/60">{paymentSummary.paidParticipants} pagos confirmados</p>
+          </section>
+
           <section className="panel overflow-hidden">
             <div className="flex items-center gap-2 border-b border-line p-4">
               <Trophy className="h-5 w-5 text-gold" />
               <h2 className="text-xl font-black">Ranking</h2>
-            </div>
-            <div className="border-b border-line p-4">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Pozo acumulado</p>
-              <p className="mt-1 text-3xl font-black text-grass">{money(paymentSummary.prizePool)}</p>
-              <p className="mt-1 text-xs font-semibold text-ink/60">{paymentSummary.paidParticipants} pagos confirmados</p>
             </div>
             {!ranking.length ? (
               <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay ranking.</p>
@@ -157,10 +162,10 @@ export default async function Home() {
               <CalendarDays className="h-5 w-5 text-gold" />
               <h2 className="text-xl font-black">Novedades</h2>
             </div>
-            {!newsItems.length ? (
-              <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay novedades.</p>
+            {!freshNewsItems.length ? (
+              <p className="p-5 text-sm font-semibold text-ink/65">No hay novedades de las últimas 24 horas.</p>
             ) : (
-              newsItems.map((item) => (
+              freshNewsItems.map((item) => (
                 <div className="border-b border-line p-4 last:border-0" key={item.id}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <h3 className="font-black">{item.title}</h3>
