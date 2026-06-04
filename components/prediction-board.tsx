@@ -5,12 +5,13 @@ import { DateFilter } from "@/components/date-filter";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
+import { displayNameForTeam } from "@/lib/flags";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { dateKey, matchFitsBasicFilters } from "@/lib/match-filters";
 import { matchStatus } from "@/lib/scoring";
 import type { Match, MatchStage, Prediction } from "@/lib/types";
-import { Calculator, Check, CircleDot, GitBranch, Lock, LogIn, Save, Table2, Trophy, X } from "lucide-react";
+import { Calculator, Check, CircleDot, ClipboardPaste, GitBranch, Lock, LogIn, Save, Table2, Trophy, X } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
@@ -87,6 +88,36 @@ function parseGoalInput(value: string) {
   if (!/^\d*$/.test(value)) return null;
   if (value === "") return "";
   return Number(value);
+}
+
+function parseBulkLine(line: string) {
+  const clean = line
+    .replace(/\s*\|\s*Ganador:.+$/i, "")
+    .replace(/\s+Ganador:.+$/i, "")
+    .trim();
+  const match = clean.match(/^(.+?)\s+(\d+)\s*[-:]\s*(\d+)\s+(.+)$/);
+  if (!match) return null;
+  return {
+    homeTeam: match[1].trim(),
+    homeGoals: Number(match[2]),
+    awayGoals: Number(match[3]),
+    awayTeam: match[4].trim()
+  };
+}
+
+function norm(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .trim();
+}
+
+function teamMatchesBulk(team: string, query: string) {
+  const normalizedQuery = norm(query);
+  return norm(team) === normalizedQuery || norm(displayNameForTeam(team)) === normalizedQuery;
 }
 
 function projectedGroupTable(matches: Match[], predictions: Record<string, PredictionWithUpdated>) {
@@ -484,6 +515,9 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const [activeGroup, setActiveGroup] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [bulk, setBulk] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState("");
   const predictionMap = useMemo(() => byId(predictions), [predictions]);
 
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
@@ -533,6 +567,81 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
     });
   }
 
+  function matchIsEditable(match: Match, display?: DisplayMatch) {
+    if (!user) return false;
+    const safeDisplay = lockedDisplay(match, display);
+    if (isMatchUnavailable(match, safeDisplay)) return false;
+    const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
+    return status === "open" || status === "closing_soon";
+  }
+
+  async function applyBulk() {
+    if (!user) {
+      setBulkMessage("Entrá con tu usuario para cargar pronósticos.");
+      return;
+    }
+
+    const lines = bulk.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    let saved = 0;
+    let skipped = 0;
+    let invalid = 0;
+    const savedPredictions: PredictionWithUpdated[] = [];
+
+    for (const line of lines) {
+      const parsed = parseBulkLine(line);
+      if (!parsed) {
+        invalid += 1;
+        continue;
+      }
+
+      const match = matches.find((item) => {
+        const display = item.stage === "GROUP" ? undefined : bracket.displays[item.id];
+        const home = display?.home.name ?? item.home_team;
+        const away = display?.away.name ?? item.away_team;
+        return teamMatchesBulk(home, parsed.homeTeam) && teamMatchesBulk(away, parsed.awayTeam);
+      });
+
+      if (!match || !matchIsEditable(match, match.stage === "GROUP" ? undefined : bracket.displays[match.id])) {
+        skipped += 1;
+        continue;
+      }
+
+      const res = await fetch("/api/predictions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          matchId: match.id,
+          homeGoals: parsed.homeGoals,
+          awayGoals: parsed.awayGoals,
+          penaltyWinner: null
+        })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        skipped += 1;
+        continue;
+      }
+
+      saved += 1;
+      savedPredictions.push(data.prediction);
+    }
+
+    if (savedPredictions.length) {
+      setPredictions((current) => {
+        const savedByMatch = byId(savedPredictions);
+        const rest = current.filter((item) => !savedByMatch[item.match_id]);
+        return [...rest, ...savedPredictions];
+      });
+    }
+
+    setBulkMessage(`Cargadas: ${saved}. Omitidas: ${skipped}. Lineas invalidas: ${invalid}.`);
+    if (saved > 0) {
+      setBulk("");
+      setBulkOpen(false);
+    }
+  }
+
   if (!matches.length) return <EmptyState title="Sin partidos" text="Carga el calendario para ver el prode completo." />;
 
   return (
@@ -562,6 +671,18 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
       )}
 
       {demoMode && <p className="text-sm font-semibold text-gold">Partidos de muestra.</p>}
+
+      <section className="panel flex flex-wrap items-center justify-between gap-3 p-4">
+        <div>
+          <h2 className="text-xl font-black">Carga rápida</h2>
+          <p className="mt-1 text-sm font-semibold text-ink/60">Pegá un bloque de pronósticos y guardalos de una sola vez.</p>
+        </div>
+        <button className="btn secondary" onClick={() => setBulkOpen(true)} type="button">
+          <ClipboardPaste className="h-4 w-4" />
+          Carga masiva
+        </button>
+        {bulkMessage && <p className="basis-full text-sm font-bold text-grass">{bulkMessage}</p>}
+      </section>
 
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
@@ -713,6 +834,38 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           )}
         </div>
       </section>
+      )}
+
+      {bulkOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/75 p-4">
+          <section className="panel w-full max-w-3xl p-4 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-xl font-black">
+                  <ClipboardPaste className="h-5 w-5 text-grass" />
+                  Carga masiva
+                </h2>
+                <p className="mt-1 text-sm text-ink/60">Pegá el texto de $pronosticos o usá formato por línea: Argentina 2-1 México</p>
+              </div>
+              <button className="btn secondary min-w-11 px-0" onClick={() => setBulkOpen(false)} type="button" aria-label="Cerrar">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <textarea
+              className="field mt-4 h-[52vh] min-h-[340px] w-full resize-y py-4 leading-6"
+              rows={18}
+              value={bulk}
+              onChange={(event) => setBulk(event.target.value)}
+            />
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              <button className="btn secondary" onClick={() => setBulkOpen(false)} type="button">Cancelar</button>
+              <button className="btn" onClick={applyBulk} type="button">
+                <Calculator className="h-4 w-4" />
+                Aplicar
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );
