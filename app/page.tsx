@@ -2,7 +2,7 @@ import { EmptyState } from "@/components/empty-state";
 import { HomePrimaryAction } from "@/components/home-primary-action";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
-import { getMatches, getNewsItems, getRanking } from "@/lib/data";
+import { getAutomaticNewsItems, getMatches, getNewsItems, getRanking } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { matchStatus } from "@/lib/scoring";
@@ -12,11 +12,11 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 const features = [
-  { icon: Trophy, title: "Ranking y premios", text: "Top 3, puntos, exactos y pozo actualizado con pagos." },
-  { icon: LockKeyhole, title: "Estados claros", text: "Abierto, cerrado o bloqueado segun el momento del partido." },
-  { icon: MessageCircle, title: "WhatsApp bot", text: "Comandos para ranking, pendientes, partidos y resultados." },
-  { icon: Newspaper, title: "Novedades", text: "Avisos del admin y partidos importantes de la semana." },
-  { icon: CreditCard, title: "Pago asociado", text: "Mercado Pago vinculado al apodo cuando el usuario paga logueado." }
+  { icon: Trophy, title: "Ranking", text: "Top 3, puntos y premios." },
+  { icon: LockKeyhole, title: "Estados", text: "Abierto, cerrado o bloqueado." },
+  { icon: MessageCircle, title: "WhatsApp", text: "Comandos y recordatorios." },
+  { icon: Newspaper, title: "Novedades", text: "Avisos manuales y automáticos." },
+  { icon: CreditCard, title: "Pagos", text: "Pago asociado al apodo." }
 ];
 
 function upcoming(matches: Awaited<ReturnType<typeof getMatches>>, limit: number) {
@@ -39,9 +39,12 @@ function thisWeek(matches: Awaited<ReturnType<typeof getMatches>>) {
 }
 
 export default async function Home() {
-  const [allMatches, ranking, newsItems] = await Promise.all([getMatches(), getRanking(), getNewsItems(5)]);
+  const [allMatches, ranking, manualNews, automaticNews] = await Promise.all([getMatches(), getRanking(), getNewsItems(5), getAutomaticNewsItems(5)]);
   const matches = upcoming(allMatches, 6);
   const weekMatches = thisWeek(allMatches);
+  const newsItems = [...manualNews, ...automaticNews]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 5);
 
   return (
     <div className="grid gap-6">
@@ -147,7 +150,7 @@ export default async function Home() {
                 ))}
                 {weekMatches.map((match) => (
                   <div className="border-b border-line p-4 last:border-0" key={match.id}>
-                    <p className="text-xs font-black uppercase text-ink/45">🏟️ {formatArgentinaDateTime(match.kickoff_at)}</p>
+                    <p className="text-xs font-black uppercase text-ink/45">{formatArgentinaDateTime(match.kickoff_at)}</p>
                     <p className="mt-1 flex flex-wrap items-center gap-2 font-bold">
                       <TeamLabel name={match.home_team} code={match.home_country_code} />
                       <span className="text-ink/40">vs</span>

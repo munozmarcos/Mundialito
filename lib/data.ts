@@ -46,6 +46,14 @@ export type NewsItem = {
   created_at: string;
 };
 
+export type AutomaticNewsItem = {
+  id: string;
+  title: string;
+  body: string;
+  created_at: string;
+  source: "automatic";
+};
+
 export async function getMatches() {
   if (!supabaseConfigured()) return demoMatches;
 
@@ -179,6 +187,45 @@ export async function getNewsItems(limit = 5): Promise<NewsItem[]> {
     return (data ?? []) as NewsItem[];
   } catch (error) {
     console.warn("[news:fallback]", error);
+    return [];
+  }
+}
+
+function automaticNewsTitle(jobPath: string) {
+  const titles: Record<string, string> = {
+    "/api/jobs/sync-fixtures": "🗓️ Fixture actualizado",
+    "/api/jobs/sync-results": "🏁 Resultados actualizados",
+    "/api/jobs/send-reminders": "📲 Recordatorios enviados",
+    "/api/jobs/lock-matches": "🔒 Partidos cerrados",
+    "/api/jobs/notify-kickoff": "⚽ Avisos de inicio",
+    "/api/jobs/send-daily-ranking": "🏆 Ranking enviado"
+  };
+  return titles[jobPath] ?? "🤖 Novedad automática";
+}
+
+export async function getAutomaticNewsItems(limit = 5): Promise<AutomaticNewsItem[]> {
+  if (!supabaseConfigured()) return [];
+
+  try {
+    const db = supabaseAdmin();
+    const { data, error } = await db
+      .from("job_runs")
+      .select("id,job_path,summary,created_at,ok,trigger_type")
+      .eq("trigger_type", "automatic")
+      .eq("ok", true)
+      .not("summary", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []).map((item) => ({
+      id: item.id,
+      title: automaticNewsTitle(item.job_path),
+      body: item.summary ?? "La app ejecutó una actualización automática.",
+      created_at: item.created_at,
+      source: "automatic" as const
+    }));
+  } catch (error) {
+    console.warn("[automatic-news:fallback]", error);
     return [];
   }
 }

@@ -1,5 +1,5 @@
 import { TeamLabel } from "@/components/team-label";
-import { getMatches, getNewsItems } from "@/lib/data";
+import { getAutomaticNewsItems, getMatches, getNewsItems } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { CalendarDays, Newspaper, Trophy } from "lucide-react";
 
@@ -21,7 +21,8 @@ function thisWeek(matches: Awaited<ReturnType<typeof getMatches>>) {
 }
 
 export default async function NovedadesPage() {
-  const [newsItems, matches] = await Promise.all([getNewsItems(100), getMatches()]);
+  const [manualNews, automaticNews, matches] = await Promise.all([getNewsItems(100), getAutomaticNewsItems(100), getMatches()]);
+  const newsItems = [...manualNews, ...automaticNews].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   const weekMatches = thisWeek(matches);
 
   return (
@@ -48,7 +49,7 @@ export default async function NovedadesPage() {
               <article className="panel p-5" key={item.id}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-black uppercase tracking-[0.16em] text-gold">🗞️ Aviso Mundialito</p>
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-gold">Aviso Mundialito</p>
                     <h2 className="mt-2 text-2xl font-black">{item.title}</h2>
                   </div>
                   <span className="rounded-full border border-line bg-field px-3 py-1 text-xs font-black text-ink/55">
@@ -64,7 +65,7 @@ export default async function NovedadesPage() {
         <aside className="panel overflow-hidden">
           <div className="flex items-center gap-2 border-b border-line p-4">
             <CalendarDays className="h-5 w-5 text-gold" />
-            <h2 className="text-xl font-black">🏟️ Partidos de la semana</h2>
+            <h2 className="text-xl font-black">Partidos de la semana</h2>
           </div>
           {!weekMatches.length ? (
             <p className="p-5 text-sm font-semibold text-ink/65">No quedan partidos pendientes esta semana.</p>
