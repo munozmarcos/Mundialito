@@ -10,16 +10,16 @@ const sponsors = [
     category: "Energía y soluciones",
     text: "Acompaña el Mundialito poniendo potencia, empuje y buena onda para que esta competencia entre amigos siga creciendo.",
     image: "/sponsor-icaro.jpeg",
-    logo: "/sponsor-logo-icaro.png",
+    logo: "/sponsor-logo-icaro-v2.png",
     logoBox: "bg-[#b8c9cf]",
-    logoSize: "h-28 w-full max-w-[320px]",
+    logoSize: "h-40 w-56 sm:w-64",
     imageSize: "max-h-[420px]"
   },
   {
     name: "Mates y Compañía",
     category: "Yerba mate misionera",
     text: "El ritual perfecto para mirar partidos, cargar pronósticos y discutir resultados con algo rico al lado.",
-    image: "/sponsor-mates.jpeg",
+    image: "/sponsor-mates-v2.jpeg",
     logo: "/sponsor-logo-mates.png",
     logoBox: "bg-black",
     logoSize: "h-14 w-full max-w-[320px]",
@@ -53,15 +53,15 @@ export default function SponsorsPage() {
         {sponsors.map((sponsor) => (
           <article className="panel overflow-hidden" key={sponsor.name}>
             <div className="border-b border-line bg-field p-5">
-              <div className="grid gap-4">
-                <div className="flex items-start justify-between gap-3">
-                  <span className={`grid ${sponsor.logoSize} place-items-center overflow-hidden rounded-lg border border-line p-3 ${sponsor.logoBox}`}>
+              <div className="grid justify-items-start gap-4">
+                <div className="flex w-full items-start justify-between gap-3">
+                  <span className={`grid ${sponsor.logoSize} shrink-0 place-items-center overflow-hidden rounded-lg border border-line p-3 ${sponsor.logoBox}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img alt={`Logo ${sponsor.name}`} className="max-h-full max-w-full object-contain" src={sponsor.logo} />
                   </span>
                   <Trophy className="mt-2 h-5 w-5 shrink-0 text-gold" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h2 className="text-2xl font-black sm:text-3xl">{sponsor.name}</h2>
                   <p className="mt-1 text-sm font-black uppercase tracking-[0.18em] text-ink/45">{sponsor.category}</p>
                 </div>
