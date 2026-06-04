@@ -57,8 +57,9 @@ export default async function Home() {
     <div className="grid gap-6">
       <section className="panel hero-pitch p-5 sm:p-8">
         <div className="relative z-10 max-w-3xl">
-          <h1 className="max-w-3xl text-4xl font-black leading-tight sm:text-6xl">
-            Prode entre amigos
+          <h1 className="max-w-3xl font-black leading-tight">
+            <span className="block text-5xl sm:text-7xl">Mundialito</span>
+            <span className="mt-2 block text-3xl sm:text-5xl">Prode entre amigos</span>
           </h1>
           <p className="mt-5 max-w-2xl text-lg font-semibold text-white/86">
             La experiencia de vivir el Mundial de manera divertida, con un fin solidario y una interfaz única.
@@ -158,7 +159,7 @@ export default async function Home() {
               <>
                 {newsItems.map((item) => (
                   <div className="border-b border-line p-4" key={item.id}>
-                    <p className="text-xs font-black uppercase text-gold">🗞️ Aviso Mundialito</p>
+                    <p className="text-xs font-black uppercase text-gold">Aviso Mundialito</p>
                     <h3 className="mt-1 font-black">{item.title}</h3>
                     <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-ink/70">{item.body}</p>
                   </div>

@@ -351,7 +351,7 @@ select.field {
   color: #fff;
   background:
     linear-gradient(90deg, rgba(1, 14, 30, 0.9), rgba(1, 14, 30, 0.58), rgba(1, 14, 30, 0.76)),
-    url("/mundialito-hero.png") center top / cover no-repeat,
+    url("/mundialito-hero.jpg") center top / cover no-repeat,
     #061426;
   min-height: 600px;
 }

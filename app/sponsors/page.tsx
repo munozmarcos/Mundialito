@@ -12,8 +12,8 @@ const sponsors = [
     image: "/sponsor-icaro.jpeg",
     logo: "/sponsor-logo-icaro.png",
     logoBox: "bg-[#b8c9cf]",
-    logoSize: "h-24 w-44 sm:h-28 sm:w-56",
-    imageSize: "max-h-[460px]"
+    logoSize: "h-28 w-full max-w-[320px]",
+    imageSize: "max-h-[420px]"
   },
   {
     name: "Mates y Compañía",
@@ -22,8 +22,8 @@ const sponsors = [
     image: "/sponsor-mates.jpeg",
     logo: "/sponsor-logo-mates.png",
     logoBox: "bg-black",
-    logoSize: "h-14 w-40",
-    imageSize: "max-h-[460px]"
+    logoSize: "h-14 w-full max-w-[320px]",
+    imageSize: "max-h-[560px]"
   }
 ];
 
@@ -53,23 +53,23 @@ export default function SponsorsPage() {
         {sponsors.map((sponsor) => (
           <article className="panel overflow-hidden" key={sponsor.name}>
             <div className="border-b border-line bg-field p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex min-w-0 flex-wrap items-center gap-3">
-                  <span className={`grid ${sponsor.logoSize} shrink-0 place-items-center overflow-visible rounded-lg border border-line p-1.5 ${sponsor.logoBox}`}>
+              <div className="grid gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <span className={`grid ${sponsor.logoSize} place-items-center overflow-hidden rounded-lg border border-line p-3 ${sponsor.logoBox}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img alt={`Logo ${sponsor.name}`} className="h-full w-full object-contain" src={sponsor.logo} />
+                    <img alt={`Logo ${sponsor.name}`} className="max-h-full max-w-full object-contain" src={sponsor.logo} />
                   </span>
-                  <div className="min-w-0">
-                    <h2 className="truncate text-2xl font-black sm:text-3xl">{sponsor.name}</h2>
-                    <p className="mt-1 text-sm font-black uppercase tracking-[0.18em] text-ink/45">{sponsor.category}</p>
-                  </div>
+                  <Trophy className="mt-2 h-5 w-5 shrink-0 text-gold" />
                 </div>
-                <Trophy className="h-5 w-5 shrink-0 text-gold" />
+                <div>
+                  <h2 className="text-2xl font-black sm:text-3xl">{sponsor.name}</h2>
+                  <p className="mt-1 text-sm font-black uppercase tracking-[0.18em] text-ink/45">{sponsor.category}</p>
+                </div>
               </div>
             </div>
-            <div className="grid min-h-[260px] place-items-center border-b border-line bg-slate-950/25 p-3 sm:min-h-[340px]">
+            <div className="grid min-h-[300px] place-items-center border-b border-line bg-slate-950/25 p-3 sm:min-h-[500px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt={`${sponsor.name} sponsor Mundialito`} className={`${sponsor.imageSize} w-full rounded-lg object-contain`} src={sponsor.image} />
+              <img alt={`${sponsor.name} sponsor Mundialito`} className={`${sponsor.imageSize} h-auto w-full rounded-lg object-contain`} src={sponsor.image} />
             </div>
             <div className="p-5">
               <p className="text-base font-semibold text-ink/75">{sponsor.text}</p>
