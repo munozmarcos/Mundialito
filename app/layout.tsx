@@ -1,5 +1,6 @@
 import "@/app/globals.css";
 import { MainNav } from "@/components/main-nav";
+import { NotificationToasts } from "@/components/notification-toasts";
 import { SessionNav } from "@/components/session-nav";
 import { SoundToggle } from "@/components/sound-toggle";
 import { MundialitoMark, TournamentRibbon } from "@/components/world-cup-brand";
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </div>
           </nav>
         </header>
+        <NotificationToasts />
         <main className="shell app-shell-main py-8">{children}</main>
       </body>
     </html>
