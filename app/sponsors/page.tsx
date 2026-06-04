@@ -6,17 +6,17 @@ export const metadata = {
 
 const sponsors = [
   {
-    name: "Icaro Energia",
-    category: "Energia y soluciones",
-    text: "Acompana el Mundialito poniendo potencia, empuje y buena onda para que esta competencia entre amigos siga creciendo.",
+    name: "Icaro Energía",
+    category: "Energía y soluciones",
+    text: "Acompaña el Mundialito poniendo potencia, empuje y buena onda para que esta competencia entre amigos siga creciendo. Contactos: Alejandro 11-4472-3243 y Juan 0351-531-5425.",
     image: "/sponsor-icaro-v3.png",
     logo: "/sponsor-logo-icaro-v2.png",
     logoBox: "bg-[#b8c9cf]"
   },
   {
-    name: "Mates & Compania",
+    name: "Mates & Compañía",
     category: "Yerba mate misionera",
-    text: "El ritual perfecto para mirar partidos, cargar pronosticos y discutir resultados con algo rico al lado.",
+    text: "El ritual perfecto para mirar partidos, cargar pronósticos y discutir resultados con algo rico al lado.",
     image: "/sponsor-mates-v2.jpeg",
     logo: "/sponsor-logo-mates-v2.png",
     logoBox: "bg-black"
@@ -32,14 +32,14 @@ export default function SponsorsPage() {
             <span className="badge">Sponsors</span>
             <h1 className="mt-3 text-4xl font-black leading-tight sm:text-5xl">Los que bancan el Mundialito</h1>
             <p className="mt-4 text-lg font-semibold text-ink/75">
-              Empresas amigas que se suman a esta locura mundialista para ponerle mas color, premios y comunidad al prode.
+              Empresas amigas que se suman a esta locura mundialista para ponerle más color, premios y comunidad al prode.
             </p>
           </div>
           <div className="rounded-lg border border-line bg-field p-5">
             <Handshake className="h-8 w-8 text-grass" />
             <h2 className="mt-3 text-2xl font-black">Espacio para marcas amigas</h2>
             <p className="mt-2 text-sm font-semibold text-ink/70">
-              Si queres aparecer aca, escribile a Marcos y sumate al Mundialito 2026.
+              Si querés aparecer acá, escribile a Marcos y sumate al Mundialito 2026.
             </p>
           </div>
         </div>
