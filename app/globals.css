@@ -88,28 +88,34 @@ textarea {
 
 @media (max-width: 520px) {
   .shell {
-    width: min(100% - 10px, 1120px);
+    width: min(100% - 8px, 1120px);
   }
 
   .app-header-grid {
-    grid-template-columns: auto minmax(70px, 1fr) auto;
-    gap: 4px;
+    grid-template-columns: 36px minmax(74px, 1fr) auto;
+    gap: 3px;
     min-height: 54px;
     padding-top: 8px;
     padding-bottom: 8px;
   }
 
   .brand-logo-frame {
-    width: 76px !important;
-    height: 32px !important;
+    width: 82px !important;
+    height: 34px !important;
   }
 
   .brand-lockup {
     gap: 4px;
   }
 
+  .header-brand-link {
+    display: block;
+    max-width: 86px;
+    overflow: hidden;
+  }
+
   .header-actions {
-    gap: 4px;
+    gap: 3px;
   }
 
   .header-icon-btn {
@@ -141,7 +147,26 @@ textarea {
   }
 
   .session-name {
-    max-width: 42px;
+    max-width: 46px;
+  }
+}
+
+@media (max-width: 380px) {
+  .brand-logo-frame {
+    width: 70px !important;
+    height: 30px !important;
+  }
+
+  .header-brand-link {
+    max-width: 72px;
+  }
+
+  .session-pill {
+    padding-left: 5px;
+  }
+
+  .session-name {
+    max-width: 38px;
   }
 }
 

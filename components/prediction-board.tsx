@@ -466,7 +466,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [predictions, setPredictions] = useState<PredictionWithUpdated[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"cargar" | "tablas" | "llave">("cargar");
+  const [activeTab, setActiveTab] = useState<"todos" | "cargar" | "tablas" | "llave">("todos");
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [activeGroup, setActiveGroup] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
@@ -477,9 +477,11 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const knockoutMatches = matches.filter((match) => match.stage !== "GROUP");
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
   const byStage = groupBy(knockoutMatches, (match) => match.stage);
+  const bracket = useMemo(() => deriveBracket(groupMatches, knockoutMatches, predictionMap), [groupMatches, knockoutMatches, predictionMap]);
   const availableKnockoutStages = knockoutOrder.filter((stage) => byStage[stage]?.length);
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
   const selectedKnockoutMatches = selectedKnockoutStage ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter)) : [];
+  const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
   const loaded = predictions.length;
   const pending = matches.filter((match) => {
     if (predictionMap[match.id]) return false;
@@ -550,6 +552,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
 
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
+          ["todos", "Todos", Trophy],
           ["cargar", "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llave", "Llaves", GitBranch]
@@ -557,7 +560,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           <button
             className={`btn ${activeTab === key ? "" : "secondary"}`}
             key={key as string}
-            onClick={() => setActiveTab(key as "cargar" | "tablas" | "llave")}
+            onClick={() => setActiveTab(key as "todos" | "cargar" | "tablas" | "llave")}
             type="button"
           >
             <Icon className="h-4 w-4" />
@@ -565,6 +568,27 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           </button>
         ))}
       </section>
+
+      {activeTab === "todos" && (
+        <section className="grid gap-4">
+          <div>
+            <h3 className="text-2xl font-black">Todos</h3>
+            <p className="mb-3 mt-1 text-sm font-semibold text-ink/60">Todos los partidos en grilla, filtrables por país y fecha.</p>
+          </div>
+          <div className="match-card-grid">
+            {allFilteredMatches.map((match) => (
+              <PredictionCard
+                display={match.stage === "GROUP" ? undefined : bracket.displays[match.id]}
+                loggedIn={Boolean(user)}
+                match={match}
+                onSaved={upsertSaved}
+                prediction={predictionMap[match.id]}
+                key={match.id}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {activeTab === "cargar" && (
         <section className="panel overflow-x-auto p-2">

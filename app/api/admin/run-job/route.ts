@@ -24,7 +24,7 @@ const titles: Record<(typeof paths)[number], string> = {
   "/api/jobs/send-reminders": "Recordatorios 4h",
   "/api/jobs/lock-matches": "Cerrar 15m",
   "/api/jobs/notify-kickoff": "Avisar inicio",
-  "/api/jobs/send-daily-ranking": "Enviar ranking por WhatsApp",
+  "/api/jobs/send-daily-ranking": "Envío Ranking",
   "/api/jobs/notify-results": "Avisar resultado"
 };
 

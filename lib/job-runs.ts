@@ -5,13 +5,19 @@ export type JobTriggerType = "manual" | "automatic";
 export function summarizeJob(title: string, payload: any) {
   const data = payload?.data ?? payload ?? {};
   if (!payload?.ok && payload?.error) return `${title}: error - ${payload.error}`;
+
   const parts = [`${title}: ejecutado`];
+  if (typeof data.fetched === "number") parts.push(`${data.fetched} registros leídos`);
+  if (typeof data.imported === "number") parts.push(`${data.imported} registros importados`);
+  if (typeof data.placeholders === "number") parts.push(`${data.placeholders} llaves preparadas`);
+  if (typeof data.updated === "number") parts.push(`${data.updated} registros actualizados`);
   if (typeof data.matches === "number") parts.push(`${data.matches} partidos detectados`);
   if (typeof data.locked === "number") parts.push(`${data.locked} partidos cerrados`);
   if (typeof data.sent === "number") parts.push(`${data.sent} mensajes enviados`);
   if (typeof data.notifications === "number") parts.push(`${data.notifications} avisos enviados`);
-  if (typeof data.updated === "number") parts.push(`${data.updated} actualizados`);
-  if (typeof data.inserted === "number") parts.push(`${data.inserted} creados`);
+  if (typeof data.inserted === "number") parts.push(`${data.inserted} registros creados`);
+  if (Array.isArray(data.unmatched) && data.unmatched.length) parts.push(`${data.unmatched.length} sin asociar`);
+  if (data.providerError) parts.push(`proveedor: ${data.providerError}`);
   if (typeof data.failures?.length === "number" && data.failures.length) parts.push(`${data.failures.length} fallos`);
   if (data.skipped) parts.push(`omitido: ${data.reason ?? "sin cambios"}`);
   return parts.join(" · ");

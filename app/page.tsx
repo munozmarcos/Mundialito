@@ -38,6 +38,13 @@ function thisWeek(matches: Awaited<ReturnType<typeof getMatches>>) {
     .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime());
 }
 
+function podiumClass(index: number) {
+  if (index === 0) return "border-yellow-300/50 bg-yellow-300/12 text-yellow-200";
+  if (index === 1) return "border-slate-200/50 bg-slate-200/12 text-slate-100";
+  if (index === 2) return "border-orange-300/50 bg-orange-400/12 text-orange-200";
+  return "border-line";
+}
+
 export default async function Home() {
   const [allMatches, ranking, manualNews, automaticNews] = await Promise.all([getMatches(), getRanking(), getNewsItems(5), getAutomaticNewsItems(5)]);
   const matches = upcoming(allMatches, 6);
@@ -95,11 +102,15 @@ export default async function Home() {
                     </h3>
                     <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : match.stage, match.stadium].filter(Boolean).join(" - ")}</p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="grid justify-items-start gap-2 sm:justify-items-end">
                     <StatusPill
                       status={isMatchBlockedUntilOfficial(match) ? "locked" : matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status)}
                       label={isMatchBlockedUntilOfficial(match) ? "Bloqueado" : undefined}
                     />
+                    <div className="grid grid-cols-[52px_52px] gap-2">
+                      <input className="field h-10 text-center text-sm font-black" readOnly value={match.home_goals ?? ""} aria-label={`Goles ${match.home_team}`} />
+                      <input className="field h-10 text-center text-sm font-black" readOnly value={match.away_goals ?? ""} aria-label={`Goles ${match.away_team}`} />
+                    </div>
                   </div>
                 </article>
               ))}
@@ -107,7 +118,7 @@ export default async function Home() {
           )}
         </section>
 
-        <div className="grid gap-4 content-start">
+        <div className="grid content-start gap-4">
           <section className="panel overflow-hidden">
             <div className="flex items-center gap-2 border-b border-line p-4">
               <Trophy className="h-5 w-5 text-gold" />
@@ -117,8 +128,8 @@ export default async function Home() {
               <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay ranking.</p>
             ) : (
               ranking.slice(0, 3).map((row, index) => (
-                <div className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-line p-4 last:border-0" key={row.user_id}>
-                  <strong className="text-gold">#{index + 1}</strong>
+                <div className={`grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b p-4 last:border-0 ${podiumClass(index)}`} key={row.user_id}>
+                  <strong>#{index + 1}</strong>
                   <div>
                     <strong>{row.display_name}</strong>
                     <p className="text-xs text-ink/60">{row.exact_hits} exactos - {row.trend_hits} tendencias</p>
@@ -166,4 +177,3 @@ export default async function Home() {
     </div>
   );
 }
-

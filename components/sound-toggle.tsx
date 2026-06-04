@@ -14,12 +14,14 @@ function youtubeCommand(command: string, args: unknown[] = []) {
 export function SoundToggle() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [enabled, setEnabled] = useState(false);
-  const [ready, setReady] = useState(false);
   const [origin, setOrigin] = useState("");
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     setOrigin(window.location.origin);
-    setEnabled(window.localStorage.getItem("mundialito-music-enabled") === "true");
+    const saved = window.localStorage.getItem("mundialito-music-enabled") === "true";
+    setEnabled(saved);
+    if (saved) setNonce((current) => current + 1);
   }, []);
 
   function send(command: string, args: unknown[] = []) {
@@ -28,25 +30,33 @@ export function SoundToggle() {
 
   function playChorus() {
     send("seekTo", [chorusStart, true]);
+    send("setVolume", [75]);
     send("unMute");
     send("playVideo");
   }
 
-  useEffect(() => {
-    if (!ready) return;
-    if (enabled) playChorus();
-    else {
-      send("mute");
-      send("pauseVideo");
-    }
-  }, [enabled, ready]);
+  function stopMusic() {
+    send("mute");
+    send("pauseVideo");
+  }
 
   function toggle() {
     const next = !enabled;
     setEnabled(next);
     window.localStorage.setItem("mundialito-music-enabled", String(next));
     window.dispatchEvent(new CustomEvent("mundialito:mute", { detail: { muted: !next } }));
+    if (next) {
+      setNonce((current) => current + 1);
+      window.setTimeout(playChorus, 450);
+    } else {
+      stopMusic();
+    }
   }
+
+  const src =
+    origin && enabled
+      ? `https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(origin)}&playsinline=1&autoplay=1&mute=0&loop=1&playlist=${videoId}&start=${chorusStart}&end=${chorusEnd}&controls=0&disablekb=1&rel=0&v=${nonce}`
+      : "";
 
   return (
     <>
@@ -59,14 +69,14 @@ export function SoundToggle() {
       >
         {enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
       </button>
-      {origin && (
+      {src && (
         <iframe
           allow="autoplay; encrypted-media"
           aria-hidden="true"
           className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px opacity-0"
-          onLoad={() => setReady(true)}
+          onLoad={() => window.setTimeout(playChorus, 250)}
           ref={iframeRef}
-          src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(origin)}&playsinline=1&loop=1&playlist=${videoId}&start=${chorusStart}&end=${chorusEnd}&controls=0&disablekb=1`}
+          src={src}
           tabIndex={-1}
           title="Música Mundialito"
         />

@@ -101,7 +101,7 @@ export default function WhatsAppAdminPage() {
         <span className="badge">WhatsApp</span>
         <h1 className="mt-3 flex items-center gap-2 text-3xl font-black">
           <MessageCircle className="h-7 w-7 text-grass" />
-          Mensaje Broadcast
+          Broadcasts
         </h1>
         <p className="mt-2 text-ink/70">Envío de mensaje general por WhatsApp a los participantes seleccionados.</p>
       </section>

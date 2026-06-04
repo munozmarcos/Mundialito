@@ -9,7 +9,7 @@ export type MatchStage =
   | "THIRD_PLACE"
   | "FINAL";
 
-export type MatchStatus = "open" | "locked" | "closed" | "closing_soon";
+export type MatchStatus = "open" | "locked" | "closed" | "closing_soon" | "playing";
 
 export type Profile = {
   id: string;

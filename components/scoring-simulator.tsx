@@ -319,7 +319,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   const [results, setResults] = useState<ResultMap>(() => initialResults(matches));
   const [bulk, setBulk] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"cargar" | "tablas" | "llave">("cargar");
+  const [activeTab, setActiveTab] = useState<"todos" | "cargar" | "tablas" | "llave">("todos");
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
@@ -338,6 +338,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   const selectedKnockoutMatches = selectedKnockoutStage
     ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter))
     : [];
+  const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
   const availableGroups = Object.keys(byGroup).sort();
   const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
   const filteredGroups = Object.entries(byGroup)
@@ -554,6 +555,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
 
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
+          ["todos", "Todos", Trophy],
           ["cargar", "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llave", "Llaves", GitBranch]
@@ -561,7 +563,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
           <button
             className={`btn ${activeTab === key ? "" : "secondary"}`}
             key={key as string}
-            onClick={() => setActiveTab(key as "cargar" | "tablas" | "llave")}
+            onClick={() => setActiveTab(key as "todos" | "cargar" | "tablas" | "llave")}
             type="button"
           >
             <Icon className="h-4 w-4" />
@@ -569,6 +571,18 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
           </button>
         ))}
       </section>
+
+      {activeTab === "todos" && (
+        <section className="grid gap-4">
+          <div>
+            <h3 className="text-2xl font-black">Todos</h3>
+            <p className="mb-3 mt-1 text-sm font-semibold text-ink/60">Todos los partidos del simulador en grilla, filtrables por país y fecha.</p>
+          </div>
+          <div className="match-card-grid">
+            {allFilteredMatches.map((match) => resultCard(match))}
+          </div>
+        </section>
+      )}
 
       {activeTab === "cargar" && (
         <section className="panel overflow-x-auto p-2">

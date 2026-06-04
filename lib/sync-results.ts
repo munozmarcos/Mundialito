@@ -21,7 +21,25 @@ export async function syncResultsFromProvider() {
   }
 
   const db = supabaseAdmin();
-  const providerResults = await fetchProviderResults();
+  let providerResults: ProviderResult[] = [];
+  let providerError: string | null = null;
+
+  try {
+    providerResults = await fetchProviderResults();
+  } catch (error) {
+    providerError = error instanceof Error ? error.message : "No se pudo consultar el proveedor de resultados.";
+  }
+
+  if (providerError) {
+    return {
+      mode: "provider-error",
+      fetched: 0,
+      updated: 0,
+      unmatched: [],
+      providerError
+    };
+  }
+
   const { data: matches, error } = await db.from("matches").select("*").neq("status", "closed");
   if (error) throw error;
 

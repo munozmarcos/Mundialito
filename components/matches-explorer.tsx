@@ -264,7 +264,7 @@ function MatchCard({ match, display }: { match: Match; display?: DisplayMatch })
 }
 
 export function MatchesExplorer({ matches }: { matches: Match[] }) {
-  const [activeTab, setActiveTab] = useState<"grupos" | "tablas" | "llaves">("grupos");
+  const [activeTab, setActiveTab] = useState<"todos" | "grupos" | "tablas" | "llaves">("todos");
   const [activeGroup, setActiveGroup] = useState("");
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [teamFilter, setTeamFilter] = useState("");
@@ -283,6 +283,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const availableKnockoutStages = knockoutOrder.filter((stage) => byStage[stage]?.length);
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
   const selectedKnockoutMatches = selectedKnockoutStage ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter)) : [];
+  const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
   const filteredGroups = Object.entries(byGroup)
     .filter(([group]) => activeTab === "tablas" || !selectedGroup || group === selectedGroup)
     .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
@@ -311,6 +312,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
 
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
+          ["todos", "Todos", Trophy],
           ["grupos", "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llaves", "Llaves", GitBranch]
@@ -318,7 +320,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
           <button
             className={`btn ${activeTab === key ? "" : "secondary"}`}
             key={key as string}
-            onClick={() => setActiveTab(key as "grupos" | "tablas" | "llaves")}
+            onClick={() => setActiveTab(key as "todos" | "grupos" | "tablas" | "llaves")}
             type="button"
           >
             <Icon className="h-4 w-4" />
@@ -326,6 +328,20 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
           </button>
         ))}
       </section>
+
+      {activeTab === "todos" && (
+        <section className="grid gap-4">
+          <div>
+            <h2 className="text-2xl font-black">Todos</h2>
+            <p className="mt-1 text-sm font-semibold text-ink/60">Grilla completa con filtro por país y fecha.</p>
+          </div>
+          <div className="match-card-grid">
+            {allFilteredMatches.map((match) => (
+              <MatchCard key={match.id} match={match} display={bracket.displays[match.id]} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {activeTab === "grupos" && (
         <section className="panel overflow-x-auto p-2">

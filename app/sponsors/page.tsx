@@ -12,7 +12,8 @@ const sponsors = [
     image: "/sponsor-icaro.jpeg",
     logo: "/sponsor-logo-icaro.png",
     logoBox: "bg-[#b8c9cf]",
-    logoSize: "h-16 w-28"
+    logoSize: "h-16 w-36",
+    imageSize: "max-h-[460px]"
   },
   {
     name: "Mates y Compañía",
@@ -21,7 +22,8 @@ const sponsors = [
     image: "/sponsor-mates.jpeg",
     logo: "/sponsor-logo-mates.png",
     logoBox: "bg-black",
-    logoSize: "h-14 w-32"
+    logoSize: "h-14 w-40",
+    imageSize: "max-h-[460px]"
   }
 ];
 
@@ -65,9 +67,9 @@ export default function SponsorsPage() {
                 <Trophy className="h-5 w-5 shrink-0 text-gold" />
               </div>
             </div>
-            <div className="grid min-h-[280px] place-items-center border-b border-line bg-slate-950/25 p-3 sm:min-h-[360px]">
+            <div className="grid min-h-[260px] place-items-center border-b border-line bg-slate-950/25 p-3 sm:min-h-[340px]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt={`${sponsor.name} sponsor Mundialito`} className="max-h-[560px] w-full rounded-lg object-contain" src={sponsor.image} />
+              <img alt={`${sponsor.name} sponsor Mundialito`} className={`${sponsor.imageSize} w-full rounded-lg object-contain`} src={sponsor.image} />
             </div>
             <div className="p-5">
               <p className="text-base font-semibold text-ink/75">{sponsor.text}</p>
