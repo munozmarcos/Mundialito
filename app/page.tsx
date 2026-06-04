@@ -159,19 +159,23 @@ export default async function Home() {
               <>
                 {newsItems.map((item) => (
                   <div className="border-b border-line p-4" key={item.id}>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-black uppercase text-gold">Aviso Mundialito</p>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <h3 className="font-black">{item.title}</h3>
                       <time className="text-xs font-black text-ink/45" dateTime={item.created_at}>
                         {formatArgentinaDateTime(item.created_at)}
                       </time>
                     </div>
-                    <h3 className="mt-1 font-black">{item.title}</h3>
                     <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-ink/70">{item.body}</p>
                   </div>
                 ))}
                 {weekMatches.map((match) => (
                   <div className="border-b border-line p-4 last:border-0" key={match.id}>
-                    <p className="text-xs font-black uppercase text-ink/45">{formatArgentinaDateTime(match.kickoff_at)}</p>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <h3 className="font-black">Próximos</h3>
+                      <time className="text-xs font-black text-ink/45" dateTime={match.kickoff_at}>
+                        {formatArgentinaDateTime(match.kickoff_at)}
+                      </time>
+                    </div>
                     <p className="mt-1 flex flex-wrap items-center gap-2 font-bold">
                       <TeamLabel name={match.home_team} code={match.home_country_code} />
                       <span className="text-ink/40">vs</span>

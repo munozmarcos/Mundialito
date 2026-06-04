@@ -92,7 +92,7 @@ textarea {
   }
 
   .app-header-grid {
-    grid-template-columns: 44px minmax(70px, 1fr) auto;
+    grid-template-columns: 42px minmax(116px, 1fr) auto;
     gap: 3px;
     min-height: 54px;
     padding-top: 8px;
@@ -100,8 +100,8 @@ textarea {
   }
 
   .brand-logo-frame {
-    width: 58px !important;
-    height: 32px !important;
+    width: 54px !important;
+    height: 30px !important;
   }
 
   .brand-lockup {
@@ -114,19 +114,24 @@ textarea {
   }
 
   .brand-wordmark .text-base {
-    font-size: 10px;
+    font-size: 9px;
     line-height: 1;
   }
 
-  .brand-wordmark .text-\[11px\] {
+  .brand-wordmark-compact {
+    min-width: 48px;
+  }
+
+  .brand-year {
+    gap: 4px;
     font-size: 9px;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.04em;
   }
 
   .header-brand-link {
     display: flex;
     justify-content: center;
-    max-width: 118px;
+    max-width: 126px;
     overflow: hidden;
   }
 
@@ -137,28 +142,28 @@ textarea {
   }
 
   .header-icon-btn {
-    width: 44px;
-    min-width: 44px;
-    max-width: 44px;
-    flex: 0 0 44px;
-    min-height: 44px;
-    height: 44px;
+    width: 38px;
+    min-width: 38px;
+    max-width: 38px;
+    flex: 0 0 38px;
+    min-height: 38px;
+    height: 38px;
     padding-left: 0;
     padding-right: 0;
   }
 
   .header-icon-btn svg {
-    width: 22px;
-    height: 22px;
+    width: 19px;
+    height: 19px;
   }
 
   .header-login-btn {
-    width: 44px;
-    min-width: 44px;
-    max-width: 44px;
-    flex: 0 0 44px;
-    min-height: 44px;
-    height: 44px;
+    width: 38px;
+    min-width: 38px;
+    max-width: 38px;
+    flex: 0 0 38px;
+    min-height: 38px;
+    height: 38px;
     padding-left: 0;
     padding-right: 0;
   }
@@ -166,32 +171,31 @@ textarea {
   .session-pill {
     flex: 0 0 auto;
     gap: 4px;
-    padding-left: 6px;
-    padding-right: 4px;
+    padding: 3px 4px;
   }
 
   .session-pill .header-icon-btn {
-    width: 36px;
-    min-width: 36px;
-    max-width: 36px;
-    flex-basis: 36px;
-    min-height: 36px;
-    height: 36px;
+    width: 32px;
+    min-width: 32px;
+    max-width: 32px;
+    flex-basis: 32px;
+    min-height: 32px;
+    height: 32px;
   }
 
   .session-name {
-    max-width: 46px;
+    max-width: 62px;
   }
 }
 
 @media (max-width: 380px) {
   .brand-logo-frame {
-    width: 52px !important;
-    height: 30px !important;
+    width: 48px !important;
+    height: 28px !important;
   }
 
   .header-brand-link {
-    max-width: 104px;
+    max-width: 112px;
   }
 
   .session-pill {
@@ -199,13 +203,13 @@ textarea {
   }
 
   .session-name {
-    max-width: 38px;
+    max-width: 52px;
   }
 }
 
 @media (max-width: 350px) {
   .app-header-grid {
-    grid-template-columns: 40px minmax(52px, 1fr) auto;
+    grid-template-columns: 38px minmax(82px, 1fr) auto;
   }
 
   .header-actions {
@@ -214,12 +218,12 @@ textarea {
 
   .header-icon-btn,
   .header-login-btn {
-    width: 40px;
-    min-width: 40px;
-    max-width: 40px;
-    flex-basis: 40px;
-    min-height: 40px;
-    height: 40px;
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    flex-basis: 36px;
+    min-height: 36px;
+    height: 36px;
   }
 
   .session-pill {
@@ -227,17 +231,21 @@ textarea {
     padding: 3px;
   }
 
-  .session-pill > .min-w-0 {
+  .session-name {
+    max-width: 42px;
+  }
+
+  .brand-wordmark {
     display: none;
   }
 
   .session-pill .header-icon-btn {
-    width: 34px;
-    min-width: 34px;
-    max-width: 34px;
-    flex-basis: 34px;
-    min-height: 34px;
-    height: 34px;
+    width: 30px;
+    min-width: 30px;
+    max-width: 30px;
+    flex-basis: 30px;
+    min-height: 30px;
+    height: 30px;
   }
 }
 

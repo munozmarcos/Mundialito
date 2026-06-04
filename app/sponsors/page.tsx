@@ -1,4 +1,4 @@
-import { Handshake, Trophy } from "lucide-react";
+import { Handshake, MessageCircle, Trophy } from "lucide-react";
 
 export const metadata = {
   title: "Sponsors | Mundialito"
@@ -8,7 +8,8 @@ const sponsors = [
   {
     name: "Icaro Energía",
     category: "Energía y soluciones",
-    text: "Acompaña el Mundialito poniendo potencia, empuje y buena onda para que esta competencia entre amigos siga creciendo. Contactos: Alejandro 11-4472-3243 y Juan 0351-531-5425.",
+    text: "Acompaña el Mundialito poniendo potencia, empuje y buena onda para que esta competencia entre amigos siga creciendo.",
+    contact: "Alejandro 11-4472-3243 · Juan 0351-531-5425",
     image: "/sponsor-icaro-v3.png",
     logo: "/sponsor-logo-icaro-v2.png",
     logoBox: "bg-[#b8c9cf]"
@@ -17,6 +18,7 @@ const sponsors = [
     name: "Mates & Compañía",
     category: "Yerba mate misionera",
     text: "El ritual perfecto para mirar partidos, cargar pronósticos y discutir resultados con algo rico al lado.",
+    contact: "Instagram @matesycompania",
     image: "/sponsor-mates-v2.jpeg",
     logo: "/sponsor-logo-mates-v2.png",
     logoBox: "bg-black"
@@ -67,8 +69,12 @@ export default function SponsorsPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img alt={`${sponsor.name} sponsor Mundialito`} className="h-auto max-h-[620px] w-full rounded-lg object-contain" src={sponsor.image} />
             </div>
-            <div className="p-5">
+            <div className="grid gap-4 p-5">
               <p className="text-base font-semibold text-ink/75">{sponsor.text}</p>
+              <div className="flex items-center gap-2 rounded-lg border border-emerald-400/25 bg-emerald-500/10 px-3 py-2 text-sm font-black text-emerald-100">
+                <MessageCircle className="h-4 w-4 shrink-0 text-grass" />
+                <span>{sponsor.contact}</span>
+              </div>
             </div>
           </article>
         ))}
