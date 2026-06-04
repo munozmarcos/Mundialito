@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, LogIn, MessageCircle, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, KeyRound, LogIn, MessageCircle, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -9,6 +9,36 @@ type SessionUser = {
   phone: string | null;
   paid: boolean;
 };
+
+type PasswordInputProps = {
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+};
+
+function PasswordInput({ placeholder, value, onChange }: PasswordInputProps) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="relative">
+      <input
+        className="field min-h-10 pr-12"
+        type={visible ? "text" : "password"}
+        placeholder={placeholder}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      <button
+        aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+        className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-ink/60 hover:bg-white/10 hover:text-ink"
+        type="button"
+        onClick={() => setVisible((current) => !current)}
+      >
+        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+}
 
 function LoginContent() {
   const searchParams = useSearchParams();
@@ -150,7 +180,7 @@ function LoginContent() {
                 {mode === "login" ? (
                   <div className="grid max-w-sm gap-3">
                     <input className="field min-h-10" placeholder="Apodo" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-                    <input className="field min-h-10" type="password" placeholder="Contraseña" value={password} onChange={(event) => setPassword(event.target.value)} />
+                    <PasswordInput placeholder="Contraseña" value={password} onChange={setPassword} />
                     <button className="btn" disabled={loading} type="button" onClick={loginWithPassword}>
                       <LogIn className="h-4 w-4" />
                       Entrar
@@ -169,7 +199,7 @@ function LoginContent() {
                     {step === "verify" && (
                       <>
                         <input className="field min-h-10 text-center text-xl font-black tracking-[0.24em]" inputMode="numeric" maxLength={6} placeholder="CÓDIGO" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
-                        <input className="field min-h-10" type="password" placeholder="Crear contraseña" value={password} onChange={(event) => setPassword(event.target.value)} />
+                        <PasswordInput placeholder="Crear contraseña" value={password} onChange={setPassword} />
                         <div className="flex flex-wrap gap-2">
                           <button className="btn" disabled={loading} type="button" onClick={verifyCodeAndSetPassword}>
                             <ShieldCheck className="h-4 w-4" />
@@ -194,7 +224,7 @@ function LoginContent() {
                     {step === "verify" && (
                       <>
                         <input className="field min-h-10 text-center text-xl font-black tracking-[0.24em]" inputMode="numeric" maxLength={6} placeholder="CÓDIGO" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
-                        <input className="field min-h-10" type="password" placeholder="Nueva contraseña" value={password} onChange={(event) => setPassword(event.target.value)} />
+                        <PasswordInput placeholder="Nueva contraseña" value={password} onChange={setPassword} />
                         <div className="flex flex-wrap gap-2">
                           <button className="btn" disabled={loading} type="button" onClick={verifyCodeAndSetPassword}>
                             <ShieldCheck className="h-4 w-4" />
