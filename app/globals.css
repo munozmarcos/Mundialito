@@ -33,7 +33,7 @@ textarea {
 }
 
 .shell {
-  width: min(1600px, calc(100% - 32px));
+  width: min(1120px, calc(100% - 32px));
   margin: 0 auto;
 }
 
@@ -100,7 +100,7 @@ textarea {
   }
 
   .brand-logo-frame {
-    width: 76px !important;
+    width: 58px !important;
     height: 32px !important;
   }
 
@@ -108,9 +108,24 @@ textarea {
     gap: 4px;
   }
 
-  .header-brand-link {
+  .brand-wordmark {
     display: block;
-    max-width: 86px;
+  }
+
+  .brand-wordmark .text-base {
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  .brand-wordmark .text-\[11px\] {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+
+  .header-brand-link {
+    display: flex;
+    justify-content: center;
+    max-width: 118px;
     overflow: hidden;
   }
 
@@ -158,12 +173,12 @@ textarea {
 
 @media (max-width: 380px) {
   .brand-logo-frame {
-    width: 64px !important;
+    width: 52px !important;
     height: 30px !important;
   }
 
   .header-brand-link {
-    max-width: 72px;
+    max-width: 104px;
   }
 
   .session-pill {
@@ -309,6 +324,7 @@ select.field {
   align-items: center;
   gap: 10px;
   color: #f4f8ff;
+  min-width: 180px;
 }
 
 .brand-logo-frame {
@@ -318,8 +334,15 @@ select.field {
   place-items: center;
   border-radius: 8px;
   background: #061426;
-  box-shadow: 0 12px 24px rgba(24, 142, 241, 0.24);
   overflow: hidden;
+}
+
+.brand-wordmark {
+  color: #f4f8ff;
+}
+
+.brand-wordmark-compact {
+  min-width: 84px;
 }
 
 .brand-logo {
@@ -384,34 +407,39 @@ select.field {
 
 @media (min-width: 768px) {
   .hero-pitch {
-    display: grid;
-    grid-template-columns: minmax(0, 0.88fr) minmax(360px, 1.12fr);
+    display: flex;
     align-items: center;
-    min-height: 520px;
+    min-height: 560px;
     background:
-      linear-gradient(90deg, rgba(1, 14, 30, 0.96) 0%, rgba(1, 14, 30, 0.82) 38%, rgba(1, 14, 30, 0.16) 100%),
-      url("/mundialito-hero.jpg") right center / auto 94% no-repeat,
+      linear-gradient(90deg, rgba(1, 14, 30, 0.9) 0%, rgba(1, 14, 30, 0.5) 42%, rgba(1, 14, 30, 0.12) 100%),
+      url("/mundialito-hero-wide.png") center center / cover no-repeat,
       #061426;
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    padding-left: max(32px, calc((100vw - 1120px) / 2 + 32px));
+    padding-right: max(32px, calc((100vw - 1120px) / 2 + 32px));
   }
 }
 
 @media (min-width: 1280px) {
   .hero-pitch {
-    grid-template-columns: minmax(0, 0.8fr) minmax(580px, 1.2fr);
-    min-height: 560px;
+    min-height: 640px;
     background:
-      linear-gradient(90deg, rgba(1, 14, 30, 0.96) 0%, rgba(1, 14, 30, 0.78) 34%, rgba(1, 14, 30, 0.08) 100%),
-      url("/mundialito-hero.jpg") right center / auto 96% no-repeat,
+      linear-gradient(90deg, rgba(1, 14, 30, 0.9) 0%, rgba(1, 14, 30, 0.48) 38%, rgba(1, 14, 30, 0.1) 100%),
+      url("/mundialito-hero-wide.png") center center / cover no-repeat,
       #061426;
   }
 }
 
 @media (min-width: 1680px) {
   .hero-pitch {
-    min-height: 600px;
+    min-height: 700px;
     background:
-      linear-gradient(90deg, rgba(1, 14, 30, 0.96) 0%, rgba(1, 14, 30, 0.74) 32%, rgba(1, 14, 30, 0.05) 100%),
-      url("/mundialito-hero.jpg") right center / auto 98% no-repeat,
+      linear-gradient(90deg, rgba(1, 14, 30, 0.9) 0%, rgba(1, 14, 30, 0.44) 36%, rgba(1, 14, 30, 0.08) 100%),
+      url("/mundialito-hero-wide.png") center center / cover no-repeat,
       #061426;
   }
 }

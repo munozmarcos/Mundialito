@@ -189,7 +189,7 @@ function LoginContent() {
                 ) : mode === "signup" ? (
                   <div className="grid max-w-sm gap-3">
                     <input className="field min-h-10" placeholder="Apodo" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-                    <input className="field min-h-10" inputMode="tel" placeholder="+549-XXXX-XXXX" value={phone} onChange={(event) => setPhone(event.target.value)} />
+                    <input className="field min-h-10" inputMode="tel" placeholder="WhatsApp +549-XXXX-XXXX" value={phone} onChange={(event) => setPhone(event.target.value)} />
                     {step === "request" && (
                       <button className="btn" disabled={loading} type="button" onClick={requestCode}>
                         <MessageCircle className="h-4 w-4" />

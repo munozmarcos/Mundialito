@@ -7,12 +7,10 @@ export function MundialitoMark({ compact = false }: { compact?: boolean }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img alt="Mundialito 2026" className="brand-logo" src="/mundialito-logo.png" />
       </div>
-      {!compact && (
-        <div className="leading-tight">
-          <div className="text-base font-black uppercase tracking-[0.08em]">Mundialito</div>
-          <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-ink/55">Prode entre amigos</div>
-        </div>
-      )}
+      <div className={`brand-wordmark leading-tight ${compact ? "brand-wordmark-compact" : ""}`}>
+        <div className="text-base font-black uppercase tracking-[0.08em]">Mundialito</div>
+        <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-ink/55">{compact ? "2026" : "Prode entre amigos"}</div>
+      </div>
     </div>
   );
 }
