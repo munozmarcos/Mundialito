@@ -12,7 +12,7 @@ const sponsors = [
     image: "/sponsor-icaro.jpeg",
     logo: "/sponsor-logo-icaro.png",
     logoBox: "bg-[#b8c9cf]",
-    logoSize: "h-16 w-36",
+    logoSize: "h-24 w-44 sm:h-28 sm:w-56",
     imageSize: "max-h-[460px]"
   },
   {
@@ -53,11 +53,11 @@ export default function SponsorsPage() {
         {sponsors.map((sponsor) => (
           <article className="panel overflow-hidden" key={sponsor.name}>
             <div className="border-b border-line bg-field p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className={`grid ${sponsor.logoSize} shrink-0 place-items-center overflow-hidden rounded-lg border border-line p-1.5 ${sponsor.logoBox}`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-3">
+                  <span className={`grid ${sponsor.logoSize} shrink-0 place-items-center overflow-visible rounded-lg border border-line p-1.5 ${sponsor.logoBox}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img alt={`Logo ${sponsor.name}`} className="max-h-full max-w-full object-contain" src={sponsor.logo} />
+                    <img alt={`Logo ${sponsor.name}`} className="h-full w-full object-contain" src={sponsor.logo} />
                   </span>
                   <div className="min-w-0">
                     <h2 className="truncate text-2xl font-black sm:text-3xl">{sponsor.name}</h2>

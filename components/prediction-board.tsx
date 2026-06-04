@@ -149,6 +149,15 @@ function isMatchUnavailable(match: Match, display?: DisplayMatch) {
   return isPlaceholderTeam(home) || isPlaceholderTeam(away);
 }
 
+function lockedDisplay(match: Match, display?: DisplayMatch): DisplayMatch | undefined {
+  if (match.stage === "GROUP") return display;
+  if (!isMatchUnavailable(match, display)) return display;
+  return {
+    home: { name: isPlaceholderTeamName(match.home_team) ? match.home_team : "Por definir" },
+    away: { name: isPlaceholderTeamName(match.away_team) ? match.away_team : "Por definir" }
+  };
+}
+
 function TeamOrLock({ team }: { team: DisplayTeam }) {
   if (!isPlaceholderTeam(team)) return <TeamLabel name={team.name} code={team.code} />;
   return (
@@ -264,7 +273,8 @@ function PredictionCard({
   onSaved: (prediction: PredictionWithUpdated) => void;
 }) {
   const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
-  const unavailable = isMatchUnavailable(match, display);
+  const safeDisplay = lockedDisplay(match, display);
+  const unavailable = isMatchUnavailable(match, safeDisplay);
   const locked = status === "locked" || status === "closed" || unavailable;
   const [homeGoals, setHomeGoals] = useState<number | "">(prediction?.home_goals ?? "");
   const [awayGoals, setAwayGoals] = useState<number | "">(prediction?.away_goals ?? "");
@@ -307,8 +317,8 @@ function PredictionCard({
   const realResult = hasResult ? `${match.home_goals}-${match.away_goals}` : "Pendiente";
   const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
   const pointsReady = prediction && hasResult;
-  const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
-  const away = display?.away ?? { name: match.away_team, code: match.away_country_code };
+  const home = safeDisplay?.home ?? { name: match.home_team, code: match.home_country_code };
+  const away = safeDisplay?.away ?? { name: match.away_team, code: match.away_country_code };
   return (
     <article className="rounded-lg border border-line bg-white p-3">
       <div className="mb-3 flex items-center justify-between gap-3">

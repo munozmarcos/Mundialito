@@ -345,6 +345,9 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
     .filter(([group]) => activeTab === "tablas" || !selectedGroup || group === selectedGroup)
     .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
     .filter(([, items]) => items.length);
+  const groupPhaseComplete =
+    groupMatches.length > 0 &&
+    groupMatches.every((match) => results[match.id]?.home !== "" && results[match.id]?.away !== "");
 
   useEffect(() => {
     let mounted = true;
@@ -462,8 +465,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
 
   function resultCard(match: Match) {
     const result = results[match.id];
-    const isKnockoutTie = match.stage !== "GROUP" && result?.home !== "" && result?.away !== "" && result?.home === result?.away;
-    const display =
+    const rawDisplay =
       match.stage === "GROUP"
         ? {
             home: { name: match.home_team, code: match.home_country_code },
@@ -473,6 +475,11 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
             home: { name: match.home_team, code: match.home_country_code },
             away: { name: match.away_team, code: match.away_country_code }
           };
+    const knockoutBlocked = match.stage !== "GROUP" && (!groupPhaseComplete || isPlaceholderTeam(rawDisplay.home) || isPlaceholderTeam(rawDisplay.away));
+    const display = knockoutBlocked
+      ? { home: { name: "Por definir" }, away: { name: "Por definir" } }
+      : rawDisplay;
+    const isKnockoutTie = !knockoutBlocked && match.stage !== "GROUP" && result?.home !== "" && result?.away !== "" && result?.home === result?.away;
 
     return (
       <div className="grid gap-3 rounded-lg border border-line p-3" key={match.id}>
@@ -493,8 +500,10 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
               maxLength={2}
               pattern="[0-9]*"
               type="text"
-              value={result?.home ?? ""}
+              disabled={knockoutBlocked}
+              value={knockoutBlocked ? "" : result?.home ?? ""}
               onChange={(event) => {
+                if (knockoutBlocked) return;
                 const value = parseGoalInput(event.target.value);
                 if (value !== null && (value === "" || value <= 30)) setResult(match.id, "home", String(value));
               }}
@@ -509,8 +518,10 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
               maxLength={2}
               pattern="[0-9]*"
               type="text"
-              value={result?.away ?? ""}
+              disabled={knockoutBlocked}
+              value={knockoutBlocked ? "" : result?.away ?? ""}
               onChange={(event) => {
+                if (knockoutBlocked) return;
                 const value = parseGoalInput(event.target.value);
                 if (value !== null && (value === "" || value <= 30)) setResult(match.id, "away", String(value));
               }}
@@ -530,6 +541,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
             </div>
           </div>
         )}
+        {knockoutBlocked && <p className="text-xs font-bold text-slate-400">Completá todos los partidos de grupos para habilitar esta llave.</p>}
       </div>
     );
   }
