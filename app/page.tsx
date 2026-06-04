@@ -2,7 +2,7 @@ import { EmptyState } from "@/components/empty-state";
 import { HomePrimaryAction } from "@/components/home-primary-action";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
-import { getAutomaticNewsItems, getMatches, getNewsItems, getRanking } from "@/lib/data";
+import { getMatches, getNewsItems, getRanking, getRecentActivity, type ActivityRow } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { matchStatus } from "@/lib/scoring";
@@ -27,17 +27,6 @@ function upcoming(matches: Awaited<ReturnType<typeof getMatches>>, limit: number
     .slice(0, limit);
 }
 
-function thisWeek(matches: Awaited<ReturnType<typeof getMatches>>) {
-  const now = Date.now();
-  const weekEnd = now + 7 * 24 * 60 * 60 * 1000;
-  return matches
-    .filter((match) => {
-      const kickoff = new Date(match.kickoff_at).getTime();
-      return kickoff >= now && kickoff <= weekEnd && match.home_goals == null;
-    })
-    .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime());
-}
-
 function podiumClass(index: number) {
   if (index === 0) return "border-yellow-300/50 bg-yellow-300/12 text-yellow-200";
   if (index === 1) return "border-slate-200/50 bg-slate-200/12 text-slate-100";
@@ -45,11 +34,44 @@ function podiumClass(index: number) {
   return "border-line";
 }
 
+function firstRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function activityText(item: ActivityRow) {
+  const profile = firstRelation(item.profiles);
+  const match = firstRelation(item.matches);
+  const name = profile?.display_name ?? "Un participante";
+  const points = item.points === 1 ? "1 punto" : `${item.points} pts`;
+  const hit = item.exact_hit ? "resultado exacto" : item.trend_hit ? "tendencia" : "pronóstico";
+
+  if (!match) return `${name} sumó ${points} por su ${hit}.`;
+
+  const result =
+    match.home_goals == null || match.away_goals == null
+      ? ""
+      : ` (${match.home_goals}-${match.away_goals})`;
+  return `${name} sumó ${points} por ${match.home_team} vs ${match.away_team}${result}: ${hit}.`;
+}
+
 export default async function Home() {
-  const [allMatches, ranking, manualNews, automaticNews] = await Promise.all([getMatches(), getRanking(), getNewsItems(5), getAutomaticNewsItems(5)]);
+  const [allMatches, ranking, manualNews, activity] = await Promise.all([getMatches(), getRanking(), getNewsItems(5), getRecentActivity(5)]);
   const matches = upcoming(allMatches, 6);
-  const weekMatches = thisWeek(allMatches);
-  const newsItems = [...manualNews, ...automaticNews]
+  const newsItems = [
+    ...manualNews.map((item) => ({
+      id: item.id,
+      title: item.title,
+      body: item.body,
+      created_at: item.created_at
+    })),
+    ...activity.map((item) => ({
+      id: item.id,
+      title: "Puntos sumados",
+      body: activityText(item),
+      created_at: item.updated_at ?? new Date().toISOString()
+    }))
+  ]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5);
 
@@ -153,8 +175,8 @@ export default async function Home() {
               <CalendarDays className="h-5 w-5 text-gold" />
               <h2 className="text-xl font-black">Novedades</h2>
             </div>
-            {!newsItems.length && !weekMatches.length ? (
-              <p className="p-5 text-sm font-semibold text-ink/65">No quedan partidos pendientes esta semana.</p>
+            {!newsItems.length ? (
+              <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay novedades.</p>
             ) : (
               <>
                 {newsItems.map((item) => (
@@ -166,21 +188,6 @@ export default async function Home() {
                       </time>
                     </div>
                     <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-ink/70">{item.body}</p>
-                  </div>
-                ))}
-                {weekMatches.map((match) => (
-                  <div className="border-b border-line p-4 last:border-0" key={match.id}>
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <h3 className="font-black">Próximos</h3>
-                      <time className="text-xs font-black text-ink/45" dateTime={match.kickoff_at}>
-                        {formatArgentinaDateTime(match.kickoff_at)}
-                      </time>
-                    </div>
-                    <p className="mt-1 flex flex-wrap items-center gap-2 font-bold">
-                      <TeamLabel name={match.home_team} code={match.home_country_code} />
-                      <span className="text-ink/40">vs</span>
-                      <TeamLabel name={match.away_team} code={match.away_country_code} />
-                    </p>
                   </div>
                 ))}
               </>
