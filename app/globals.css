@@ -153,8 +153,8 @@ textarea {
   }
 
   .header-icon-btn svg {
-    width: 19px;
-    height: 19px;
+    width: 24px;
+    height: 24px;
   }
 
   .header-login-btn {
@@ -184,7 +184,11 @@ textarea {
   }
 
   .session-name {
-    max-width: 62px;
+    max-width: 84px;
+  }
+
+  .header-actions > .header-icon-btn:first-child {
+    display: none;
   }
 }
 
@@ -203,7 +207,7 @@ textarea {
   }
 
   .session-name {
-    max-width: 52px;
+    max-width: 72px;
   }
 }
 
@@ -232,7 +236,7 @@ textarea {
   }
 
   .session-name {
-    max-width: 42px;
+    max-width: 58px;
   }
 
   .brand-wordmark {
@@ -502,6 +506,56 @@ select.field {
       linear-gradient(90deg, rgba(1, 14, 30, 0.9) 0%, rgba(1, 14, 30, 0.44) 36%, rgba(1, 14, 30, 0.08) 100%),
       url("/mundialito-hero-wide.png") center center / cover no-repeat,
       #061426;
+  }
+}
+
+@media (max-width: 520px) {
+  .brand-lockup {
+    min-width: 0 !important;
+    gap: 5px !important;
+  }
+
+  .brand-logo-frame {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 999px;
+  }
+
+  .brand-logo {
+    object-fit: cover;
+  }
+
+  .brand-wordmark-compact {
+    min-width: 74px !important;
+  }
+
+  .brand-wordmark .text-base {
+    font-size: 11px;
+  }
+
+  .brand-year {
+    gap: 5px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 350px) {
+  .brand-logo-frame {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .brand-wordmark-compact {
+    display: block;
+    min-width: 68px !important;
+  }
+
+  .brand-wordmark .text-base {
+    font-size: 10px;
+  }
+
+  .brand-year {
+    font-size: 10px;
   }
 }
 
