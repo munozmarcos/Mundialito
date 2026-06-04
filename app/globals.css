@@ -177,6 +177,12 @@ textarea {
     height: 26px !important;
   }
 
+  .header-action-icon {
+    width: 28px !important;
+    height: 28px !important;
+    stroke-width: 2.6;
+  }
+
   .header-login-btn {
     width: 38px;
     min-width: 38px;
@@ -207,6 +213,11 @@ textarea {
   .session-name {
     max-width: 58px;
     font-size: 13px;
+  }
+
+  .session-user-icon {
+    width: 30px !important;
+    height: 30px !important;
   }
 }
 
@@ -535,46 +546,36 @@ select.field {
   }
 
   .brand-logo-frame {
-    width: 34px !important;
-    height: 34px !important;
-    border-radius: 999px;
-  }
-
-  .brand-logo {
-    object-fit: cover;
+    display: none;
   }
 
   .brand-wordmark-compact {
-    min-width: 58px !important;
+    min-width: 92px !important;
   }
 
   .brand-wordmark .text-base {
-    font-size: 9px;
+    font-size: 14px;
   }
 
   .brand-year {
-    gap: 4px;
-    font-size: 10px;
+    gap: 8px;
+    font-size: 15px;
   }
 }
 
 @media (max-width: 350px) {
-  .brand-logo-frame {
-    width: 30px !important;
-    height: 30px !important;
-  }
-
   .brand-wordmark-compact {
     display: block;
-    min-width: 52px !important;
+    min-width: 76px !important;
   }
 
   .brand-wordmark .text-base {
-    font-size: 8px;
+    font-size: 11px;
   }
 
   .brand-year {
-    font-size: 9px;
+    gap: 5px;
+    font-size: 12px;
   }
 }
 
