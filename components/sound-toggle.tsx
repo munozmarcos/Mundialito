@@ -3,61 +3,38 @@
 import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-const videoId = "rPrRa-EehAQ";
-const chorusStart = 78;
-const chorusEnd = 112;
-const youtubeOrigin = "https://www.youtube.com";
-
-function youtubeCommand(command: string, args: unknown[] = []) {
-  return JSON.stringify({ event: "command", func: command, args });
-}
+const audioSrc = "/audio/no-payne-no-gain.mp3";
 
 export function SoundToggle() {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [enabled, setEnabled] = useState(false);
-  const [origin, setOrigin] = useState("");
-  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    setOrigin(window.location.origin);
     const saved = window.localStorage.getItem("mundialito-music-enabled") === "true";
     setEnabled(saved);
-    if (saved) setNonce((current) => current + 1);
   }, []);
 
-  function send(command: string, args: unknown[] = []) {
-    iframeRef.current?.contentWindow?.postMessage(youtubeCommand(command, args), youtubeOrigin);
-  }
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
 
-  function playChorus() {
-    send("seekTo", [chorusStart, true]);
-    send("setVolume", [75]);
-    send("unMute");
-    send("playVideo");
-  }
-
-  function stopMusic() {
-    send("mute");
-    send("pauseVideo");
-  }
+    audio.volume = 0.75;
+    if (enabled) {
+      audio.play().catch(() => {
+        setEnabled(false);
+        window.localStorage.setItem("mundialito-music-enabled", "false");
+      });
+    } else {
+      audio.pause();
+    }
+  }, [enabled]);
 
   function toggle() {
     const next = !enabled;
     setEnabled(next);
     window.localStorage.setItem("mundialito-music-enabled", String(next));
     window.dispatchEvent(new CustomEvent("mundialito:mute", { detail: { muted: !next } }));
-    if (next) {
-      setNonce((current) => current + 1);
-      window.setTimeout(playChorus, 450);
-    } else {
-      stopMusic();
-    }
   }
-
-  const src =
-    origin && enabled
-      ? `${youtubeOrigin}/embed/${videoId}?enablejsapi=1&origin=${encodeURIComponent(origin)}&playsinline=1&autoplay=1&mute=0&loop=1&playlist=${videoId}&start=${chorusStart}&end=${chorusEnd}&controls=0&disablekb=1&rel=0&v=${nonce}`
-      : "";
 
   return (
     <>
@@ -70,18 +47,7 @@ export function SoundToggle() {
       >
         {enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
       </button>
-      {src && (
-        <iframe
-          allow="autoplay; encrypted-media"
-          aria-hidden="true"
-          className="pointer-events-none fixed -left-[9999px] top-0 h-px w-px opacity-0"
-          onLoad={() => window.setTimeout(playChorus, 250)}
-          ref={iframeRef}
-          src={src}
-          tabIndex={-1}
-          title="Musica Mundialito"
-        />
-      )}
+      <audio ref={audioRef} loop preload="auto" src={audioSrc} />
     </>
   );
 }
