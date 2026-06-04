@@ -353,7 +353,7 @@ select.field {
     linear-gradient(90deg, rgba(1, 14, 30, 0.9), rgba(1, 14, 30, 0.58), rgba(1, 14, 30, 0.76)),
     url("/mundialito-hero.jpg") center top / cover no-repeat,
     #061426;
-  min-height: 600px;
+  min-height: 560px;
 }
 
 .hero-pitch::after {
@@ -380,6 +380,28 @@ select.field {
   display: block;
   width: 100%;
   height: auto;
+}
+
+@media (min-width: 768px) {
+  .hero-pitch {
+    display: flex;
+    align-items: center;
+    min-height: 460px;
+    background:
+      linear-gradient(90deg, rgba(1, 14, 30, 0.94) 0%, rgba(1, 14, 30, 0.82) 45%, rgba(1, 14, 30, 0.38) 100%),
+      url("/mundialito-hero.jpg") right 32px center / auto 92% no-repeat,
+      #061426;
+  }
+}
+
+@media (min-width: 1280px) {
+  .hero-pitch {
+    min-height: 500px;
+    background:
+      linear-gradient(90deg, rgba(1, 14, 30, 0.94) 0%, rgba(1, 14, 30, 0.78) 42%, rgba(1, 14, 30, 0.26) 100%),
+      url("/mundialito-hero.jpg") right 72px center / auto 88% no-repeat,
+      #061426;
+  }
 }
 
 .mascot-card {
