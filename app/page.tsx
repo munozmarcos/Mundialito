@@ -159,7 +159,12 @@ export default async function Home() {
               <>
                 {newsItems.map((item) => (
                   <div className="border-b border-line p-4" key={item.id}>
-                    <p className="text-xs font-black uppercase text-gold">Aviso Mundialito</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-black uppercase text-gold">Aviso Mundialito</p>
+                      <time className="text-xs font-black text-ink/45" dateTime={item.created_at}>
+                        {formatArgentinaDateTime(item.created_at)}
+                      </time>
+                    </div>
                     <h3 className="mt-1 font-black">{item.title}</h3>
                     <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-ink/70">{item.body}</p>
                   </div>

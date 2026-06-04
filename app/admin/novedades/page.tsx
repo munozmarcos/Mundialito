@@ -1,5 +1,6 @@
 "use client";
 
+import { formatArgentinaDateTime } from "@/lib/dates";
 import { Newspaper, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -110,7 +111,12 @@ export default function AdminNewsPage() {
           news.map((item) => (
             <div className="grid gap-3 border-b border-line p-4 last:border-0 sm:grid-cols-[1fr_auto] sm:items-start" key={item.id}>
               <div>
-                <h3 className="font-black">{item.title}</h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-black">{item.title}</h3>
+                  <time className="text-xs font-black text-ink/45" dateTime={item.created_at}>
+                    {formatArgentinaDateTime(item.created_at)}
+                  </time>
+                </div>
                 <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-ink/70">{item.body}</p>
               </div>
               <button className="btn secondary min-h-9 px-3" onClick={() => deleteNews(item.id)} type="button">
