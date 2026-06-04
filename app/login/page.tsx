@@ -169,7 +169,7 @@ function LoginContent() {
                     {step === "verify" && (
                       <>
                         <input className="field min-h-10 text-center text-xl font-black tracking-[0.24em]" inputMode="numeric" maxLength={6} placeholder="CÓDIGO" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
-                        <input className="field min-h-10" minLength={6} type="password" placeholder="Crear contraseña" value={password} onChange={(event) => setPassword(event.target.value)} />
+                        <input className="field min-h-10" type="password" placeholder="Crear contraseña" value={password} onChange={(event) => setPassword(event.target.value)} />
                         <div className="flex flex-wrap gap-2">
                           <button className="btn" disabled={loading} type="button" onClick={verifyCodeAndSetPassword}>
                             <ShieldCheck className="h-4 w-4" />
@@ -194,7 +194,7 @@ function LoginContent() {
                     {step === "verify" && (
                       <>
                         <input className="field min-h-10 text-center text-xl font-black tracking-[0.24em]" inputMode="numeric" maxLength={6} placeholder="CÓDIGO" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
-                        <input className="field min-h-10" minLength={6} type="password" placeholder="Nueva contraseña" value={password} onChange={(event) => setPassword(event.target.value)} />
+                        <input className="field min-h-10" type="password" placeholder="Nueva contraseña" value={password} onChange={(event) => setPassword(event.target.value)} />
                         <div className="flex flex-wrap gap-2">
                           <button className="btn" disabled={loading} type="button" onClick={verifyCodeAndSetPassword}>
                             <ShieldCheck className="h-4 w-4" />
