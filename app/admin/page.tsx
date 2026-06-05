@@ -27,7 +27,8 @@ const commands = [
   { command: "$partidos", text: "Lista próximos partidos. Ejemplo: $partidos Francia" },
   { command: "$resultados", text: "Muestra resultados reales. Ejemplo: $resultados Argentina" },
   { command: "$pendientes", text: "Muestra pronósticos pendientes del usuario. Ejemplo: $pendientes" },
-  { command: "$pronosticos", text: "Devuelve el fixture cargado por el usuario para copiar. Ejemplo: $pronosticos" }
+  { command: "$pronosticos", text: "Devuelve el fixture cargado por el usuario para copiar. Ejemplo: $pronosticos" },
+  { command: "$carga", text: "Carga muchos pronosticos desde WhatsApp. Ejemplo: $carga y abajo Argentina 2-1 Mexico" }
 ];
 
 type JobRun = {

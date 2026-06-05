@@ -7,7 +7,7 @@ import { formatArgentinaDateTime } from "@/lib/dates";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { getLatestNotifications } from "@/lib/notifications";
 import { matchStatus } from "@/lib/scoring";
-import { CalendarDays, CreditCard, LockKeyhole, MessageCircle, Newspaper, Trophy } from "lucide-react";
+import { CalendarDays, CreditCard, LockKeyhole, MessageCircle, Newspaper, PlayCircle, Trophy } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -177,6 +177,22 @@ export default async function Home() {
                 </div>
               ))
             )}
+          </section>
+
+          <section className="panel overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-line p-4">
+              <PlayCircle className="h-5 w-5 text-red-400" />
+              <h2 className="text-xl font-black">Video</h2>
+            </div>
+            <div className="aspect-video bg-field">
+              <iframe
+                className="h-full w-full"
+                src="https://www.youtube.com/embed/5lev6M_P3h8"
+                title="Video Mundialito"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
           </section>
         </div>
       </section>

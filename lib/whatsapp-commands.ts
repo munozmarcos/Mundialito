@@ -54,6 +54,7 @@ export function isWhatsAppCommand(text: string) {
     clean.includes("resultado") ||
     clean.includes("marcador") ||
     clean.includes("ayuda") ||
+    clean.includes("carga") ||
     clean.includes("comando")
   );
 }
@@ -68,6 +69,27 @@ function parsePrediction(text: string) {
     homeGoals: Number(match[3]),
     awayGoals: Number(match[4])
   };
+}
+
+function parseBulkPredictionLine(line: string) {
+  const clean = line
+    .replace(/\s*\|\s*Ganador:.+$/i, "")
+    .replace(/\s+Ganador:.+$/i, "")
+    .trim();
+  const match = clean.match(/^(.+?)\s+(\d+)\s*[-:]\s*(\d+)\s+(.+)$/);
+  if (!match) return null;
+  return {
+    homeTeam: match[1].trim(),
+    homeGoals: Number(match[2]),
+    awayGoals: Number(match[3]),
+    awayTeam: match[4].trim()
+  };
+}
+
+function extractBulkPayload(text: string) {
+  return stripSelfCommandPrefix(text)
+    .replace(/^carga\b[:\s-]*/i, "")
+    .trim();
 }
 
 function normalizeText(value: string) {
@@ -151,6 +173,8 @@ function answerCommands() {
     "Lo que te falta cargar. Ejemplo: _$pendientes_",
     "⚽ *$pronosticos*",
     "Ver tu fixture cargado para copiar. Ejemplo: _$pronosticos_",
+    "✍️ *$carga*",
+    "Carga masiva. Ejemplo: _$carga_ y abajo pegá Argentina 2-1 Mexico",
     "🧭 *$comandos*",
     "Ver esta ayuda. Ejemplo: _$comandos_"
   ].join("\n");
@@ -209,6 +233,89 @@ async function savePredictionFromWhatsApp(text: string, from?: string) {
     matchLabel(match),
     `Tu apuesta: *${prediction.homeGoals}-${prediction.awayGoals}*`,
     `Jugador: ${profile.display_name}`
+  ].join("\n");
+}
+
+async function saveBulkPredictionsFromWhatsApp(text: string, from?: string) {
+  const payload = extractBulkPayload(text);
+  if (!payload) {
+    return [
+      "⚽ *Carga masiva*",
+      "Mandame el bloque en el mismo mensaje, así:",
+      "",
+      "*$carga*",
+      "🇦🇷 Argentina 2-1 🇲🇽 Mexico",
+      "🇧🇷 Brazil 3-1 🇲🇦 Morocco"
+    ].join("\n");
+  }
+
+  if (!supabaseConfigured()) return "⚽ *Mundialito*\nTodavía no está lista la base. Probá de nuevo en unos minutos.";
+
+  const profile = await findProfileByPhone(from);
+  if (!profile) return "⚽ *Mundialito*\nNo tengo registrado tu WhatsApp como participante.";
+
+  const db = supabaseAdmin();
+  const { data: matches, error: matchesError } = await db
+    .from("matches")
+    .select("*")
+    .is("home_goals", null)
+    .order("kickoff_at", { ascending: true });
+  if (matchesError) throw matchesError;
+
+  let skipped = 0;
+  let invalid = 0;
+  const rows: Array<{
+    user_id: string;
+    match_id: string;
+    home_goals: number;
+    away_goals: number;
+    penalty_winner: null;
+  }> = [];
+
+  for (const rawLine of payload.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+
+    const parsed = parseBulkPredictionLine(line);
+    if (!parsed || parsed.homeGoals > 30 || parsed.awayGoals > 30) {
+      invalid += 1;
+      continue;
+    }
+
+    const match = (matches ?? []).find(
+      (item) =>
+        (teamsAreClose(parsed.homeTeam, item.home_team) || teamsAreClose(parsed.homeTeam, displayNameForTeam(item.home_team))) &&
+        (teamsAreClose(parsed.awayTeam, item.away_team) || teamsAreClose(parsed.awayTeam, displayNameForTeam(item.away_team)))
+    );
+
+    if (!match || !isPendingPredictionCandidate(match)) {
+      skipped += 1;
+      continue;
+    }
+
+    rows.push({
+      user_id: profile.id,
+      match_id: match.id,
+      home_goals: parsed.homeGoals,
+      away_goals: parsed.awayGoals,
+      penalty_winner: null
+    });
+  }
+
+  const dedupedRows = [...new Map(rows.map((row) => [row.match_id, row])).values()];
+  if (dedupedRows.length) {
+    const { error } = await db.from("predictions").upsert(dedupedRows, { onConflict: "user_id,match_id" });
+    if (error) throw error;
+  }
+
+  return [
+    "✅ *Carga masiva procesada*",
+    `Jugador: ${profile.display_name}`,
+    `Guardadas: *${dedupedRows.length}*`,
+    `Omitidas: *${skipped}*`,
+    `Líneas inválidas: *${invalid}*`,
+    "",
+    "Podés revisar con *$pronosticos*."
   ].join("\n");
 }
 
@@ -333,6 +440,8 @@ async function answerPronosticos(from?: string) {
 export async function answerWhatsAppCommand(text: string, from?: string) {
   const clean = stripSelfCommandPrefix(text).trim().toLowerCase();
   const normalized = normalizeText(clean);
+  if (normalized.startsWith("carga")) return saveBulkPredictionsFromWhatsApp(text, from);
+
   const predictionAnswer = await savePredictionFromWhatsApp(text, from);
   if (predictionAnswer) return predictionAnswer;
 
