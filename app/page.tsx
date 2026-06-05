@@ -7,7 +7,7 @@ import { formatArgentinaDateTime } from "@/lib/dates";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { getLatestNotifications } from "@/lib/notifications";
 import { matchStatus } from "@/lib/scoring";
-import { CalendarDays, CreditCard, LockKeyhole, MessageCircle, Newspaper, PlayCircle, Trophy } from "lucide-react";
+import { CalendarDays, CreditCard, LockKeyhole, Newspaper, PlayCircle, Trophy } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,6 @@ export const dynamic = "force-dynamic";
 const features = [
   { icon: Trophy, title: "Ranking", text: "Top 3, puntos y premios." },
   { icon: LockKeyhole, title: "Estados", text: "Abierto, cerrado o bloqueado." },
-  { icon: MessageCircle, title: "WhatsApp", text: "Comandos y recordatorios." },
   { icon: Newspaper, title: "Novedades", text: "Avisos, puntos y movimientos." },
   { icon: CreditCard, title: "Pagos", text: "Pago asociado al apodo." }
 ];
@@ -73,16 +72,34 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        {features.map((feature) => (
-          <article className="panel flex gap-4 p-4" key={feature.title}>
-            <feature.icon className="mt-1 h-5 w-5 shrink-0 text-grass" />
-            <div>
-              <h2 className="font-black">{feature.title}</h2>
-              <p className="text-sm text-ink/70">{feature.text}</p>
-            </div>
-          </article>
-        ))}
+      <section className="grid gap-4 lg:grid-cols-[1fr_360px] lg:items-stretch">
+        <div className="grid gap-3 sm:grid-cols-2">
+          {features.map((feature) => (
+            <article className="panel flex gap-4 p-4" key={feature.title}>
+              <feature.icon className="mt-1 h-5 w-5 shrink-0 text-grass" />
+              <div>
+                <h2 className="font-black">{feature.title}</h2>
+                <p className="text-sm text-ink/70">{feature.text}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <section className="panel overflow-hidden">
+          <div className="flex items-center gap-2 border-b border-line p-4">
+            <PlayCircle className="h-5 w-5 text-red-400" />
+            <h2 className="text-xl font-black">Video Promocional</h2>
+          </div>
+          <div className="aspect-square bg-field">
+            <iframe
+              className="h-full w-full"
+              src="https://www.youtube.com/embed/5lev6M_P3h8"
+              title="Video Promocional Mundialito"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        </section>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
@@ -177,22 +194,6 @@ export default async function Home() {
                 </div>
               ))
             )}
-          </section>
-
-          <section className="panel overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-line p-4">
-              <PlayCircle className="h-5 w-5 text-red-400" />
-              <h2 className="text-xl font-black">Video</h2>
-            </div>
-            <div className="aspect-video bg-field">
-              <iframe
-                className="h-full w-full"
-                src="https://www.youtube.com/embed/5lev6M_P3h8"
-                title="Video Mundialito"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
-            </div>
           </section>
         </div>
       </section>

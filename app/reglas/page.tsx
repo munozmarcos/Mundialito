@@ -184,15 +184,17 @@ export default function RulesPage() {
           <PlayCircle className="h-6 w-6 text-red-400" />
           <div>
             <h2 className="text-2xl font-black">Video explicativo</h2>
-            <p className="text-sm font-semibold text-ink/65">Acá va el video de YouTube con el funcionamiento de la app y las reglas.</p>
+            <p className="text-sm font-semibold text-ink/65">Funcionamiento de la app y reglas del Mundialito.</p>
           </div>
         </div>
-        <div className="grid aspect-video place-items-center rounded-lg border border-line bg-field text-center">
-          <div className="p-5">
-            <PlayCircle className="mx-auto h-12 w-12 text-red-400" />
-            <p className="mt-3 text-lg font-black">Video pendiente</p>
-            <p className="mt-1 text-sm font-semibold text-ink/60">Cuando tengas el link de YouTube, lo pegamos acá.</p>
-          </div>
+        <div className="aspect-video overflow-hidden rounded-lg border border-line bg-field">
+          <iframe
+            className="h-full w-full"
+            src="https://www.youtube.com/embed/9VIex_8o5hc"
+            title="Reglas Mundialito"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
         </div>
       </section>
     </div>
