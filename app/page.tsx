@@ -7,7 +7,7 @@ import { formatArgentinaDateTime } from "@/lib/dates";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { getLatestNotifications } from "@/lib/notifications";
 import { matchStatus } from "@/lib/scoring";
-import { CalendarDays, CreditCard, LockKeyhole, Newspaper, PlayCircle, Trophy } from "lucide-react";
+import { CalendarDays, CreditCard, LockKeyhole, Newspaper, Trophy } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -72,10 +72,10 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+      <section className="grid gap-4 lg:grid-cols-[360px_1fr] lg:items-start">
         <div className="grid gap-3 sm:grid-cols-2">
           {features.map((feature) => (
-            <article className="panel flex min-h-[92px] gap-3 p-3" key={feature.title}>
+            <article className="panel flex min-h-[72px] gap-3 p-3" key={feature.title}>
               <feature.icon className="mt-1 h-4 w-4 shrink-0 text-grass" />
               <div>
                 <h2 className="text-sm font-black">{feature.title}</h2>
@@ -85,20 +85,14 @@ export default async function Home() {
           ))}
         </div>
 
-        <section className="panel overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-line p-4">
-            <PlayCircle className="h-5 w-5 text-red-400" />
-            <h2 className="text-xl font-black">Video Promocional</h2>
-          </div>
-          <div className="aspect-video bg-field lg:h-[202px]">
-            <iframe
-              className="h-full w-full"
-              src="https://www.youtube.com/embed/5lev6M_P3h8"
-              title="Video Promocional Mundialito"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
-          </div>
+        <section className="panel aspect-video overflow-hidden bg-field">
+          <iframe
+            className="h-full w-full"
+            src="https://www.youtube.com/embed/5lev6M_P3h8"
+            title="Video Promocional Mundialito"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
         </section>
       </section>
 
@@ -149,9 +143,9 @@ export default async function Home() {
               <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Pozo acumulado</p>
               <p className="mt-1 text-3xl font-black text-grass">{money(paymentSummary.prizePool)}</p>
             </article>
-            <article className="panel p-4">
+            <article className="panel p-4 text-center">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Participantes</p>
-              <p className="mt-1 text-3xl font-black text-grass">{paymentSummary.totalParticipants}</p>
+              <p className="mt-1 text-3xl font-black text-blue-300">{paymentSummary.totalParticipants}</p>
             </article>
           </section>
 
