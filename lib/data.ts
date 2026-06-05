@@ -8,7 +8,6 @@ export type RankingRow = {
   exact_hits: number;
   trend_hits: number;
   podium_points?: number;
-  podium_possible_points?: number;
 };
 
 export type ActivityRow = {
@@ -82,21 +81,7 @@ export async function getRanking(): Promise<RankingRow[]> {
     const db = supabaseAdmin();
     const { data, error } = await db.rpc("ranking");
     if (error) throw error;
-    const rows = (data ?? []) as RankingRow[];
-    const { data: podiumRows } = await db
-      .from("podium_predictions")
-      .select("user_id,champion_team,runner_up_team,third_place_team,points");
-    const podiumByUser = new Map((podiumRows ?? []).map((row) => [row.user_id, row]));
-    return rows
-      .map((row) => {
-        const podium = podiumByUser.get(row.user_id);
-        const possible = podium?.champion_team && podium.runner_up_team && podium.third_place_team && !podium.points ? 6 : 0;
-        return {
-          ...row,
-          podium_possible_points: possible,
-          total_points: row.total_points + possible
-        };
-      })
+    return ((data ?? []) as RankingRow[])
       .sort((a, b) => b.total_points - a.total_points || b.exact_hits - a.exact_hits || b.trend_hits - a.trend_hits || a.display_name.localeCompare(b.display_name));
   } catch (error) {
     console.warn("[demo:fallback] ranking", error);

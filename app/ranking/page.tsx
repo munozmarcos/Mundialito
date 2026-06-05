@@ -14,7 +14,7 @@ export default async function RankingPage() {
         badge="Ranking"
         icon={Trophy}
         title="Ranking"
-        subtitle="Posiciones generales, puntos acumulados, exactos y tendencias acertadas."
+        subtitle="Posiciones generales, puntos acumulados, exactos, tendencias y aciertos del podio anticipado."
       />
 
       <RankingContent

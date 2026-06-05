@@ -342,8 +342,8 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
     ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter))
     : [];
   const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
+  const allFilteredByStage = groupBy(allFilteredMatches, (match) => match.stage);
   const teamOptions = useMemo(() => teamOptionsFromMatches(groupMatches), [groupMatches]);
-  const podiumPossiblePoints = podium.champion_team && podium.runner_up_team && podium.third_place_team ? 6 : 0;
   const availableGroups = Object.keys(byGroup).sort();
   const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
   const filteredGroups = Object.entries(byGroup)
@@ -359,7 +359,21 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
     fetch("/api/auth/session", { cache: "no-store" })
       .then((response) => response.json())
       .then((data) => {
-        if (mounted) setSessionUserId(data.user?.id ?? null);
+        if (!mounted) return;
+        setSessionUserId(data.user?.id ?? null);
+        if (data.user) {
+          void fetch("/api/podium", { cache: "no-store" })
+            .then((response) => response.json())
+            .then((podiumData) => {
+              if (!mounted || !podiumData.podium) return;
+              setPodium({
+                champion_team: podiumData.podium.champion_team ?? "",
+                runner_up_team: podiumData.podium.runner_up_team ?? "",
+                third_place_team: podiumData.podium.third_place_team ?? ""
+              });
+            })
+            .catch(() => undefined);
+        }
       })
       .catch(() => {
         if (mounted) setSessionUserId(null);
@@ -403,9 +417,8 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
       }
     }
 
-    if (sessionUserId && rows[sessionUserId]) rows[sessionUserId].points += podiumPossiblePoints;
     return Object.values(rows).sort((a, b) => b.points - a.points || b.exacts - a.exacts || b.trends - a.trends || a.name.localeCompare(b.name));
-  }, [matches, predictionsByMatch, profiles, results, podiumPossiblePoints, sessionUserId]);
+  }, [matches, predictionsByMatch, profiles, results]);
 
   function setResult(matchId: string, side: "home" | "away", value: string) {
     setResults((current) => ({
@@ -458,7 +471,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
       }
       return next;
     });
-    setCopyMessage(`Copié ${mine.length} predicciones al simulador.`);
+    setCopyMessage(`Copié ${mine.length} predicciones y tu podio anticipado al simulador.`);
   }
 
   function applyBulk() {
@@ -581,12 +594,12 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
             <Trophy className="h-5 w-5 text-gold" />
             Podio anticipado
           </h2>
-          <p className="mt-1 text-sm font-semibold text-ink/60">Simula tambien los 6 puntos posibles del podio.</p>
+          <p className="mt-1 text-sm font-semibold text-ink/60">Completa el podio para copiar tu historia. Los puntos se suman solo cuando haya resultados reales.</p>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {[
-              ["champion_team", "Campeon"],
-              ["runner_up_team", "Subcampeon"],
-              ["third_place_team", "Tercero"]
+              ["champion_team", "Campeón"],
+              ["runner_up_team", "Subcampeón"],
+              ["third_place_team", "3er Puesto"]
             ].map(([field, label]) => (
               <label className="grid gap-1 text-sm font-bold text-ink/70" key={field}>
                 {label}
@@ -599,7 +612,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
             ))}
           </div>
         </div>
-        <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-ink/55">{podiumPossiblePoints} Pts</span>
+        <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-ink/55">0 Pts</span>
       </section>
 
       <section className="panel flex flex-wrap gap-2 p-2">
@@ -621,12 +634,29 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         ))}
       </section>
 
-      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(220px,1fr)_auto_auto] lg:grid-cols-[240px_112px_44px] lg:items-center">
-        <CountryFilterPicker value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
+      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(280px,1fr)_140px_auto] lg:grid-cols-[320px_140px_44px] lg:items-center">
+        <CountryFilterPicker className="min-w-[260px]" value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
         <DateFilter value={dateFilter} onChange={setDateFilter} />
         <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
           <X className="h-4 w-4" />
         </button>
+      </section>
+
+      <section className="panel overflow-hidden">
+        <div className="border-b border-line p-4">
+          <h2 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-5 w-5 text-gold" />Ranking simulado</h2>
+          <p className="mt-1 text-sm font-semibold text-ink/60">Suma puntos por tendencia, exactos y, cuando exista resultado final real, aciertos del podio anticipado.</p>
+        </div>
+        {ranking.map((row, index) => (
+          <div className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-line p-3 last:border-0" key={row.userId}>
+            <strong className="text-center text-gold">#{index + 1}</strong>
+            <div>
+              <strong>{row.name}</strong>
+              <p className="text-xs text-ink/60">{row.exacts} exactos - {row.trends} tendencias - {row.played} puntuados</p>
+            </div>
+            <strong className="text-center">{row.points} Pts</strong>
+          </div>
+        ))}
       </section>
 
       {activeTab === "todos" && (
@@ -635,8 +665,22 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
             <h3 className="text-2xl font-black">Todos</h3>
             <p className="mb-3 mt-1 text-sm font-semibold text-ink/60">Todos los partidos del simulador en grilla, filtrables por país y fecha.</p>
           </div>
-          <div className="match-card-grid">
-            {allFilteredMatches.map((match) => resultCard(match))}
+          <div className="grid gap-5">
+            {(["GROUP", ...knockoutOrder] as MatchStage[]).map((stage) => {
+              const items = allFilteredByStage[stage] ?? [];
+              if (!items.length) return null;
+              return (
+                <div className="grid gap-3" key={stage}>
+                  <h4 className="flex items-center gap-2 text-xl font-black">
+                    {stage !== "GROUP" && <Trophy className="h-4 w-4 text-gold" />}
+                    {stageLabels[stage]}
+                  </h4>
+                  <div className="match-card-grid">
+                    {items.map((match) => resultCard(match))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
@@ -674,22 +718,6 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
             ))}
           </div>
         </div>
-
-        <section className="panel overflow-hidden">
-          <div className="border-b border-line p-4">
-            <h2 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-5 w-5 text-gold" />Ranking simulado</h2>
-          </div>
-          {ranking.map((row, index) => (
-            <div className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-line p-3 last:border-0" key={row.userId}>
-              <strong className="text-center text-gold">#{index + 1}</strong>
-              <div>
-                <strong>{row.name}</strong>
-                <p className="text-xs text-ink/60">{row.exacts} exactos - {row.trends} tendencias - {row.played} puntuados</p>
-              </div>
-              <strong className="text-center">{row.points} Pts</strong>
-            </div>
-          ))}
-        </section>
 
         <button className="btn secondary w-fit" onClick={() => setResults(initialResults(matches))} type="button"><RotateCcw className="h-4 w-4" />Reiniciar</button>
       </section>

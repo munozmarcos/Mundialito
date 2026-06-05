@@ -180,9 +180,15 @@ export default function RulesPage() {
             <strong className="mt-auto block pt-4 text-3xl text-orange-200">+1</strong>
           </article>
         </div>
-        <p className="mt-3 text-sm font-semibold text-ink/65">
-          Se puede cargar durante la fase de grupos. Se bloquea cuando se habilitan los 16vos o 15 minutos antes del primer partido de esa fase.
-        </p>
+        <article className="panel mt-3 flex items-start gap-3 p-4">
+          <LockKeyhole className="mt-1 h-5 w-5 shrink-0 text-sky-200" />
+          <div>
+            <h3 className="font-black">Cierre del podio</h3>
+            <p className="mt-1 text-sm font-semibold text-ink/65">
+              Se puede cargar durante la fase de grupos. Se bloquea cuando se habilitan los 16vos o 15 minutos antes del primer partido de esa fase.
+            </p>
+          </div>
+        </article>
       </section>
 
       <section>

@@ -1,4 +1,4 @@
-import { getMatches, getRanking } from "@/lib/data";
+﻿import { getMatches, getRanking } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { countryCodeForTeam, displayNameForTeam } from "@/lib/flags";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
@@ -136,7 +136,7 @@ function matchLabel(match: Pick<MatchLite, "home_team" | "away_team" | "home_cou
 
 function extractTeamQuery(text: string) {
   return stripSelfCommandPrefix(text)
-    .replace(/^(partidos?|fixture|calendario|resultados?|pendientes?|pronosticos?|podio|ranking|tabla|reglas?|comandos?|ayuda)\b/gi, "")
+    .replace(/^(partidos?|fixture|calendario|resultados?|pendientes?|pronosticos?|podioanticipado|podio|ranking|tabla|reglas?|comandos?|ayuda)\b/gi, "")
     .replace(/^(de|del|para|ver|quiero|como va|cómo va)\s+/gi, "")
     .trim();
 }
@@ -149,6 +149,11 @@ function answerRules() {
     "🎯 Resultado exacto = *+2 puntos extra*",
     "Aplica igual en grupos y eliminatorias.",
     "En eliminatorias cuenta el resultado de los *120 minutos*.",
+    "",
+    "🏆 *Podio anticipado*",
+    "Campeón = *3 pts*, Subcampeón = *2 pts*, 3er puesto = *1 pt*.",
+    "Se carga en fase de grupos y se cierra cuando se habilitan los 16vos o 15 minutos antes del primer partido de esa fase.",
+    "",
     "*Ejemplos*",
     "🇦🇷 Argentina 2-1 🇲🇽 Mexico",
     "Tu apuesta 1-0 = *1 punto*",
@@ -162,30 +167,31 @@ function answerCommands() {
   return [
     "⚽ *Comandos Mundialito*",
     "🏆 *$ranking*",
-    "Ver el top. Ejemplo: _$ranking_",
+    "Sin parámetro: _$ranking_",
     "📋 *$reglas*",
-    "Ver puntuación. Ejemplo: _$reglas_",
+    "Sin parámetro: _$reglas_",
     "📅 *$partidos*",
-    "Próximos partidos. Ejemplo: _$partidos_",
-    "Filtro: _$partidos Argentina_",
+    "Sin parámetro: _$partidos_",
+    "Con parámetro: _$partidos Argentina_",
     "🏁 *$resultados*",
-    "Resultados reales. Ejemplo: _$resultados_",
-    "Filtro: _$resultados Brazil_",
+    "Sin parámetro: _$resultados_",
+    "Con parámetro: _$resultados Brasil_",
     "⏳ *$pendientes*",
-    "Lo que te falta cargar. Ejemplo: _$pendientes_",
+    "Sin parámetro: _$pendientes_",
     "⚽ *$pronosticos*",
-    "Ver tu fixture cargado para copiar. Ejemplo: _$pronosticos_",
-    "🏆 *$podio*",
-    "Guardar o ver campeon, 2do y 3er puesto. Ejemplo: _$podio Argentina | Brasil | Uruguay_",
+    "Sin parámetro: _$pronosticos_",
+    "🏆 *$podioanticipado*",
+    "Sin parámetro: _$podioanticipado_",
+    "Con parámetro: _$podioanticipado Argentina | Brasil | Uruguay_",
     "✍️ *$carga*",
-    "Carga masiva. Ejemplo: _$carga_ y abajo pegá Argentina 2-1 Mexico",
+    "Con parámetro multilinea: _$carga_ y abajo pegá Argentina 2-1 Mexico",
     "🧭 *$comandos*",
-    "Ver esta ayuda. Ejemplo: _$comandos_"
+    "Sin parámetro: _$comandos_"
   ].join("\n");
 }
 
 function extractPodiumPayload(text: string) {
-  return stripSelfCommandPrefix(text).replace(/^podio\b[:\s-]*/i, "").trim();
+  return stripSelfCommandPrefix(text).replace(/^podio(?:anticipado)?\b[:\s-]*/i, "").trim();
 }
 
 function splitPodiumTeams(payload: string) {
@@ -242,11 +248,11 @@ async function answerPodio(text: string, from?: string) {
     return [
       "🏆 *Podio anticipado*",
       podiumTeamLine("Campeón +3", data?.champion_team, data?.champion_points),
-      podiumTeamLine("2do puesto +2", data?.runner_up_team, data?.runner_up_points),
+      podiumTeamLine("Subcampeón +2", data?.runner_up_team, data?.runner_up_points),
       podiumTeamLine("3er puesto +1", data?.third_place_team, data?.third_place_points),
       "",
       lockState.locked ? "El podio ya está cerrado." : "Para cargarlo:",
-      lockState.locked ? "" : "_$podio Argentina | Brasil | Uruguay_"
+      lockState.locked ? "" : "_$podioanticipado Argentina | Brasil | Uruguay_"
     ].join("\n");
   }
 
@@ -260,7 +266,7 @@ async function answerPodio(text: string, from?: string) {
       "🏆 *Podio anticipado*",
       "Mandame 3 selecciones separadas por |",
       "Ejemplo:",
-      "_$podio Argentina | Brasil | Uruguay_"
+      "_$podioanticipado Argentina | Brasil | Uruguay_"
     ].join("\n");
   }
 
@@ -297,10 +303,10 @@ async function answerPodio(text: string, from?: string) {
   return [
     "✅ *Podio guardado*",
     podiumTeamLine("Campeón +3", champion.name),
-    podiumTeamLine("2do puesto +2", runnerUp.name),
+    podiumTeamLine("Subcampeón +2", runnerUp.name),
     podiumTeamLine("3er puesto +1", thirdPlace.name),
     "",
-    "Podés verlo cuando quieras con *$podio*."
+    "Podés verlo cuando quieras con *$podioanticipado*."
   ].join("\n");
 }
 
@@ -534,11 +540,15 @@ async function answerPronosticos(from?: string) {
   if (!profile || !supabaseConfigured()) return "⚽ *Pronósticos*\nNo tengo registrado tu WhatsApp como participante.";
 
   const db = supabaseAdmin();
-  const { data, error } = await db
-    .from("predictions")
-    .select("home_goals,away_goals,penalty_winner,matches(home_team,away_team,home_country_code,away_country_code,kickoff_at,stage,group_name)")
-    .eq("user_id", profile.id);
+  const [{ data, error }, { data: podium, error: podiumError }] = await Promise.all([
+    db
+      .from("predictions")
+      .select("home_goals,away_goals,penalty_winner,matches(home_team,away_team,home_country_code,away_country_code,kickoff_at,stage,group_name)")
+      .eq("user_id", profile.id),
+    db.from("podium_predictions").select("champion_team,runner_up_team,third_place_team,points").eq("user_id", profile.id).maybeSingle()
+  ]);
   if (error) throw error;
+  if (podiumError) throw podiumError;
 
   const rows = (data ?? [])
     .map((prediction) => {
@@ -548,7 +558,18 @@ async function answerPronosticos(from?: string) {
     .filter((item) => item.match)
     .sort((a, b) => new Date(a.match!.kickoff_at).getTime() - new Date(b.match!.kickoff_at).getTime());
 
-  if (!rows.length) return "⚽ *Pronósticos*\nTodavía no tenés predicciones cargadas.";
+  const podiumLines = podium?.champion_team || podium?.runner_up_team || podium?.third_place_team
+    ? [
+        "",
+        "🏆 *Podio anticipado*",
+        podiumTeamLine("Campeón +3", podium?.champion_team),
+        podiumTeamLine("Subcampeón +2", podium?.runner_up_team),
+        podiumTeamLine("3er puesto +1", podium?.third_place_team),
+        `Puntos actuales: *${podium?.points ?? 0} pts*`
+      ]
+    : [];
+
+  if (!rows.length && !podiumLines.length) return "⚽ *Pronósticos*\nTodavía no tenés predicciones cargadas.";
 
   return [
     `⚽ *Pronósticos de ${profile.display_name}*`,
@@ -557,7 +578,8 @@ async function answerPronosticos(from?: string) {
     ...rows.map(({ prediction, match }) => {
       const winner = prediction.penalty_winner ? ` | Ganador: ${prediction.penalty_winner}` : "";
       return `${flagEmoji(match!.home_team, match!.home_country_code)} ${displayNameForTeam(match!.home_team)} ${prediction.home_goals}-${prediction.away_goals} ${flagEmoji(match!.away_team, match!.away_country_code)} ${displayNameForTeam(match!.away_team)}${winner}`;
-    })
+    }),
+    ...podiumLines
   ].join("\n");
 }
 

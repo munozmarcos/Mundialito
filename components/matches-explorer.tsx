@@ -332,8 +332,8 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
         ))}
       </section>
 
-      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(220px,1fr)_auto_auto] lg:grid-cols-[240px_112px_44px] lg:items-center">
-        <CountryFilterPicker value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
+      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(280px,1fr)_140px_auto] lg:grid-cols-[320px_140px_44px] lg:items-center">
+        <CountryFilterPicker className="min-w-[260px]" value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
         <DateFilter value={dateFilter} onChange={setDateFilter} />
         <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
           <X className="h-4 w-4" />

@@ -33,7 +33,7 @@ export function RankingContent({ ranking }: Props) {
       <article className="panel overflow-hidden">
         <div className="border-b border-line p-5">
           <h2 className="text-2xl font-black">Ranking</h2>
-          <p className="mt-1 text-sm font-semibold text-ink/60">Puntos, exactos y tendencias acertadas.</p>
+          <p className="mt-1 text-sm font-semibold text-ink/60">Puntos por exactos, tendencias y aciertos del podio anticipado cuando ya exista resultado real.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
             <input className="field" placeholder="Buscar apodo" value={query} onChange={(event) => setQuery(event.target.value)} />
             <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => setQuery("")}>

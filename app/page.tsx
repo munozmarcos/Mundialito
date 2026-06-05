@@ -148,18 +148,18 @@ export default async function Home() {
         </div>
 
         <div className="grid content-start gap-4">
-          <section className="grid grid-cols-3 gap-3">
-            <article className="panel p-4">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Pozo acumulado</p>
-              <p className="mt-1 text-2xl font-black text-grass sm:text-3xl">{money(paymentSummary.prizePool)}</p>
+          <section className="grid gap-3 sm:grid-cols-3">
+            <article className="panel grid min-h-[104px] content-center justify-items-center p-3 text-center">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Pozo</p>
+              <p className="mt-2 text-xl font-black text-grass sm:text-2xl">{money(paymentSummary.prizePool)}</p>
             </article>
-            <article className="panel p-4 text-center">
+            <article className="panel grid min-h-[104px] content-center justify-items-center p-3 text-center">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Participantes</p>
-              <p className="mt-1 text-2xl font-black text-blue-300 sm:text-3xl">{paymentSummary.totalParticipants}</p>
+              <p className="mt-2 text-xl font-black text-blue-300 sm:text-2xl">{paymentSummary.totalParticipants}</p>
             </article>
-            <article className="panel p-4 text-center">
+            <article className="panel grid min-h-[104px] content-center justify-items-center p-3 text-center">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Puntos</p>
-              <p className="mt-1 text-2xl font-black text-red-400 sm:text-3xl">{currentUserPoints}</p>
+              <p className="mt-2 text-xl font-black text-red-400 sm:text-2xl">{currentUserPoints} Pts</p>
             </article>
           </section>
 

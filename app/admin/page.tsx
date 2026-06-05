@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ListChecks, LockKeyhole, MessageCircle, Newspaper, Play, RefreshCw, Trophy, UsersRound } from "lucide-react";
 import Link from "next/link";
@@ -21,14 +21,15 @@ const jobs = [
 ] as const;
 
 const commands = [
-  { command: "$comandos", text: "Muestra esta ayuda. Ejemplo: $comandos" },
-  { command: "$ranking", text: "Devuelve el top del Mundialito. Ejemplo: $ranking" },
-  { command: "$reglas", text: "Explica la puntuación. Ejemplo: $reglas" },
-  { command: "$partidos", text: "Lista próximos partidos. Ejemplo: $partidos Francia" },
-  { command: "$resultados", text: "Muestra resultados reales. Ejemplo: $resultados Argentina" },
-  { command: "$pendientes", text: "Muestra pronósticos pendientes del usuario. Ejemplo: $pendientes" },
-  { command: "$pronosticos", text: "Devuelve el fixture cargado por el usuario para copiar. Ejemplo: $pronosticos" },
-  { command: "$carga", text: "Carga muchos pronosticos desde WhatsApp. Ejemplo: $carga y abajo Argentina 2-1 Mexico" }
+  { command: "$comandos", text: "Muestra esta ayuda. Sin parámetro: $comandos" },
+  { command: "$ranking", text: "Devuelve el ranking completo. Sin parámetro: $ranking" },
+  { command: "$reglas", text: "Explica la puntuación y el podio anticipado. Sin parámetro: $reglas" },
+  { command: "$partidos", text: "Lista próximos partidos. Sin parámetro: $partidos. Con parámetro: $partidos Francia" },
+  { command: "$resultados", text: "Muestra resultados reales. Sin parámetro: $resultados. Con parámetro: $resultados Argentina" },
+  { command: "$pendientes", text: "Muestra pronósticos pendientes del usuario. Sin parámetro: $pendientes" },
+  { command: "$pronosticos", text: "Devuelve el fixture cargado por el usuario para copiar. Sin parámetro: $pronosticos" },
+  { command: "$podioanticipado", text: "Guarda o muestra el podio. Sin parámetro: $podioanticipado. Con parámetro: $podioanticipado Argentina | Brasil | Uruguay" },
+  { command: "$carga", text: "Carga muchos pronósticos desde WhatsApp. Con parámetro multilinea: $carga y abajo Argentina 2-1 Mexico" }
 ];
 
 type JobRun = {

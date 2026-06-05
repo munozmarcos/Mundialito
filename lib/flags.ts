@@ -114,6 +114,7 @@ const fifaToIso: Record<string, string> = {
   PAR: "py",
   CIV: "ci",
   ECU: "ec",
+  CUR: "cw",
   CUW: "cw",
   NED: "nl",
   SWE: "se",
