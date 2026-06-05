@@ -72,70 +72,70 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[360px_1fr] lg:items-start">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {features.map((feature) => (
-            <article className="panel flex min-h-[72px] gap-3 p-3" key={feature.title}>
-              <feature.icon className="mt-1 h-4 w-4 shrink-0 text-grass" />
-              <div>
-                <h2 className="text-sm font-black">{feature.title}</h2>
-                <p className="text-xs text-ink/70">{feature.text}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        <section className="panel aspect-video overflow-hidden bg-field">
-          <iframe
-            className="h-full w-full"
-            src="https://www.youtube.com/embed/5lev6M_P3h8"
-            title="Video Promocional Mundialito"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-          />
-        </section>
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {features.map((feature) => (
+          <article className="panel flex gap-4 p-4" key={feature.title}>
+            <feature.icon className="mt-1 h-5 w-5 shrink-0 text-grass" />
+            <div>
+              <h2 className="font-black">{feature.title}</h2>
+              <p className="text-sm text-ink/70">{feature.text}</p>
+            </div>
+          </article>
+        ))}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
-        <section className="panel overflow-hidden">
-          <div className="flex items-center justify-between border-b border-line p-4">
-            <h2 className="text-xl font-black">Próximos partidos</h2>
-            <Link className="btn secondary min-h-9 px-3" href="/mi-prode">Pronósticos</Link>
-          </div>
-          {!matches.length ? (
-            <EmptyState title="Todavía no hay partidos" text="Carga el calendario desde Admin para empezar." />
-          ) : (
-            <div className="grid">
-              {matches.map((match) => (
-                <article className="grid gap-3 border-b border-line p-4 last:border-0 sm:grid-cols-[1fr_auto] sm:items-center" key={match.id}>
-                  <div>
-                    <div className="text-sm font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</div>
-                    <h3 className="flex flex-wrap items-center gap-2 text-xl font-black">
-                      <TeamLabel name={match.home_team} code={match.home_country_code} />
-                      <span className="text-ink/40">vs</span>
-                      <TeamLabel name={match.away_team} code={match.away_country_code} />
-                    </h3>
-                    <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : match.stage, match.stadium].filter(Boolean).join(" - ")}</p>
-                  </div>
-                  <div className="grid justify-items-start gap-2 sm:justify-items-end">
-                    <StatusPill
-                      status={isMatchBlockedUntilOfficial(match) ? "locked" : matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status)}
-                      label={isMatchBlockedUntilOfficial(match) ? "Bloqueado" : undefined}
-                    />
-                    <div className="grid grid-cols-[52px_52px] gap-2">
-                      <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black" aria-label={`Goles ${match.home_team}`}>
-                        {match.home_goals ?? ""}
-                      </div>
-                      <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black" aria-label={`Goles ${match.away_team}`}>
-                        {match.away_goals ?? ""}
+        <div className="grid content-start gap-4">
+          <section className="panel overflow-hidden">
+            <div className="flex items-center justify-between border-b border-line p-4">
+              <h2 className="text-xl font-black">Próximos partidos</h2>
+              <Link className="btn secondary min-h-9 px-3" href="/mi-prode">Pronósticos</Link>
+            </div>
+            {!matches.length ? (
+              <EmptyState title="Todavía no hay partidos" text="Carga el calendario desde Admin para empezar." />
+            ) : (
+              <div className="grid">
+                {matches.map((match) => (
+                  <article className="grid gap-3 border-b border-line p-4 last:border-0 sm:grid-cols-[1fr_auto] sm:items-center" key={match.id}>
+                    <div>
+                      <div className="text-sm font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</div>
+                      <h3 className="flex flex-wrap items-center gap-2 text-xl font-black">
+                        <TeamLabel name={match.home_team} code={match.home_country_code} />
+                        <span className="text-ink/40">vs</span>
+                        <TeamLabel name={match.away_team} code={match.away_country_code} />
+                      </h3>
+                      <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : match.stage, match.stadium].filter(Boolean).join(" - ")}</p>
+                    </div>
+                    <div className="grid justify-items-start gap-2 sm:justify-items-end">
+                      <StatusPill
+                        status={isMatchBlockedUntilOfficial(match) ? "locked" : matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status)}
+                        label={isMatchBlockedUntilOfficial(match) ? "Bloqueado" : undefined}
+                      />
+                      <div className="grid grid-cols-[52px_52px] gap-2">
+                        <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black" aria-label={`Goles ${match.home_team}`}>
+                          {match.home_goals ?? ""}
+                        </div>
+                        <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black" aria-label={`Goles ${match.away_team}`}>
+                          {match.away_goals ?? ""}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="panel aspect-video overflow-hidden bg-field">
+            <iframe
+              className="h-full w-full"
+              src="https://www.youtube.com/embed/5lev6M_P3h8"
+              title="Video Promocional Mundialito"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </section>
+        </div>
 
         <div className="grid content-start gap-4">
           <section className="grid grid-cols-2 gap-3">
