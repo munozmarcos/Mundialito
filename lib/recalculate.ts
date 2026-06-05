@@ -1,4 +1,5 @@
 import { scorePrediction } from "@/lib/scoring";
+import { recalculateAllPodiumPoints } from "@/lib/podium";
 import { supabaseAdmin } from "@/lib/supabase";
 
 export async function recalculateMatch(matchId: string) {
@@ -32,5 +33,9 @@ export async function recalculateMatch(matchId: string) {
         score_details: result.details
       })
       .eq("id", prediction.id);
+  }
+
+  if (match.stage === "FINAL" || match.stage === "THIRD_PLACE") {
+    await recalculateAllPodiumPoints(db);
   }
 }

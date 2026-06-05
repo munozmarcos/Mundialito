@@ -1,4 +1,5 @@
 import { recalculateMatch } from "@/lib/recalculate";
+import { recalculateAllPodiumPoints } from "@/lib/podium";
 import { fetchProviderResults, teamsMatch, type ProviderResult } from "@/lib/results-provider";
 import { supabaseAdmin, supabaseAdminConfigured } from "@/lib/supabase";
 
@@ -73,6 +74,8 @@ export async function syncResultsFromProvider() {
     await recalculateMatch(local.id);
     updated += 1;
   }
+
+  if (updated > 0) await recalculateAllPodiumPoints(db);
 
   return {
     mode: "real",

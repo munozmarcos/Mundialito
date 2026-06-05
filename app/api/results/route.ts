@@ -1,4 +1,5 @@
 import { recalculateMatch } from "@/lib/recalculate";
+import { recalculateAllPodiumPoints } from "@/lib/podium";
 import { requireAdmin, supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   await recalculateMatch(body.matchId);
+  await recalculateAllPodiumPoints(db);
   return NextResponse.json({ ok: true });
 }
 
@@ -64,6 +66,9 @@ export async function PATCH(req: Request) {
   const { error } = await db.from("matches").update(update).eq("id", body.matchId);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  if (body.action === "clear") await recalculateMatch(body.matchId);
+  if (body.action === "clear") {
+    await recalculateMatch(body.matchId);
+    await recalculateAllPodiumPoints(db);
+  }
   return NextResponse.json({ ok: true });
 }

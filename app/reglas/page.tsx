@@ -159,6 +159,33 @@ export default function RulesPage() {
       </section>
 
       <section>
+        <h2 className="mb-3 text-2xl font-black">Podio final</h2>
+        <div className="grid gap-3 md:grid-cols-3">
+          <article className="panel flex h-full flex-col p-5">
+            <Trophy className="h-6 w-6 text-yellow-200" />
+            <h3 className="mt-3 text-xl font-black">Campeón</h3>
+            <p className="mt-2 text-sm text-ink/70">Si acertás el campeón del Mundial.</p>
+            <strong className="mt-auto block pt-4 text-3xl text-yellow-200">+3</strong>
+          </article>
+          <article className="panel flex h-full flex-col p-5">
+            <Trophy className="h-6 w-6 text-slate-100" />
+            <h3 className="mt-3 text-xl font-black">2do puesto</h3>
+            <p className="mt-2 text-sm text-ink/70">Si acertás el subcampeón.</p>
+            <strong className="mt-auto block pt-4 text-3xl text-slate-100">+2</strong>
+          </article>
+          <article className="panel flex h-full flex-col p-5">
+            <Trophy className="h-6 w-6 text-orange-200" />
+            <h3 className="mt-3 text-xl font-black">3er puesto</h3>
+            <p className="mt-2 text-sm text-ink/70">Si acertás quién gana el partido por el tercer puesto.</p>
+            <strong className="mt-auto block pt-4 text-3xl text-orange-200">+1</strong>
+          </article>
+        </div>
+        <p className="mt-3 text-sm font-semibold text-ink/65">
+          Se carga desde Pronósticos o por WhatsApp con <strong>$podio Argentina | Brasil | Uruguay</strong>.
+        </p>
+      </section>
+
+      <section>
         <h2 className="mb-3 text-2xl font-black">Estados de partidos</h2>
         <div className="grid gap-3 lg:grid-cols-3">
           <StatusExample

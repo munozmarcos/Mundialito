@@ -64,7 +64,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams?: { 
               <strong className="mt-1 block text-2xl text-slate-100">{money(summary.secondPrize)}</strong>
             </div>
             <div className="rounded-lg border border-orange-300/45 bg-orange-400/12 p-4 text-center">
-              <span className="text-xs font-black uppercase text-orange-200">3ros - 10%</span>
+              <span className="text-xs font-black uppercase text-orange-200">3er puesto - 10%</span>
               <strong className="mt-1 block text-2xl text-orange-200">{money(summary.thirdPrize)}</strong>
             </div>
           </div>

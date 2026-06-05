@@ -49,3 +49,15 @@ export type Prediction = {
   trend_hit: boolean;
   exact_hit: boolean;
 };
+
+export type PodiumPrediction = {
+  user_id: string;
+  champion_team?: string | null;
+  runner_up_team?: string | null;
+  third_place_team?: string | null;
+  champion_points: number;
+  runner_up_points: number;
+  third_place_points: number;
+  points: number;
+  updated_at?: string | null;
+};

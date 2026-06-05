@@ -1,0 +1,2 @@
+-- Placeholder for a migration that exists in the remote Supabase history.
+-- The schema changes from that deployment are already represented in schema.sql.

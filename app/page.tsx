@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/empty-state";
 import { HomePrimaryAction } from "@/components/home-primary-action";
+import { ShareLinkButton } from "@/components/share-link-button";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { getMatches, getPaymentSummary, getRanking } from "@/lib/data";
@@ -126,14 +127,20 @@ export default async function Home() {
             )}
           </section>
 
-          <section className="panel aspect-video overflow-hidden bg-field">
-            <iframe
-              className="h-full w-full"
-              src="https://www.youtube.com/embed/5lev6M_P3h8"
-              title="Video Promocional Mundialito"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
+          <section className="panel overflow-hidden bg-field">
+            <div className="flex items-center justify-between gap-3 border-b border-line p-4">
+              <h2 className="text-xl font-black text-red-400">Video Promocional</h2>
+              <ShareLinkButton url="https://youtu.be/5lev6M_P3h8" text="Mirá el video promocional del Mundialito 2026" />
+            </div>
+            <div className="aspect-video">
+              <iframe
+                className="h-full w-full"
+                src="https://www.youtube.com/embed/5lev6M_P3h8"
+                title="Video Promocional Mundialito"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
           </section>
         </div>
 

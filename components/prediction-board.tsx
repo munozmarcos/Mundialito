@@ -5,7 +5,7 @@ import { DateFilter } from "@/components/date-filter";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
-import { displayNameForTeam } from "@/lib/flags";
+import { countryCodeForTeam, displayNameForTeam } from "@/lib/flags";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { dateKey, matchFitsBasicFilters } from "@/lib/match-filters";
@@ -16,6 +16,13 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type PredictionWithUpdated = Prediction & { updated_at?: string | null };
+type PodiumDraft = {
+  champion_team?: string | null;
+  runner_up_team?: string | null;
+  third_place_team?: string | null;
+  points?: number | null;
+  updated_at?: string | null;
+};
 type BoardProps = {
   matches: Match[];
   demoMode: boolean;
@@ -113,6 +120,18 @@ function norm(value: string) {
     .replace(/\s+/g, " ")
     .toLowerCase()
     .trim();
+}
+
+function flagEmojiForTeam(team: string, explicit?: string | null) {
+  const code = countryCodeForTeam(team, explicit);
+  if (!code) return "";
+  if (code === "gb-sct") return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0073, 0xe0063, 0xe0074, 0xe007f);
+  if (code === "gb-eng") return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0065, 0xe006e, 0xe0067, 0xe007f);
+  return code
+    .toUpperCase()
+    .split("")
+    .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
+    .join("");
 }
 
 function teamMatchesBulk(team: string, query: string) {
@@ -518,6 +537,9 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const [bulk, setBulk] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkMessage, setBulkMessage] = useState("");
+  const [podium, setPodium] = useState<PodiumDraft | null>(null);
+  const [podiumMessage, setPodiumMessage] = useState("");
+  const [podiumSaving, setPodiumSaving] = useState(false);
   const predictionMap = useMemo(() => byId(predictions), [predictions]);
 
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
@@ -529,13 +551,29 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
   const selectedKnockoutMatches = selectedKnockoutStage ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter)) : [];
   const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
+  const teamOptions = useMemo(() => {
+    const options = new Map<string, { name: string; code?: string | null; label: string }>();
+    for (const match of groupMatches) {
+      [
+        { name: match.home_team, code: match.home_country_code },
+        { name: match.away_team, code: match.away_country_code }
+      ].forEach((team) => {
+        const display = displayNameForTeam(team.name);
+        const key = norm(display);
+        if (!key || options.has(key)) return;
+        const emoji = flagEmojiForTeam(team.name, team.code);
+        options.set(key, { name: display, code: team.code, label: `${emoji ? `${emoji} ` : ""}${display}` });
+      });
+    }
+    return [...options.values()].sort((a, b) => a.name.localeCompare(b.name, "es"));
+  }, [groupMatches]);
   const loaded = predictions.length;
   const pending = matches.filter((match) => {
     if (predictionMap[match.id]) return false;
     if (isMatchUnavailable(match)) return false;
     return matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status) === "open" || matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status) === "closing_soon";
   }).length;
-  const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0);
+  const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0) + (podium?.points ?? 0);
   const availableGroups = Object.keys(byGroup).sort();
   const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
   const groupEntries = activeTab === "tablas" ? Object.entries(byGroup) : selectedGroup ? Object.entries(byGroup).filter(([group]) => group === selectedGroup) : [];
@@ -549,13 +587,26 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
     if (res.ok) setPredictions(data.predictions ?? []);
   }
 
+  async function loadPodium() {
+    const res = await fetch("/api/podium", { cache: "no-store" });
+    const data = await res.json();
+    if (res.ok) {
+      setPodium(data.podium ?? { champion_team: "", runner_up_team: "", third_place_team: "", points: 0 });
+    }
+  }
+
   useEffect(() => {
     fetch("/api/auth/session", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         setUser(data.user ?? null);
-        if (data.user) void loadPredictions();
-        else setPredictions([]);
+        if (data.user) {
+          void loadPredictions();
+          void loadPodium();
+        } else {
+          setPredictions([]);
+          setPodium(null);
+        }
       })
       .finally(() => setLoading(false));
   }, []);
@@ -642,6 +693,39 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
     }
   }
 
+  async function savePodium() {
+    if (!user) {
+      setPodiumMessage("Entrá con tu usuario para guardar el podio.");
+      return;
+    }
+
+    setPodiumSaving(true);
+    setPodiumMessage("");
+    try {
+      const res = await fetch("/api/podium", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          championTeam: podium?.champion_team || null,
+          runnerUpTeam: podium?.runner_up_team || null,
+          thirdPlaceTeam: podium?.third_place_team || null
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "No se pudo guardar el podio.");
+      setPodium(data.podium);
+      setPodiumMessage("Podio guardado.");
+    } catch (error) {
+      setPodiumMessage(error instanceof Error ? error.message : "No se pudo guardar el podio.");
+    } finally {
+      setPodiumSaving(false);
+    }
+  }
+
+  function updatePodium(field: keyof PodiumDraft, value: string) {
+    setPodium((current) => ({ ...(current ?? {}), [field]: value }));
+  }
+
   if (!matches.length) return <EmptyState title="Sin partidos" text="Carga el calendario para ver el prode completo." />;
 
   return (
@@ -671,6 +755,50 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
       )}
 
       {demoMode && <p className="text-sm font-semibold text-gold">Partidos de muestra.</p>}
+
+      <section className="panel grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div>
+          <h2 className="flex items-center gap-2 text-xl font-black">
+            <Trophy className="h-5 w-5 text-gold" />
+            Podio final
+          </h2>
+          <p className="mt-1 text-sm font-semibold text-ink/60">
+            Elegí campeón, segundo puesto y 3er puesto. Suma +3, +2 y +1 cuando termine el Mundial.
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {[
+              ["champion_team", "Campeón +3"],
+              ["runner_up_team", "2do puesto +2"],
+              ["third_place_team", "3er puesto +1"]
+            ].map(([field, label]) => (
+              <label className="grid gap-1 text-sm font-bold text-ink/70" key={field}>
+                {label}
+                <select
+                  className="field min-h-11"
+                  disabled={!user}
+                  value={(podium?.[field as keyof PodiumDraft] as string | null | undefined) ?? ""}
+                  onChange={(event) => updatePodium(field as keyof PodiumDraft, event.target.value)}
+                >
+                  <option value="">Seleccionar selección</option>
+                  {teamOptions.map((team) => (
+                    <option key={`${field}-${team.name}`} value={team.name}>
+                      {team.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+          {podiumMessage && <p className="mt-3 text-sm font-bold text-grass">{podiumMessage}</p>}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-gold">{podium?.points ?? 0} Pts</span>
+          <button className="btn" disabled={!user || podiumSaving} onClick={savePodium} type="button">
+            <Save className="h-4 w-4" />
+            {podiumSaving ? "Guardando" : "Guardar"}
+          </button>
+        </div>
+      </section>
 
       <section className="panel flex flex-wrap items-center justify-between gap-3 p-4">
         <div>

@@ -7,6 +7,7 @@ export type RankingRow = {
   total_points: number;
   exact_hits: number;
   trend_hits: number;
+  podium_points?: number;
 };
 
 export type ActivityRow = {
