@@ -429,7 +429,7 @@ function PredictionCard({
           </div>
         </div>
         {unavailable && <p className="text-xs font-bold text-slate-500">Bloqueado hasta que se definan los clasificados.</p>}
-        {message && <p className="text-xs font-bold text-grass">{message}</p>}
+        {message && message !== "Guardada" && <p className="text-xs font-bold text-red-200">{message}</p>}
       </form>
     </article>
   );
@@ -469,12 +469,14 @@ function GroupProjection({ group, matches, predictions }: { group: string; match
 
 function PodiumPicker({
   label,
+  colorClass,
   value,
   disabled,
   teams,
   onChange
 }: {
   label: string;
+  colorClass?: string;
   value: string;
   disabled: boolean;
   teams: TeamOption[];
@@ -482,7 +484,10 @@ function PodiumPicker({
 }) {
   return (
     <div className="relative grid gap-1 text-sm font-bold text-ink/70">
-      <span>{label}</span>
+      <span className={`flex items-center gap-2 ${colorClass ?? ""}`}>
+        <Trophy className="h-4 w-4" />
+        {label}
+      </span>
       <CountryFilterPicker disabled={disabled} options={teams} value={value} onChange={onChange} />
     </div>
   );
@@ -553,6 +558,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const [podiumLockReason, setPodiumLockReason] = useState<string | null>(null);
   const [podiumMessage, setPodiumMessage] = useState("");
   const [podiumSaving, setPodiumSaving] = useState(false);
+  const [podiumSaved, setPodiumSaved] = useState(false);
   const predictionMap = useMemo(() => byId(predictions), [predictions]);
 
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
@@ -564,6 +570,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
   const selectedKnockoutMatches = selectedKnockoutStage ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter)) : [];
   const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
+  const allFilteredByStage = groupBy(allFilteredMatches, (match) => match.stage);
   const teamOptions = useMemo(() => teamOptionsFromMatches(groupMatches), [groupMatches]);
   const availablePredictionMatches = matches.filter((match) => !isMatchUnavailable(match, match.stage === "GROUP" ? undefined : bracket.displays[match.id]));
   const availablePredictionIds = new Set(availablePredictionMatches.map((match) => match.id));
@@ -716,7 +723,8 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
       setPodium(data.podium);
       setPodiumLocked(Boolean(data.locked));
       setPodiumLockReason(data.reason ?? null);
-      setPodiumMessage("Podio guardado.");
+      setPodiumSaved(true);
+      setPodiumMessage("");
     } catch (error) {
       setPodiumMessage(error instanceof Error ? error.message : "No se pudo guardar el podio.");
     } finally {
@@ -725,6 +733,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   }
 
   function updatePodium(field: keyof PodiumDraft, value: string) {
+    setPodiumSaved(false);
     setPodium((current) => ({ ...(current ?? {}), [field]: value }));
   }
 
@@ -776,7 +785,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           <ClipboardPaste className="h-4 w-4" />
           Carga masiva
         </button>
-        {bulkMessage && <p className="basis-full text-sm font-bold text-grass">{bulkMessage}</p>}
+        {bulkMessage && <p className="basis-full text-sm font-bold text-ink/65">{bulkMessage}</p>}
       </section>
 
       <section className="panel grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -791,19 +800,16 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
                 Elegí tu podio antes de que se habiliten los 16vos.
               </p>
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              {podium?.updated_at && <span className="text-[11px] italic text-ink/45">Actualizado - {formatKickoff(podium.updated_at)}</span>}
-              <StatusPill status={podiumLocked ? "closed" : "open"} label={podiumLocked ? "Cerrado" : "Abierto"} />
-            </div>
           </div>
           {podiumLockReason && <p className="mt-2 text-sm font-bold text-sky-200">{podiumLockReason}</p>}
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {[
-              ["champion_team", "Campeón"],
-              ["runner_up_team", "Subcampeón"],
-              ["third_place_team", "3er Puesto"]
-            ].map(([field, label]) => (
+              ["champion_team", "Campeón", "text-yellow-200"],
+              ["runner_up_team", "Subcampeón", "text-slate-100"],
+              ["third_place_team", "3er Puesto", "text-orange-200"]
+            ].map(([field, label, colorClass]) => (
               <PodiumPicker
+                colorClass={colorClass}
                 disabled={!user || podiumLocked}
                 key={field}
                 label={label}
@@ -813,14 +819,19 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
               />
             ))}
           </div>
-          {podiumMessage && <p className="mt-3 text-sm font-bold text-grass">{podiumMessage}</p>}
+          {podiumMessage && <p className="mt-3 text-sm font-bold text-red-200">{podiumMessage}</p>}
         </div>
-        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-          <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-ink/55">{podiumPoints} Pts</span>
-          <button className="btn" disabled={!user || podiumSaving || podiumLocked} onClick={savePodium} type="button">
-            <Save className="h-4 w-4" />
-            {podiumSaving ? "Guardando" : "Guardar"}
-          </button>
+        <div className="grid justify-items-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2 text-right">
+            {podium?.updated_at && <span className="text-[11px] italic text-ink/45">Actualizado - {formatKickoff(podium.updated_at)}</span>}
+            <StatusPill status={podiumLocked ? "closed" : "open"} label={podiumLocked ? "Cerrado" : "Abierto"} />
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-ink/55">{podiumPoints} Pts</span>
+            <button className="btn min-w-11 px-0" disabled={!user || podiumSaving || podiumLocked} onClick={savePodium} title="Guardar podio anticipado" type="button">
+              {podiumSaved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
       </section>
 
@@ -850,24 +861,54 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           <X className="h-4 w-4" />
         </button>
       </section>
-
       {activeTab === "todos" && (
         <section className="grid gap-4">
           <div>
             <h3 className="text-2xl font-black">Todos</h3>
-            <p className="mb-3 mt-1 text-sm font-semibold text-ink/60">Todos los partidos en grilla, filtrables por pais y fecha.</p>
+            <p className="mb-3 mt-1 text-sm font-semibold text-ink/60">Todos los partidos en grilla, filtrables por país y fecha.</p>
           </div>
-          <div className="match-card-grid">
-            {allFilteredMatches.map((match) => (
-              <PredictionCard
-                display={match.stage === "GROUP" ? undefined : bracket.displays[match.id]}
-                loggedIn={Boolean(user)}
-                match={match}
-                onSaved={upsertSaved}
-                prediction={predictionMap[match.id]}
-                key={match.id}
-              />
-            ))}
+          <div className="grid gap-5">
+            {(["GROUP", ...knockoutOrder] as MatchStage[]).map((stage) => {
+              const items = allFilteredByStage[stage] ?? [];
+              if (!items.length) return null;
+              if (stage === "GROUP") {
+                const grouped = groupBy(items, (match) => match.group_name || "Sin grupo");
+                return Object.entries(grouped).map(([group, groupItems]) => (
+                  <section className="grid gap-3" key={`${stage}-${group}`}>
+                    <h4 className="flex items-center gap-2 text-xl font-black"><CircleDot className="h-4 w-4 text-red-400" />Grupo {group}</h4>
+                    <div className="match-card-grid">
+                      {groupItems.map((match) => (
+                        <PredictionCard
+                          display={undefined}
+                          loggedIn={Boolean(user)}
+                          match={match}
+                          onSaved={upsertSaved}
+                          prediction={predictionMap[match.id]}
+                          key={match.id}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ));
+              }
+              return (
+                <section className="grid gap-3" key={stage}>
+                  <h4 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-4 w-4 text-gold" />{stageLabels[stage]}</h4>
+                  <div className="match-card-grid">
+                    {items.map((match) => (
+                      <PredictionCard
+                        display={bracket.displays[match.id]}
+                        loggedIn={Boolean(user)}
+                        match={match}
+                        onSaved={upsertSaved}
+                        prediction={predictionMap[match.id]}
+                        key={match.id}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
           </div>
         </section>
       )}
@@ -1005,3 +1046,4 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
     </div>
   );
 }
+

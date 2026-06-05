@@ -71,12 +71,13 @@ function ExampleCard({ example }: { example: (typeof examples)[number] }) {
 
 function StatusExample({ status, title, text }: { status: "open" | "locked" | "closed"; title: string; text: string }) {
   const locked = status === "locked";
+  const textClass = status === "open" ? "text-emerald-200" : status === "locked" ? "text-sky-200" : "text-slate-200";
   return (
     <article className="panel grid gap-3 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-xl font-black">{title}</h3>
-          <p className="mt-1 text-sm font-semibold text-ink/68">{text}</p>
+          <p className={`mt-1 text-sm ${textClass}`}>{text}</p>
         </div>
         <StatusPill status={status} />
       </div>
@@ -185,7 +186,7 @@ export default function RulesPage() {
           <div>
             <h3 className="font-black">Cierre del podio</h3>
             <p className="mt-1 text-sm font-semibold text-ink/65">
-              Se puede cargar durante la fase de grupos. Se bloquea cuando se habilitan los 16vos o 15 minutos antes del primer partido de esa fase.
+              Se puede cargar durante la fase de grupos. Se bloquea cuando faltan 15 minutos antes del primer partido de los 16vos.
             </p>
           </div>
         </article>

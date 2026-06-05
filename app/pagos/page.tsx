@@ -1,4 +1,4 @@
-import { PageHero } from "@/components/page-hero";
+﻿import { PageHero } from "@/components/page-hero";
 import { PaymentCard } from "@/components/payment-card";
 import { PaymentsContent } from "@/components/payments-content";
 import { getParticipantPayments, getPaymentSummary } from "@/lib/data";
@@ -43,12 +43,12 @@ export default async function PaymentsPage({ searchParams }: { searchParams?: { 
 
       <section className="grid gap-4 lg:grid-cols-[1fr_260px]">
         <article className="panel p-5">
-          <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div className="grid justify-items-center gap-4 text-center">
             <div>
-              <h2 className="text-2xl font-black">Pozo y premios</h2>
+              <h2 className="text-2xl font-black">Premios</h2>
               <p className="mt-1 text-sm font-semibold text-ink/65">Cada entrada suma $10.000 al pozo.</p>
             </div>
-            <div className="rounded-lg border border-grass/35 bg-grass/15 px-5 py-4 text-center shadow-[0_18px_38px_rgba(32,182,67,0.16)]">
+            <div className="w-full max-w-md rounded-lg border border-grass/35 bg-grass/15 px-5 py-4 text-center shadow-[0_18px_38px_rgba(32,182,67,0.16)]">
               <Trophy className="mx-auto h-7 w-7 text-grass" />
               <strong className="mt-2 block text-4xl font-black text-grass sm:text-5xl">{money(summary.prizePool)}</strong>
               <span className="text-xs font-black uppercase tracking-[0.18em] text-grass">Pozo</span>
@@ -80,3 +80,4 @@ export default async function PaymentsPage({ searchParams }: { searchParams?: { 
     </div>
   );
 }
+

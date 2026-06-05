@@ -9,7 +9,7 @@ import { formatArgentinaDateTime } from "@/lib/dates";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { getLatestNotifications } from "@/lib/notifications";
 import { matchStatus } from "@/lib/scoring";
-import { CalendarDays, CreditCard, LockKeyhole, Newspaper, Trophy } from "lucide-react";
+import { CalendarDays, CreditCard, LockKeyhole, Newspaper, Target, Trophy, UsersRound } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -149,16 +149,16 @@ export default async function Home() {
 
         <div className="grid content-start gap-4">
           <section className="grid gap-3 sm:grid-cols-3">
-            <article className="panel grid min-h-[108px] content-center justify-items-center p-3 text-center">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Pozo</p>
+            <article className="panel grid min-h-[108px] content-center justify-items-center border-grass/30 bg-grass/10 p-3 text-center">
+              <Trophy className="h-6 w-6 text-grass" />
               <p className="mt-2 whitespace-nowrap text-lg font-black text-grass sm:text-xl xl:text-2xl">{money(paymentSummary.prizePool)}</p>
             </article>
-            <article className="panel grid min-h-[108px] content-center justify-items-center p-3 text-center">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Personas</p>
+            <article className="panel grid min-h-[108px] content-center justify-items-center border-blue-300/30 bg-blue-950/20 p-3 text-center">
+              <UsersRound className="h-6 w-6 text-blue-300" />
               <p className="mt-2 whitespace-nowrap text-lg font-black text-blue-300 sm:text-xl xl:text-2xl">{paymentSummary.totalParticipants}</p>
             </article>
-            <article className="panel grid min-h-[108px] content-center justify-items-center p-3 text-center">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Puntos</p>
+            <article className="panel grid min-h-[108px] content-center justify-items-center border-red-400/30 bg-red-950/20 p-3 text-center">
+              <Target className="h-6 w-6 text-red-400" />
               <p className="mt-2 whitespace-nowrap text-lg font-black text-red-400 sm:text-xl xl:text-2xl">{currentUserPoints} Pts</p>
             </article>
           </section>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { StatusPill } from "@/components/status-pill";
 import { DateFilter } from "@/components/date-filter";
@@ -11,7 +11,7 @@ import { matchFitsBasicFilters } from "@/lib/match-filters";
 import { matchStatus } from "@/lib/scoring";
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import type { Match, MatchStage } from "@/lib/types";
-import { Calculator, CircleDot, GitBranch, Lock, Table2, Trophy, X } from "lucide-react";
+import { Calculator, CheckCircle2, CircleDot, GitBranch, Lock, LockKeyhole, Table2, Trophy, UnlockKeyhole, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type WinnerSide = "HOME" | "AWAY";
@@ -286,6 +286,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
   const selectedKnockoutMatches = selectedKnockoutStage ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter)) : [];
   const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
+  const allFilteredByStage = groupBy(allFilteredMatches, (match) => match.stage);
   const teamOptions = useMemo(() => teamOptionsFromMatches(groupMatches), [groupMatches]);
   const filteredGroups = Object.entries(byGroup)
     .filter(([group]) => activeTab === "tablas" || !selectedGroup || group === selectedGroup)
@@ -296,19 +297,19 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
     <div className="grid gap-6">
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="panel p-4">
-          <span className="text-sm font-bold text-ink/60">Totales</span>
+          <span className="flex items-center gap-2 text-sm font-bold text-ink/60"><CircleDot className="h-4 w-4 text-blue-300" />Totales</span>
           <strong className="block text-3xl">{matches.length}</strong>
         </div>
         <div className="panel p-4">
-          <span className="text-sm font-bold text-ink/60">Abiertos</span>
+          <span className="flex items-center gap-2 text-sm font-bold text-ink/60"><UnlockKeyhole className="h-4 w-4 text-grass" />Abiertos</span>
           <strong className="block text-3xl">{totalOpen}</strong>
         </div>
         <div className="panel p-4">
-          <span className="text-sm font-bold text-ink/60">Cerrados</span>
+          <span className="flex items-center gap-2 text-sm font-bold text-ink/60"><CheckCircle2 className="h-4 w-4 text-slate-200" />Cerrados</span>
           <strong className="block text-3xl">{totalClosed}</strong>
         </div>
         <div className="panel p-4">
-          <span className="text-sm font-bold text-ink/60">Bloqueados</span>
+          <span className="flex items-center gap-2 text-sm font-bold text-ink/60"><LockKeyhole className="h-4 w-4 text-sky-200" />Bloqueados</span>
           <strong className="block text-3xl">{totalBlocked}</strong>
         </div>
       </section>
@@ -346,10 +347,34 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
             <h2 className="text-2xl font-black">Todos</h2>
             <p className="mt-1 text-sm font-semibold text-ink/60">Grilla completa con filtro por país y fecha.</p>
           </div>
-          <div className="match-card-grid">
-            {allFilteredMatches.map((match) => (
-              <MatchCard key={match.id} match={match} display={bracket.displays[match.id]} />
-            ))}
+          <div className="grid gap-5">
+            {(["GROUP", ...knockoutOrder] as MatchStage[]).map((stage) => {
+              const items = allFilteredByStage[stage] ?? [];
+              if (!items.length) return null;
+              if (stage === "GROUP") {
+                const grouped = groupBy(items, (match) => match.group_name || "Sin grupo");
+                return Object.entries(grouped).map(([group, groupItems]) => (
+                  <section className="grid gap-3" key={`${stage}-${group}`}>
+                    <h3 className="flex items-center gap-2 text-xl font-black"><CircleDot className="h-4 w-4 text-red-400" />Grupo {group}</h3>
+                    <div className="match-card-grid">
+                      {groupItems.map((match) => (
+                        <MatchCard key={match.id} match={match} display={bracket.displays[match.id]} />
+                      ))}
+                    </div>
+                  </section>
+                ));
+              }
+              return (
+                <section className="grid gap-3" key={stage}>
+                  <h3 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-4 w-4 text-gold" />{stageLabels[stage]}</h3>
+                  <div className="match-card-grid">
+                    {items.map((match) => (
+                      <MatchCard key={match.id} match={match} display={bracket.displays[match.id]} />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
           </div>
         </section>
       )}
@@ -472,3 +497,4 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
     </div>
   );
 }
+

@@ -11,7 +11,7 @@ import { DateFilter } from "@/components/date-filter";
 import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import { Calculator, CircleDot, ClipboardPaste, GitBranch, Lock, RotateCcw, Table2, Trophy, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type SimPrediction = Prediction & { profiles?: Pick<Profile, "display_name"> | null };
 
@@ -51,6 +51,7 @@ const stageLabels: Record<string, string> = {
 };
 
 const knockoutOrder: MatchStage[] = ["R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
+const SIMULATOR_STORAGE_KEY = "mundialito-simulator-state";
 
 function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string) {
   return matchFitsBasicFilters(match, teamFilter, dateFilter);
@@ -329,6 +330,8 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   const [teamFilter, setTeamFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [podium, setPodium] = useState({ champion_team: "", runner_up_team: "", third_place_team: "" });
+  const [storageReady, setStorageReady] = useState(false);
+  const loadedSimulationRef = useRef(false);
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
   const knockoutMatches = matches.filter((match) => match.stage !== "GROUP");
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
@@ -355,6 +358,27 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
     groupMatches.every((match) => results[match.id]?.home !== "" && results[match.id]?.away !== "");
 
   useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(SIMULATOR_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { results?: ResultMap; podium?: typeof podium };
+        if (parsed.results) setResults({ ...initialResults(matches), ...parsed.results });
+        if (parsed.podium) setPodium(parsed.podium);
+        loadedSimulationRef.current = true;
+      }
+    } catch {
+      loadedSimulationRef.current = false;
+    } finally {
+      setStorageReady(true);
+    }
+  }, [matches]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    window.localStorage.setItem(SIMULATOR_STORAGE_KEY, JSON.stringify({ results, podium }));
+  }, [podium, results, storageReady]);
+
+  useEffect(() => {
     let mounted = true;
     fetch("/api/auth/session", { cache: "no-store" })
       .then((response) => response.json())
@@ -365,7 +389,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
           void fetch("/api/podium", { cache: "no-store" })
             .then((response) => response.json())
             .then((podiumData) => {
-              if (!mounted || !podiumData.podium) return;
+              if (!mounted || !podiumData.podium || loadedSimulationRef.current) return;
               setPodium({
                 champion_team: podiumData.podium.champion_team ?? "",
                 runner_up_team: podiumData.podium.runner_up_team ?? "",
@@ -427,11 +451,20 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
     }));
   }
 
-  function setWinner(matchId: string, winner: WinnerSide) {
+  function setWinner(matchId: string, winner: WinnerSide | "") {
     setResults((current) => ({
       ...current,
       [matchId]: { ...current[matchId], winner }
     }));
+  }
+
+  function clearSimulation() {
+    const emptyPodium = { champion_team: "", runner_up_team: "", third_place_team: "" };
+    loadedSimulationRef.current = true;
+    setResults(initialResults(matches));
+    setPodium(emptyPodium);
+    setCopyMessage("Simulador limpio.");
+    window.localStorage.setItem(SIMULATOR_STORAGE_KEY, JSON.stringify({ results: initialResults(matches), podium: emptyPodium }));
   }
 
   function updatePodium(field: "champion_team" | "runner_up_team" | "third_place_team", value: string) {
@@ -554,14 +587,14 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         {isKnockoutTie && (
           <div className="rounded-lg border border-line bg-field p-3">
             <div className="mb-2 text-xs font-black uppercase text-ink/45">Ganador</div>
-            <div className="grid gap-2 sm:grid-cols-2">
-            <button className={`btn ${result?.winner === "HOME" ? "" : "secondary"}`} onClick={() => setWinner(match.id, "HOME")} type="button">
-              <TeamLabel name={display.home.name} code={display.home.code} />
-            </button>
-            <button className={`btn ${result?.winner === "AWAY" ? "" : "secondary"}`} onClick={() => setWinner(match.id, "AWAY")} type="button">
-              <TeamLabel name={display.away.name} code={display.away.code} />
-            </button>
-            </div>
+            <CountryFilterPicker
+              value={result?.winner === "HOME" ? display.home.name : result?.winner === "AWAY" ? display.away.name : ""}
+              options={[
+                { name: display.home.name, code: display.home.code },
+                { name: display.away.name, code: display.away.code }
+              ]}
+              onChange={(value) => setWinner(match.id, value === display.home.name ? "HOME" : value === display.away.name ? "AWAY" : "")}
+            />
           </div>
         )}
         {knockoutBlocked && <p className="text-xs font-bold text-slate-400">Completá todos los partidos de grupos para habilitar esta llave.</p>}
@@ -584,6 +617,10 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
             <Calculator className="h-4 w-4" />
             Carga masiva
           </button>
+          <button className="btn secondary" onClick={clearSimulation} type="button">
+            <RotateCcw className="h-4 w-4" />
+            Limpiar
+          </button>
           {copyMessage && <span className="text-sm font-bold text-ink/65">{copyMessage}</span>}
         </div>
       </section>
@@ -597,12 +634,15 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
           <p className="mt-1 text-sm font-semibold text-ink/60">Completa el podio para copiar tu historia. Los puntos se suman solo cuando haya resultados reales.</p>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {[
-              ["champion_team", "Campeón"],
-              ["runner_up_team", "Subcampeón"],
-              ["third_place_team", "3er Puesto"]
-            ].map(([field, label]) => (
+              ["champion_team", "Campeón", "text-yellow-200"],
+              ["runner_up_team", "Subcampeón", "text-slate-100"],
+              ["third_place_team", "3er Puesto", "text-orange-200"]
+            ].map(([field, label, colorClass]) => (
               <label className="grid gap-1 text-sm font-bold text-ink/70" key={field}>
-                {label}
+                <span className={`flex items-center gap-2 ${colorClass}`}>
+                  <Trophy className="h-4 w-4" />
+                  {label}
+                </span>
                 <CountryFilterPicker
                   value={podium[field as keyof typeof podium]}
                   options={teamOptions}
@@ -642,22 +682,6 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         </button>
       </section>
 
-      <section className="panel overflow-hidden">
-        <div className="border-b border-line p-4">
-          <h2 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-5 w-5 text-gold" />Ranking simulado</h2>
-          <p className="mt-1 text-sm font-semibold text-ink/60">Suma puntos por tendencia, exactos y, cuando exista resultado final real, aciertos del podio anticipado.</p>
-        </div>
-        {ranking.map((row, index) => (
-          <div className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-line p-3 last:border-0" key={row.userId}>
-            <strong className="text-center text-gold">#{index + 1}</strong>
-            <div>
-              <strong>{row.name}</strong>
-              <p className="text-xs text-ink/60">{row.exacts} exactos - {row.trends} tendencias - {row.played} puntuados</p>
-            </div>
-            <strong className="text-center">{row.points} Pts</strong>
-          </div>
-        ))}
-      </section>
 
       {activeTab === "todos" && (
         <section className="grid gap-4">
@@ -669,16 +693,24 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
             {(["GROUP", ...knockoutOrder] as MatchStage[]).map((stage) => {
               const items = allFilteredByStage[stage] ?? [];
               if (!items.length) return null;
+              if (stage === "GROUP") {
+                const grouped = groupBy(items, (match) => match.group_name || "Sin grupo");
+                return Object.entries(grouped).map(([group, groupItems]) => (
+                  <section className="grid gap-3" key={`${stage}-${group}`}>
+                    <h4 className="flex items-center gap-2 text-xl font-black"><CircleDot className="h-4 w-4 text-red-400" />Grupo {group}</h4>
+                    <div className="match-card-grid">
+                      {groupItems.map((match) => resultCard(match))}
+                    </div>
+                  </section>
+                ));
+              }
               return (
-                <div className="grid gap-3" key={stage}>
-                  <h4 className="flex items-center gap-2 text-xl font-black">
-                    {stage !== "GROUP" && <Trophy className="h-4 w-4 text-gold" />}
-                    {stageLabels[stage]}
-                  </h4>
+                <section className="grid gap-3" key={stage}>
+                  <h4 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-4 w-4 text-gold" />{stageLabels[stage]}</h4>
                   <div className="match-card-grid">
                     {items.map((match) => resultCard(match))}
                   </div>
-                </div>
+                </section>
               );
             })}
           </div>
@@ -718,36 +750,9 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
             ))}
           </div>
         </div>
-
-        <button className="btn secondary w-fit" onClick={() => setResults(initialResults(matches))} type="button"><RotateCcw className="h-4 w-4" />Reiniciar</button>
       </section>
       )}
 
-      {bulkOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/75 p-4">
-          <section className="panel w-full max-w-3xl p-4 shadow-2xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="flex items-center gap-2 text-xl font-black"><ClipboardPaste className="h-5 w-5 text-grass" />Carga masiva</h2>
-                <p className="mt-1 text-sm text-ink/60">Pegá el texto de $pronosticos o usá formato por línea: Argentina 2-1 México</p>
-              </div>
-              <button className="btn secondary min-w-11 px-0" onClick={() => setBulkOpen(false)} type="button" aria-label="Cerrar">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <textarea
-              className="field mt-4 h-[52vh] min-h-[340px] w-full resize-y py-4 leading-6"
-              rows={18}
-              value={bulk}
-              onChange={(event) => setBulk(event.target.value)}
-            />
-            <div className="mt-3 flex flex-wrap justify-end gap-2">
-              <button className="btn secondary" onClick={() => setBulkOpen(false)} type="button">Cancelar</button>
-              <button className="btn" onClick={applyBulk} type="button"><Calculator className="h-4 w-4" />Aplicar</button>
-            </div>
-          </section>
-        </div>
-      )}
 
       {activeTab === "llave" && (
         <section className="grid gap-4">
@@ -810,6 +815,47 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         </section>
       )}
 
+      <section className="panel overflow-hidden">
+        <div className="border-b border-line p-4">
+          <h2 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-5 w-5 text-gold" />Ranking simulado</h2>
+          <p className="mt-1 text-sm font-semibold text-ink/60">Suma puntos por tendencia, exactos y, cuando exista resultado final real, aciertos del podio anticipado.</p>
+        </div>
+        {ranking.map((row, index) => (
+          <div className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-line p-3 last:border-0" key={row.userId}>
+            <strong className="text-center text-gold">#{index + 1}</strong>
+            <div>
+              <strong>{row.name}</strong>
+              <p className="text-xs text-ink/60">{row.exacts} exactos - {row.trends} tendencias - {row.played} puntuados</p>
+            </div>
+            <strong className="text-center">{row.points} Pts</strong>
+          </div>
+        ))}
+      </section>
+      {bulkOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/75 p-4">
+          <section className="panel w-full max-w-3xl p-4 shadow-2xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-xl font-black"><ClipboardPaste className="h-5 w-5 text-grass" />Carga masiva</h2>
+                <p className="mt-1 text-sm text-ink/60">Pegá el texto de $pronosticos o usá formato por línea: Argentina 2-1 México</p>
+              </div>
+              <button className="btn secondary min-w-11 px-0" onClick={() => setBulkOpen(false)} type="button" aria-label="Cerrar">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <textarea
+              className="field mt-4 h-[52vh] min-h-[340px] w-full resize-y py-4 leading-6"
+              rows={18}
+              value={bulk}
+              onChange={(event) => setBulk(event.target.value)}
+            />
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              <button className="btn secondary" onClick={() => setBulkOpen(false)} type="button">Cancelar</button>
+              <button className="btn" onClick={applyBulk} type="button"><Calculator className="h-4 w-4" />Aplicar</button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

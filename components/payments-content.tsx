@@ -58,17 +58,19 @@ export function PaymentsContent({ participants, paidParticipants, totalParticipa
           <EmptyState title="Sin participantes" text="No hay participantes para ese filtro." />
         </div>
       ) : (
-        filteredParticipants.map((participant) => (
-          <div className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-line p-4 last:border-0" key={participant.id}>
+        <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          {filteredParticipants.map((participant) => (
+          <div className="rounded-lg border border-line bg-field p-4" key={participant.id}>
             <div>
               <h3 className="font-black">{participant.display_name}</h3>
               <p className="text-xs font-black text-ink/55">{participant.role === "admin" ? "Admin" : "Participante"}</p>
             </div>
-            <span className={`rounded-full px-3 py-1 text-xs font-black uppercase ${participant.paid ? "bg-mint text-grass" : "bg-slate-100 text-slate-600"}`}>
+            <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-black uppercase ${participant.paid ? "bg-mint text-grass" : "bg-slate-100 text-slate-600"}`}>
               {participant.paid ? "Pago" : "Impago"}
             </span>
           </div>
-        ))
+          ))}
+        </div>
       )}
     </article>
   );

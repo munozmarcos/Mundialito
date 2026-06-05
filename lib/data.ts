@@ -8,6 +8,63 @@ export type RankingRow = {
   exact_hits: number;
   trend_hits: number;
   podium_points?: number;
+  podium_champion_points?: number;
+  podium_runner_up_points?: number;
+  podium_third_place_points?: number;
+};
+
+export type RankingPredictionDetail = {
+  id: string;
+  user_id: string;
+  points: number;
+  exact_hit: boolean;
+  trend_hit: boolean;
+  home_goals: number;
+  away_goals: number;
+  penalty_winner?: string | null;
+  updated_at?: string | null;
+  matches?: {
+    id: string;
+    home_team: string;
+    away_team: string;
+    home_country_code?: string | null;
+    away_country_code?: string | null;
+    kickoff_at: string;
+    stage: string;
+    group_name?: string | null;
+    home_goals?: number | null;
+    away_goals?: number | null;
+    penalty_winner?: string | null;
+  } | {
+    id: string;
+    home_team: string;
+    away_team: string;
+    home_country_code?: string | null;
+    away_country_code?: string | null;
+    kickoff_at: string;
+    stage: string;
+    group_name?: string | null;
+    home_goals?: number | null;
+    away_goals?: number | null;
+    penalty_winner?: string | null;
+  }[] | null;
+};
+
+export type RankingPodiumDetail = {
+  user_id: string;
+  champion_team?: string | null;
+  runner_up_team?: string | null;
+  third_place_team?: string | null;
+  champion_points: number;
+  runner_up_points: number;
+  third_place_points: number;
+  points: number;
+  updated_at?: string | null;
+};
+
+export type RankingDetails = {
+  predictions: RankingPredictionDetail[];
+  podium: RankingPodiumDetail[];
 };
 
 export type ActivityRow = {
@@ -79,13 +136,56 @@ export async function getRanking(): Promise<RankingRow[]> {
 
   try {
     const db = supabaseAdmin();
-    const { data, error } = await db.rpc("ranking");
+    const [{ data, error }, { data: podiumRows, error: podiumError }] = await Promise.all([
+      db.rpc("ranking"),
+      db.from("podium_predictions").select("user_id,champion_points,runner_up_points,third_place_points,points")
+    ]);
     if (error) throw error;
+    if (podiumError) throw podiumError;
+    const podiumByUser = new Map((podiumRows ?? []).map((row) => [row.user_id, row]));
     return ((data ?? []) as RankingRow[])
+      .map((row) => {
+        const podium = podiumByUser.get(row.user_id);
+        return {
+          ...row,
+          podium_points: podium?.points ?? row.podium_points ?? 0,
+          podium_champion_points: podium?.champion_points ?? 0,
+          podium_runner_up_points: podium?.runner_up_points ?? 0,
+          podium_third_place_points: podium?.third_place_points ?? 0
+        };
+      })
       .sort((a, b) => b.total_points - a.total_points || b.exact_hits - a.exact_hits || b.trend_hits - a.trend_hits || a.display_name.localeCompare(b.display_name));
   } catch (error) {
     console.warn("[demo:fallback] ranking", error);
     return demoRanking;
+  }
+}
+
+export async function getRankingDetails(): Promise<RankingDetails> {
+  if (!supabaseConfigured()) return { predictions: [], podium: [] };
+
+  try {
+    const db = supabaseAdmin();
+    const [{ data: predictions, error: predictionError }, { data: podium, error: podiumError }] = await Promise.all([
+      db
+        .from("predictions")
+        .select("id,user_id,points,exact_hit,trend_hit,home_goals,away_goals,penalty_winner,updated_at,matches(id,home_team,away_team,home_country_code,away_country_code,kickoff_at,stage,group_name,home_goals,away_goals,penalty_winner)")
+        .gt("points", 0)
+        .order("updated_at", { ascending: false }),
+      db
+        .from("podium_predictions")
+        .select("user_id,champion_team,runner_up_team,third_place_team,champion_points,runner_up_points,third_place_points,points,updated_at")
+        .gt("points", 0)
+    ]);
+    if (predictionError) throw predictionError;
+    if (podiumError) throw podiumError;
+    return {
+      predictions: (predictions ?? []) as unknown as RankingPredictionDetail[],
+      podium: (podium ?? []) as RankingPodiumDetail[]
+    };
+  } catch (error) {
+    console.warn("[ranking-details:fallback]", error);
+    return { predictions: [], podium: [] };
   }
 }
 

@@ -1,13 +1,47 @@
-"use client";
+﻿"use client";
 
+import { CountryFilterPicker } from "@/components/country-filter-picker";
+import { DateFilter } from "@/components/date-filter";
 import { EmptyState } from "@/components/empty-state";
-import type { RankingRow } from "@/lib/data";
-import { X } from "lucide-react";
+import { TeamLabel } from "@/components/team-label";
+import { formatArgentinaDateTime } from "@/lib/dates";
+import { matchFitsBasicFilters } from "@/lib/match-filters";
+import { teamOptionsFromMatches } from "@/lib/team-options";
+import type { RankingDetails, RankingPredictionDetail, RankingRow } from "@/lib/data";
+import type { Match, MatchStage } from "@/lib/types";
+import { Eye, Medal, Trophy, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type Props = {
   ranking: RankingRow[];
+  details: RankingDetails;
 };
+
+type DetailMatch = {
+  id: string;
+  home_team: string;
+  away_team: string;
+  home_country_code?: string | null;
+  away_country_code?: string | null;
+  kickoff_at: string;
+  stage: string;
+  group_name?: string | null;
+  home_goals?: number | null;
+  away_goals?: number | null;
+  penalty_winner?: string | null;
+};
+
+const stageLabels: Record<string, string> = {
+  GROUP: "Grupos",
+  R32: "16vos",
+  R16: "8vos",
+  QF: "4tos",
+  SF: "Semis",
+  THIRD_PLACE: "3er Puesto",
+  FINAL: "Final"
+};
+
+const stageOrder: MatchStage[] = ["GROUP", "R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
 
 function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -20,9 +54,102 @@ function podiumClass(index: number) {
   return "border-line";
 }
 
-export function RankingContent({ ranking }: Props) {
+function asMatch(value: RankingPredictionDetail["matches"]): DetailMatch | null {
+  if (!value) return null;
+  return (Array.isArray(value) ? (value[0] ?? null) : value) as DetailMatch | null;
+}
+
+function groupBy<T>(items: T[], key: (item: T) => string) {
+  return items.reduce<Record<string, T[]>>((acc, item) => {
+    const group = key(item);
+    acc[group] ??= [];
+    acc[group].push(item);
+    return acc;
+  }, {});
+}
+
+function podiumBreakdown(row: RankingRow) {
+  return `${row.podium_champion_points ?? 0}/${row.podium_runner_up_points ?? 0}/${row.podium_third_place_points ?? 0}`;
+}
+
+function DetailCard({ detail }: { detail: RankingPredictionDetail }) {
+  const match = asMatch(detail.matches);
+  if (!match) return null;
+  return (
+    <article className="rounded-lg border border-line bg-field p-3">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <span className="badge">{match.group_name ? `Grupo ${match.group_name}` : stageLabels[match.stage] ?? match.stage}</span>
+          <p className="mt-2 text-xs font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</p>
+        </div>
+        <strong className="rounded-full border border-grass/30 bg-emerald-950/70 px-3 py-1 text-sm text-grass">{detail.points} Pts</strong>
+      </div>
+      <div className="grid gap-2">
+        <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
+          <TeamLabel name={match.home_team} code={match.home_country_code} />
+          <span className="field min-h-10 px-2 text-center font-black">{detail.home_goals}</span>
+          <span className="field min-h-10 px-2 text-center font-black">{match.home_goals ?? ""}</span>
+        </div>
+        <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
+          <TeamLabel name={match.away_team} code={match.away_country_code} />
+          <span className="field min-h-10 px-2 text-center font-black">{detail.away_goals}</span>
+          <span className="field min-h-10 px-2 text-center font-black">{match.away_goals ?? ""}</span>
+        </div>
+        <div className="grid grid-cols-[1fr_72px_72px] gap-2 px-2 text-[11px] font-black uppercase text-ink/45">
+          <span />
+          <span className="text-center">Pronóstico</span>
+          <span className="text-center">Resultado</span>
+        </div>
+      </div>
+      <p className="mt-3 text-xs font-semibold text-ink/60">
+        {detail.exact_hit ? "Exacto" : detail.trend_hit ? "Tendencia" : "Puntos"} logrado.
+      </p>
+    </article>
+  );
+}
+
+function PodiumHit({ label, team, points, colorClass }: { label: string; team?: string | null; points: number; colorClass: string }) {
+  if (!team || !points) return null;
+  return (
+    <article className="rounded-lg border border-line bg-field p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className={`flex items-center gap-2 text-sm font-black ${colorClass}`}>
+          <Trophy className="h-4 w-4" />
+          {label}
+        </span>
+        <strong className="rounded-full border border-gold/30 bg-yellow-950/60 px-3 py-1 text-sm text-gold">{points} Pts</strong>
+      </div>
+      <TeamLabel name={team} />
+    </article>
+  );
+}
+
+export function RankingContent({ ranking, details }: Props) {
   const [query, setQuery] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [teamFilter, setTeamFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
   const normalizedQuery = normalize(query);
+  const selectedRow = ranking.find((row) => row.user_id === selectedUserId) ?? null;
+  const detailRows = useMemo(
+    () => details.predictions.filter((detail) => detail.user_id === selectedUserId),
+    [details.predictions, selectedUserId]
+  );
+  const podiumDetail = details.podium.find((item) => item.user_id === selectedUserId);
+  const teamOptions = useMemo(() => {
+    const matches = detailRows.map((detail) => asMatch(detail.matches)).filter(Boolean).map((match) => ({
+      ...(match as DetailMatch),
+      id: (match as DetailMatch).id,
+      status: "closed",
+      locked: true
+    })) as Match[];
+    return teamOptionsFromMatches(matches);
+  }, [detailRows]);
+  const filteredDetails = detailRows.filter((detail) => {
+    const match = asMatch(detail.matches);
+    return match ? matchFitsBasicFilters(match as Match, teamFilter, dateFilter) : false;
+  });
+  const detailsByStage = groupBy(filteredDetails, (detail) => asMatch(detail.matches)?.stage ?? "GROUP");
   const filteredRanking = useMemo(
     () => ranking.filter((row) => !normalizedQuery || normalize(row.display_name).includes(normalizedQuery)),
     [normalizedQuery, ranking]
@@ -43,24 +170,95 @@ export function RankingContent({ ranking }: Props) {
         </div>
         {!filteredRanking.length ? (
           <div className="p-5">
-            <EmptyState title="Ranking vacio" text="No hay participantes para ese filtro." />
+            <EmptyState title="Ranking vacío" text="No hay participantes para ese filtro." />
           </div>
         ) : (
           filteredRanking.map((row, index) => (
-            <div className={`grid grid-cols-[48px_1fr_auto] items-center gap-3 border-b p-4 last:border-0 ${podiumClass(index)}`} key={row.user_id}>
+            <div className={`grid gap-3 border-b p-4 last:border-0 sm:grid-cols-[48px_1fr_auto_auto] sm:items-center ${podiumClass(index)}`} key={row.user_id}>
               <div className={`text-2xl font-black ${index < 3 ? "" : "text-gold"}`}>#{index + 1}</div>
               <div>
                 <h3 className="font-black">{row.display_name}</h3>
                 <p className="text-sm text-ink/60">{row.exact_hits} exactos - {row.trend_hits} tendencias</p>
+                <p className="mt-1 text-sm font-bold text-blue-200">{podiumBreakdown(row)} podio anticipado</p>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <strong className="block text-2xl font-black">{row.total_points}</strong>
                 <span className="text-xs font-black uppercase text-ink/45">pts</span>
               </div>
+              <button className="btn secondary w-fit" onClick={() => setSelectedUserId(row.user_id)} type="button">
+                <Eye className="h-4 w-4" />
+                Detalles
+              </button>
             </div>
           ))
         )}
       </article>
+
+      {selectedRow && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-3">
+          <section className="panel dark-scrollbar max-h-[92vh] w-full max-w-6xl overflow-y-auto p-4 shadow-2xl">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
+              <div>
+                <span className="badge">Detalles</span>
+                <h2 className="mt-2 text-2xl font-black">{selectedRow.display_name}</h2>
+                <p className="mt-1 text-sm font-semibold text-ink/60">{selectedRow.total_points} Pts - {selectedRow.exact_hits} exactos - {selectedRow.trend_hits} tendencias - {podiumBreakdown(selectedRow)} podio anticipado</p>
+              </div>
+              <button className="btn secondary min-w-11 px-0" onClick={() => setSelectedUserId(null)} type="button" aria-label="Cerrar detalles">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <section className="mt-4 grid gap-2 p-0 sm:grid-cols-[minmax(280px,1fr)_150px_auto] lg:grid-cols-[320px_150px_44px] lg:items-center">
+              <CountryFilterPicker className="min-w-[260px]" value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
+              <DateFilter value={dateFilter} onChange={setDateFilter} />
+              <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
+                <X className="h-4 w-4" />
+              </button>
+            </section>
+
+            {podiumDetail && podiumDetail.points > 0 && (
+              <section className="mt-5 grid gap-3">
+                <h3 className="flex items-center gap-2 text-xl font-black"><Medal className="h-5 w-5 text-gold" />Podio anticipado</h3>
+                <div className="match-card-grid">
+                  <PodiumHit colorClass="text-yellow-200" label="Campeón" team={podiumDetail.champion_team} points={podiumDetail.champion_points} />
+                  <PodiumHit colorClass="text-slate-100" label="Subcampeón" team={podiumDetail.runner_up_team} points={podiumDetail.runner_up_points} />
+                  <PodiumHit colorClass="text-orange-200" label="3er Puesto" team={podiumDetail.third_place_team} points={podiumDetail.third_place_points} />
+                </div>
+              </section>
+            )}
+
+            {!filteredDetails.length && (!podiumDetail || !podiumDetail.points) ? (
+              <div className="mt-5">
+                <EmptyState title="Sin puntos" text="No hay partidos con puntos para mostrar." />
+              </div>
+            ) : (
+              <div className="mt-5 grid gap-5">
+                {stageOrder.map((stage) => {
+                  const rows = detailsByStage[stage] ?? [];
+                  if (!rows.length) return null;
+                  if (stage === "GROUP") {
+                    const byGroup = groupBy(rows, (detail) => asMatch(detail.matches)?.group_name ?? "Sin grupo");
+                    return Object.entries(byGroup).map(([group, items]) => (
+                      <section className="grid gap-3" key={`${stage}-${group}`}>
+                        <h3 className="text-xl font-black">Grupo {group}</h3>
+                        <div className="match-card-grid">{items.map((detail) => <DetailCard detail={detail} key={detail.id} />)}</div>
+                      </section>
+                    ));
+                  }
+                  return (
+                    <section className="grid gap-3" key={stage}>
+                      <h3 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-4 w-4 text-gold" />{stageLabels[stage]}</h3>
+                      <div className="match-card-grid">{rows.map((detail) => <DetailCard detail={detail} key={detail.id} />)}</div>
+                    </section>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
     </section>
   );
 }
+
+

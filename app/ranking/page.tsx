@@ -1,12 +1,12 @@
 import { PageHero } from "@/components/page-hero";
 import { RankingContent } from "@/components/ranking-content";
-import { getRanking, type RankingRow } from "@/lib/data";
+import { getRanking, getRankingDetails, type RankingRow } from "@/lib/data";
 import { Trophy } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function RankingPage() {
-  const ranking = await getRanking();
+  const [ranking, details] = await Promise.all([getRanking(), getRankingDetails()]);
 
   return (
     <div className="grid gap-6">
@@ -19,6 +19,7 @@ export default async function RankingPage() {
 
       <RankingContent
         ranking={ranking as RankingRow[]}
+        details={details}
       />
     </div>
   );
