@@ -72,10 +72,10 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[420px_1fr] lg:items-start">
+      <section className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
         <div className="grid gap-3 sm:grid-cols-2">
           {features.map((feature) => (
-            <article className="panel flex gap-3 p-3" key={feature.title}>
+            <article className="panel flex min-h-[92px] gap-3 p-3" key={feature.title}>
               <feature.icon className="mt-1 h-4 w-4 shrink-0 text-grass" />
               <div>
                 <h2 className="text-sm font-black">{feature.title}</h2>
@@ -90,7 +90,7 @@ export default async function Home() {
             <PlayCircle className="h-5 w-5 text-red-400" />
             <h2 className="text-xl font-black">Video Promocional</h2>
           </div>
-          <div className="aspect-video bg-field">
+          <div className="aspect-video bg-field lg:h-[202px]">
             <iframe
               className="h-full w-full"
               src="https://www.youtube.com/embed/5lev6M_P3h8"
@@ -144,10 +144,15 @@ export default async function Home() {
         </section>
 
         <div className="grid content-start gap-4">
-          <section className="panel p-4">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Pozo acumulado</p>
-            <p className="mt-1 text-3xl font-black text-grass">{money(paymentSummary.prizePool)}</p>
-            <p className="mt-1 text-xs font-semibold text-ink/60">{paymentSummary.paidParticipants} pagos confirmados</p>
+          <section className="grid grid-cols-2 gap-3">
+            <article className="panel p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Pozo acumulado</p>
+              <p className="mt-1 text-3xl font-black text-grass">{money(paymentSummary.prizePool)}</p>
+            </article>
+            <article className="panel p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Participantes</p>
+              <p className="mt-1 text-3xl font-black text-grass">{paymentSummary.totalParticipants}</p>
+            </article>
           </section>
 
           <section className="panel overflow-hidden">
