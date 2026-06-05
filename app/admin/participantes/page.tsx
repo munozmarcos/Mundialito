@@ -169,7 +169,7 @@ export default function ParticipantesPage() {
               className="field"
               value={form.phone}
               onChange={(event) => setForm({ ...form, phone: event.target.value })}
-              placeholder="+54911..."
+              placeholder="WhatsApp con codigo de pais"
             />
           </label>
           <label className="grid gap-1 text-sm font-bold">

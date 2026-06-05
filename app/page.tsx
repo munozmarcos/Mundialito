@@ -3,6 +3,7 @@ import { HomePrimaryAction } from "@/components/home-primary-action";
 import { ShareLinkButton } from "@/components/share-link-button";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
+import { getAppUserFromServerCookies } from "@/lib/app-auth";
 import { getMatches, getPaymentSummary, getRanking } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
@@ -44,13 +45,15 @@ function money(value: number) {
 }
 
 export default async function Home() {
-  const [allMatches, ranking, paymentSummary, newsItems] = await Promise.all([
+  const [allMatches, ranking, paymentSummary, newsItems, currentUser] = await Promise.all([
     getMatches(),
     getRanking(),
     getPaymentSummary(),
-    getLatestNotifications(5)
+    getLatestNotifications(5),
+    getAppUserFromServerCookies()
   ]);
   const matches = upcoming(allMatches, 6);
+  const currentUserPoints = currentUser ? ranking.find((row) => row.user_id === currentUser.id)?.total_points ?? 0 : 0;
   const freshNewsItems = newsItems.filter((item) => {
     const createdAt = new Date(item.created_at).getTime();
     return Number.isFinite(createdAt) && Date.now() - createdAt <= 24 * 60 * 60 * 1000;
@@ -65,7 +68,7 @@ export default async function Home() {
             <span className="mt-2 block text-3xl sm:text-5xl">Prode entre amigos</span>
           </h1>
           <p className="mt-5 max-w-2xl text-lg font-semibold text-white/86">
-            La experiencia de vivir el Mundial de manera divertida, con un fin solidario y una interfaz única.
+            La experiencia de vivir el Mundial de manera divertida, con un fin solidario y una interfaz unica.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <HomePrimaryAction />
@@ -89,11 +92,11 @@ export default async function Home() {
         <div className="grid content-start gap-4">
           <section className="panel overflow-hidden">
             <div className="flex items-center justify-between border-b border-line p-4">
-              <h2 className="text-xl font-black">Próximos partidos</h2>
-              <Link className="btn secondary min-h-9 px-3" href="/mi-prode">Pronósticos</Link>
+              <h2 className="text-xl font-black">Proximos partidos</h2>
+              <Link className="btn secondary min-h-9 px-3" href="/mi-prode">Pronosticos</Link>
             </div>
             {!matches.length ? (
-              <EmptyState title="Todavía no hay partidos" text="Carga el calendario desde Admin para empezar." />
+              <EmptyState title="Todavia no hay partidos" text="Carga el calendario desde Admin para empezar." />
             ) : (
               <div className="grid">
                 {matches.map((match) => (
@@ -130,7 +133,7 @@ export default async function Home() {
           <section className="panel overflow-hidden bg-field">
             <div className="flex items-center justify-between gap-3 border-b border-line p-4">
               <h2 className="text-xl font-black text-red-400">Video Promocional</h2>
-              <ShareLinkButton url="https://youtu.be/5lev6M_P3h8" text="Mirá el video promocional del Mundialito 2026" />
+              <ShareLinkButton url="https://youtu.be/5lev6M_P3h8" text="Mira el video promocional del Mundialito 2026" />
             </div>
             <div className="aspect-video">
               <iframe
@@ -145,14 +148,18 @@ export default async function Home() {
         </div>
 
         <div className="grid content-start gap-4">
-          <section className="grid grid-cols-2 gap-3">
+          <section className="grid grid-cols-3 gap-3">
             <article className="panel p-4">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Pozo acumulado</p>
-              <p className="mt-1 text-3xl font-black text-grass">{money(paymentSummary.prizePool)}</p>
+              <p className="mt-1 text-2xl font-black text-grass sm:text-3xl">{money(paymentSummary.prizePool)}</p>
             </article>
             <article className="panel p-4 text-center">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Participantes</p>
-              <p className="mt-1 text-3xl font-black text-blue-300">{paymentSummary.totalParticipants}</p>
+              <p className="mt-1 text-2xl font-black text-blue-300 sm:text-3xl">{paymentSummary.totalParticipants}</p>
+            </article>
+            <article className="panel p-4 text-center">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Puntos</p>
+              <p className="mt-1 text-2xl font-black text-red-400 sm:text-3xl">{currentUserPoints}</p>
             </article>
           </section>
 
@@ -162,7 +169,7 @@ export default async function Home() {
               <h2 className="text-xl font-black">Ranking</h2>
             </div>
             {!ranking.length ? (
-              <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay ranking.</p>
+              <p className="p-5 text-sm font-semibold text-ink/65">Todavia no hay ranking.</p>
             ) : (
               ranking.slice(0, 3).map((row, index) => (
                 <div className={`grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b p-4 last:border-0 ${podiumClass(index)}`} key={row.user_id}>
@@ -186,7 +193,7 @@ export default async function Home() {
               <h2 className="text-xl font-black">Novedades</h2>
             </div>
             {!freshNewsItems.length ? (
-              <p className="p-5 text-sm font-semibold text-ink/65">No hay novedades de las últimas 24 horas.</p>
+              <p className="p-5 text-sm font-semibold text-ink/65">No hay novedades de las ultimas 24 horas.</p>
             ) : (
               freshNewsItems.map((item) => (
                 <div className="border-b border-line p-4 last:border-0" key={item.id}>

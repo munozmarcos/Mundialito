@@ -16,6 +16,8 @@ type PasswordInputProps = {
   onChange: (value: string) => void;
 };
 
+const phonePlaceholder = "WhatsApp con codigo de pais";
+
 function PasswordInput({ placeholder, value, onChange }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
 
@@ -29,7 +31,7 @@ function PasswordInput({ placeholder, value, onChange }: PasswordInputProps) {
         onChange={(event) => onChange(event.target.value)}
       />
       <button
-        aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+        aria-label={visible ? "Ocultar contrasena" : "Mostrar contrasena"}
         className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md border border-transparent bg-transparent text-ink/60 hover:border-line hover:bg-white/10 hover:text-ink"
         type="button"
         onClick={() => setVisible((current) => !current)}
@@ -80,7 +82,7 @@ function LoginContent() {
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
-      setMessage(data.error ?? "No se pudo iniciar sesión.");
+      setMessage(data.error ?? "No se pudo iniciar sesion.");
       return;
     }
     window.location.href = nextPath;
@@ -97,11 +99,11 @@ function LoginContent() {
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
-      setMessage(data.error ?? "No se pudo enviar el código.");
+      setMessage(data.error ?? "No se pudo enviar el codigo.");
       return;
     }
     setStep("verify");
-    setMessage(mode === "reset" ? `Te mandé el código por WhatsApp a ${data.phone}.` : `Alta creada. Te mandé el código por WhatsApp a ${data.phone}.`);
+    setMessage(mode === "reset" ? `Te mande el codigo por WhatsApp a ${data.phone}.` : `Alta creada. Te mande el codigo por WhatsApp a ${data.phone}.`);
   }
 
   async function verifyCodeAndSetPassword() {
@@ -115,7 +117,7 @@ function LoginContent() {
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
-      setMessage(data.error ?? "Código incorrecto.");
+      setMessage(data.error ?? "Codigo incorrecto.");
       return;
     }
     window.location.href = nextPath;
@@ -136,7 +138,7 @@ function LoginContent() {
                 {mode === "login" ? <KeyRound className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
               </span>
               <div>
-                <h1 className="text-2xl font-black">{mode === "login" ? "Entrar" : mode === "signup" ? "Pedir alta" : "Recuperar contraseña"}</h1>
+                <h1 className="text-2xl font-black">{mode === "login" ? "Entrar" : mode === "signup" ? "Pedir alta" : "Recuperar contrasena"}</h1>
                 <p className="text-sm font-semibold text-ink/60">Mundialito 2026</p>
               </div>
             </div>
@@ -144,7 +146,7 @@ function LoginContent() {
             {user ? (
               <div className="grid gap-3">
                 <div className="rounded-lg bg-field p-3 text-sm font-semibold text-ink/70">
-                  Ya estás logueado como <strong>{user.displayName}</strong>{user.phone ? ` (${user.phone})` : ""}.
+                  Ya estas logueado como <strong>{user.displayName}</strong>{user.phone ? ` (${user.phone})` : ""}.
                 </div>
                 {payIntent ? (
                   <div className="flex flex-wrap gap-2">
@@ -153,7 +155,7 @@ function LoginContent() {
                   </div>
                 ) : (
                   <a className="btn w-fit" href="/mi-prode">
-                    Ir a Pronósticos
+                    Ir a Pronosticos
                   </a>
                 )}
               </div>
@@ -172,7 +174,7 @@ function LoginContent() {
                 </div>
                 {payIntent && (
                   <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm font-semibold text-ink/70">
-                    Entrá para asociar MercadoPago a tu apodo automáticamente, o pagá luego desde la app.
+                    Entra para asociar MercadoPago a tu apodo automaticamente, o paga luego desde la app.
                     <a className="ml-2 font-black text-grass underline" href="/mi-prode">Lo hago luego</a>
                   </div>
                 )}
@@ -180,7 +182,7 @@ function LoginContent() {
                 {mode === "login" ? (
                   <div className="grid max-w-sm gap-3">
                     <input className="field min-h-10" placeholder="Apodo" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-                    <PasswordInput placeholder="Contraseña" value={password} onChange={setPassword} />
+                    <PasswordInput placeholder="Contrasena" value={password} onChange={setPassword} />
                     <button className="btn" disabled={loading} type="button" onClick={loginWithPassword}>
                       <LogIn className="h-4 w-4" />
                       Entrar
@@ -189,21 +191,21 @@ function LoginContent() {
                 ) : mode === "signup" ? (
                   <div className="grid max-w-sm gap-3">
                     <input className="field min-h-10" placeholder="Apodo" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-                    <input className="field min-h-10" inputMode="tel" placeholder="WhatsApp +549-XXXX-XXXX" value={phone} onChange={(event) => setPhone(event.target.value)} />
+                    <input className="field min-h-10" inputMode="tel" placeholder={phonePlaceholder} value={phone} onChange={(event) => setPhone(event.target.value)} />
                     {step === "request" && (
                       <button className="btn" disabled={loading} type="button" onClick={requestCode}>
                         <MessageCircle className="h-4 w-4" />
-                        Enviar código
+                        Enviar codigo
                       </button>
                     )}
                     {step === "verify" && (
                       <>
-                        <input className="field min-h-10 text-center text-xl font-black tracking-[0.24em]" inputMode="numeric" maxLength={6} placeholder="CÓDIGO" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
-                        <PasswordInput placeholder="Crear contraseña" value={password} onChange={setPassword} />
+                        <input className="field min-h-10 text-center text-xl font-black tracking-[0.24em]" inputMode="numeric" maxLength={6} placeholder="CODIGO" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
+                        <PasswordInput placeholder="Crear contrasena" value={password} onChange={setPassword} />
                         <div className="flex flex-wrap gap-2">
                           <button className="btn" disabled={loading} type="button" onClick={verifyCodeAndSetPassword}>
                             <ShieldCheck className="h-4 w-4" />
-                            Crear contraseña
+                            Crear contrasena
                           </button>
                           <button className="btn secondary" disabled={loading} type="button" onClick={requestCode}>
                             Reenviar
@@ -214,17 +216,17 @@ function LoginContent() {
                   </div>
                 ) : (
                   <div className="grid max-w-sm gap-3">
-                    <input className="field min-h-10" inputMode="tel" placeholder="WhatsApp +549-XXXX-XXXX" value={phone} onChange={(event) => setPhone(event.target.value)} />
+                    <input className="field min-h-10" inputMode="tel" placeholder={phonePlaceholder} value={phone} onChange={(event) => setPhone(event.target.value)} />
                     {step === "request" && (
                       <button className="btn" disabled={loading} type="button" onClick={requestCode}>
                         <MessageCircle className="h-4 w-4" />
-                        Enviar código
+                        Enviar codigo
                       </button>
                     )}
                     {step === "verify" && (
                       <>
-                        <input className="field min-h-10 text-center text-xl font-black tracking-[0.24em]" inputMode="numeric" maxLength={6} placeholder="CÓDIGO" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
-                        <PasswordInput placeholder="Nueva contraseña" value={password} onChange={setPassword} />
+                        <input className="field min-h-10 text-center text-xl font-black tracking-[0.24em]" inputMode="numeric" maxLength={6} placeholder="CODIGO" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
+                        <PasswordInput placeholder="Nueva contrasena" value={password} onChange={setPassword} />
                         <div className="flex flex-wrap gap-2">
                           <button className="btn" disabled={loading} type="button" onClick={verifyCodeAndSetPassword}>
                             <ShieldCheck className="h-4 w-4" />

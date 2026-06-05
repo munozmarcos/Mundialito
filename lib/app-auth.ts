@@ -18,13 +18,7 @@ type SessionPayload = {
 };
 
 export function normalizePhone(value: string) {
-  const digits = value.replace(/\D/g, "");
-  if (!digits) return "";
-  if (digits.startsWith("549")) return digits;
-  if (digits.startsWith("54")) return `549${digits.slice(2)}`;
-  if (digits.startsWith("9") && digits.length >= 11) return `54${digits}`;
-  if (digits.length >= 10) return `549${digits}`;
-  return digits;
+  return value.replace(/\D/g, "");
 }
 
 export function publicPhone(value: string) {
