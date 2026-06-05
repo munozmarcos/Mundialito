@@ -2,12 +2,14 @@
 
 import { StatusPill } from "@/components/status-pill";
 import { DateFilter } from "@/components/date-filter";
+import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { matchFitsBasicFilters } from "@/lib/match-filters";
 import { matchStatus } from "@/lib/scoring";
+import { teamOptionsFromMatches } from "@/lib/team-options";
 import type { Match, MatchStage } from "@/lib/types";
 import { Calculator, CircleDot, GitBranch, Lock, Table2, Trophy, X } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -284,6 +286,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
   const selectedKnockoutMatches = selectedKnockoutStage ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter)) : [];
   const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
+  const teamOptions = useMemo(() => teamOptionsFromMatches(groupMatches), [groupMatches]);
   const filteredGroups = Object.entries(byGroup)
     .filter(([group]) => activeTab === "tablas" || !selectedGroup || group === selectedGroup)
     .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
@@ -329,8 +332,8 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
         ))}
       </section>
 
-      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(220px,1fr)_auto_auto] lg:grid-cols-[220px_112px_44px] lg:items-center">
-        <input className="field" placeholder="Pais" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
+      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(220px,1fr)_auto_auto] lg:grid-cols-[240px_112px_44px] lg:items-center">
+        <CountryFilterPicker value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
         <DateFilter value={dateFilter} onChange={setDateFilter} />
         <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
           <X className="h-4 w-4" />

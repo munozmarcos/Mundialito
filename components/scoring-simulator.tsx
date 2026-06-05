@@ -8,6 +8,8 @@ import { fifaGroupTeamOrder } from "@/lib/group-order";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
 import { TeamLabel } from "@/components/team-label";
 import { DateFilter } from "@/components/date-filter";
+import { CountryFilterPicker } from "@/components/country-filter-picker";
+import { teamOptionsFromMatches } from "@/lib/team-options";
 import { Calculator, CircleDot, ClipboardPaste, GitBranch, Lock, RotateCcw, Table2, Trophy, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -326,6 +328,7 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   const [activeGroup, setActiveGroup] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
+  const [podium, setPodium] = useState({ champion_team: "", runner_up_team: "", third_place_team: "" });
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
   const knockoutMatches = matches.filter((match) => match.stage !== "GROUP");
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
@@ -339,6 +342,8 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
     ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter))
     : [];
   const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
+  const teamOptions = useMemo(() => teamOptionsFromMatches(groupMatches), [groupMatches]);
+  const podiumPossiblePoints = podium.champion_team && podium.runner_up_team && podium.third_place_team ? 6 : 0;
   const availableGroups = Object.keys(byGroup).sort();
   const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
   const filteredGroups = Object.entries(byGroup)
@@ -398,8 +403,9 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
       }
     }
 
+    if (sessionUserId && rows[sessionUserId]) rows[sessionUserId].points += podiumPossiblePoints;
     return Object.values(rows).sort((a, b) => b.points - a.points || b.exacts - a.exacts || b.trends - a.trends || a.name.localeCompare(b.name));
-  }, [matches, predictionsByMatch, profiles, results]);
+  }, [matches, predictionsByMatch, profiles, results, podiumPossiblePoints, sessionUserId]);
 
   function setResult(matchId: string, side: "home" | "away", value: string) {
     setResults((current) => ({
@@ -413,6 +419,10 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
       ...current,
       [matchId]: { ...current[matchId], winner }
     }));
+  }
+
+  function updatePodium(field: "champion_team" | "runner_up_team" | "third_place_team", value: string) {
+    setPodium((current) => ({ ...current, [field]: value }));
   }
 
   function copyMyPrediction() {
@@ -565,10 +575,37 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         </div>
       </section>
 
+      <section className="panel grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div>
+          <h2 className="flex items-center gap-2 text-xl font-black">
+            <Trophy className="h-5 w-5 text-gold" />
+            Podio anticipado
+          </h2>
+          <p className="mt-1 text-sm font-semibold text-ink/60">Simula tambien los 6 puntos posibles del podio.</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {[
+              ["champion_team", "Campeon"],
+              ["runner_up_team", "Subcampeon"],
+              ["third_place_team", "Tercero"]
+            ].map(([field, label]) => (
+              <label className="grid gap-1 text-sm font-bold text-ink/70" key={field}>
+                {label}
+                <CountryFilterPicker
+                  value={podium[field as keyof typeof podium]}
+                  options={teamOptions}
+                  onChange={(value) => updatePodium(field as keyof typeof podium, value)}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+        <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-ink/55">{podiumPossiblePoints} Pts</span>
+      </section>
+
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
           ["todos", "Todos", CircleDot],
-          ["cargar", selectedGroup ? `Grupo ${selectedGroup}` : "Grupos", Calculator],
+          ["cargar", "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llave", "Llaves", GitBranch]
         ].map(([key, label, Icon]) => (
@@ -584,8 +621,8 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         ))}
       </section>
 
-      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(220px,1fr)_auto_auto] lg:grid-cols-[220px_112px_44px] lg:items-center">
-        <input className="field" placeholder="Pais" value={teamFilter} onChange={(event) => setTeamFilter(event.target.value)} />
+      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(220px,1fr)_auto_auto] lg:grid-cols-[240px_112px_44px] lg:items-center">
+        <CountryFilterPicker value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
         <DateFilter value={dateFilter} onChange={setDateFilter} />
         <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
           <X className="h-4 w-4" />

@@ -1,15 +1,17 @@
 ﻿"use client";
 
 import { EmptyState } from "@/components/empty-state";
+import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { DateFilter } from "@/components/date-filter";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
-import { countryCodeForTeam, displayNameForTeam } from "@/lib/flags";
+import { displayNameForTeam } from "@/lib/flags";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { dateKey, matchFitsBasicFilters } from "@/lib/match-filters";
 import { matchStatus } from "@/lib/scoring";
+import { teamOptionsFromMatches, type TeamOption } from "@/lib/team-options";
 import type { Match, MatchStage, Prediction } from "@/lib/types";
 import { Calculator, Check, CircleDot, ClipboardPaste, GitBranch, Lock, LogIn, Save, Table2, Trophy, X } from "lucide-react";
 import Link from "next/link";
@@ -120,18 +122,6 @@ function norm(value: string) {
     .replace(/\s+/g, " ")
     .toLowerCase()
     .trim();
-}
-
-function flagEmojiForTeam(team: string, explicit?: string | null) {
-  const code = countryCodeForTeam(team, explicit);
-  if (!code) return "";
-  if (code === "gb-sct") return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0073, 0xe0063, 0xe0074, 0xe007f);
-  if (code === "gb-eng") return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0065, 0xe006e, 0xe0067, 0xe007f);
-  return code
-    .toUpperCase()
-    .split("")
-    .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
-    .join("");
 }
 
 function teamMatchesBulk(team: string, query: string) {
@@ -340,7 +330,7 @@ function PredictionCard({
     event.preventDefault();
     if (!loggedIn || locked) return;
     if (homeGoals === "" || awayGoals === "") {
-      setMessage("CargÃ¡ los dos goles.");
+      setMessage("Carga los dos goles.");
       return;
     }
     setSaving(true);
@@ -433,7 +423,7 @@ function PredictionCard({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="btn min-w-11 px-0" disabled={!loggedIn || locked || saving} title="Guardar predicciÃ³n" type="submit">
+            <button className="btn min-w-11 px-0" disabled={!loggedIn || locked || saving} title="Guardar prediccion" type="submit">
               {message === "Guardada" ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
             </button>
           </div>
@@ -487,7 +477,7 @@ function PodiumPicker({
   label: string;
   value: string;
   disabled: boolean;
-  teams: Array<{ name: string; code?: string | null; label: string }>;
+  teams: TeamOption[];
   onChange: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -497,31 +487,31 @@ function PodiumPicker({
     <div className="relative grid gap-1 text-sm font-bold text-ink/70">
       <span>{label}</span>
       <button
-        className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-lg border border-line bg-field px-3 text-left shadow-sm transition ${
+        className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-line bg-field px-3 text-left shadow-sm transition ${
           disabled ? "cursor-not-allowed opacity-60" : "hover:border-grass/45 hover:bg-mint"
         }`}
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
         type="button"
       >
-        {selected ? <TeamLabel name={selected.name} code={selected.code} /> : <span className="text-base font-black text-ink/45">Seleccionar</span>}
-        <span className="text-xs font-black text-ink/40">â–¼</span>
+        {selected ? <TeamLabel name={selected.name} code={selected.code} /> : <span className="text-base font-black text-ink/45">Selección</span>}
+        <span className="text-xs font-black text-ink/40">▼</span>
       </button>
       {open && !disabled && (
         <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-72 overflow-y-auto rounded-lg border border-line bg-white p-2 shadow-2xl">
           <button
-            className="flex min-h-12 w-full items-center rounded-md px-3 text-left text-sm font-black text-ink/45 hover:bg-field"
+            className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm font-black text-ink/45 hover:bg-field"
             onClick={() => {
               onChange("");
               setOpen(false);
             }}
             type="button"
           >
-            Seleccionar
+            Selección
           </button>
           {teams.map((team) => (
             <button
-              className={`flex min-h-12 w-full items-center rounded-md px-3 text-left hover:bg-mint ${team.name === value ? "bg-mint" : ""}`}
+              className={`flex min-h-11 w-full items-center rounded-md px-3 text-left hover:bg-mint ${team.name === value ? "bg-mint" : ""}`}
               key={`${label}-${team.name}`}
               onClick={() => {
                 onChange(team.name);
@@ -614,29 +604,15 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
   const selectedKnockoutMatches = selectedKnockoutStage ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter)) : [];
   const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
-  const teamOptions = useMemo(() => {
-    const options = new Map<string, { name: string; code?: string | null; label: string }>();
-    for (const match of groupMatches) {
-      [
-        { name: match.home_team, code: match.home_country_code },
-        { name: match.away_team, code: match.away_country_code }
-      ].forEach((team) => {
-        const display = displayNameForTeam(team.name);
-        const key = norm(display);
-        if (!key || options.has(key)) return;
-        const emoji = flagEmojiForTeam(team.name, team.code);
-        options.set(key, { name: display, code: team.code, label: `${emoji ? `${emoji} ` : ""}${display}` });
-      });
-    }
-    return [...options.values()].sort((a, b) => a.name.localeCompare(b.name, "es"));
-  }, [groupMatches]);
+  const teamOptions = useMemo(() => teamOptionsFromMatches(groupMatches), [groupMatches]);
   const loaded = predictions.length;
   const pending = matches.filter((match) => {
     if (predictionMap[match.id]) return false;
     if (isMatchUnavailable(match)) return false;
     return matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status) === "open" || matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status) === "closing_soon";
   }).length;
-  const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0) + (podium?.points ?? 0);
+  const podiumPossiblePoints = podium?.champion_team && podium.runner_up_team && podium.third_place_team && !podium.points ? 6 : (podium?.points ?? 0);
+  const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0) + podiumPossiblePoints;
   const availableGroups = Object.keys(byGroup).sort();
   const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
   const groupEntries = activeTab === "tablas" ? Object.entries(byGroup) : selectedGroup ? Object.entries(byGroup).filter(([group]) => group === selectedGroup) : [];
@@ -693,7 +669,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
 
   async function applyBulk() {
     if (!user) {
-      setBulkMessage("EntrÃ¡ con tu usuario para cargar pronÃ³sticos.");
+      setBulkMessage("Entra con tu usuario para cargar pronosticos.");
       return;
     }
 
@@ -760,7 +736,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
 
   async function savePodium() {
     if (!user) {
-      setPodiumMessage("EntrÃ¡ con tu usuario para guardar el podio.");
+      setPodiumMessage("Entra con tu usuario para guardar el podio.");
       return;
     }
 
@@ -823,6 +799,18 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
 
       {demoMode && <p className="text-sm font-semibold text-gold">Partidos de muestra.</p>}
 
+      <section className="panel flex flex-wrap items-center justify-between gap-3 p-4">
+        <div>
+          <h2 className="text-xl font-black">Carga rapida</h2>
+          <p className="mt-1 text-sm font-semibold text-ink/60">Pega un bloque de pronosticos y guardalos de una sola vez.</p>
+        </div>
+        <button className="btn secondary" onClick={() => setBulkOpen(true)} type="button">
+          <ClipboardPaste className="h-4 w-4" />
+          Carga masiva
+        </button>
+        {bulkMessage && <p className="basis-full text-sm font-bold text-grass">{bulkMessage}</p>}
+      </section>
+
       <section className="panel grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
           <div className="flex flex-wrap items-center gap-2">
@@ -838,8 +826,8 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           {podiumLockReason && <p className="mt-2 text-sm font-bold text-sky-200">{podiumLockReason}</p>}
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {[
-              ["champion_team", "Campeón"],
-              ["runner_up_team", "Subcampeón"],
+              ["champion_team", "Campeon"],
+              ["runner_up_team", "Subcampeon"],
               ["third_place_team", "Tercero"]
             ].map(([field, label]) => (
               <PodiumPicker
@@ -855,24 +843,12 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           {podiumMessage && <p className="mt-3 text-sm font-bold text-grass">{podiumMessage}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-          <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-ink/55">{podium?.points ?? 0} Pts</span>
+          <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-ink/55">{podiumPossiblePoints} Pts</span>
           <button className="btn" disabled={!user || podiumSaving || podiumLocked} onClick={savePodium} type="button">
             <Save className="h-4 w-4" />
             {podiumSaving ? "Guardando" : "Guardar"}
           </button>
         </div>
-      </section>
-
-      <section className="panel flex flex-wrap items-center justify-between gap-3 p-4">
-        <div>
-          <h2 className="text-xl font-black">Carga rÃ¡pida</h2>
-          <p className="mt-1 text-sm font-semibold text-ink/60">PegÃ¡ un bloque de pronÃ³sticos y guardalos de una sola vez.</p>
-        </div>
-        <button className="btn secondary" onClick={() => setBulkOpen(true)} type="button">
-          <ClipboardPaste className="h-4 w-4" />
-          Carga masiva
-        </button>
-        {bulkMessage && <p className="basis-full text-sm font-bold text-grass">{bulkMessage}</p>}
       </section>
 
       <section className="panel flex flex-wrap gap-2 p-2">
@@ -894,13 +870,8 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         ))}
       </section>
 
-      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(220px,1fr)_auto_auto] lg:grid-cols-[220px_112px_44px] lg:items-center">
-        <input
-          className="field"
-          placeholder="Pais"
-          value={teamFilter}
-          onChange={(event) => setTeamFilter(event.target.value)}
-        />
+      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(220px,1fr)_auto_auto] lg:grid-cols-[240px_112px_44px] lg:items-center">
+        <CountryFilterPicker value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
         <DateFilter value={dateFilter} onChange={setDateFilter} />
         <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
           <X className="h-4 w-4" />
@@ -911,7 +882,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         <section className="grid gap-4">
           <div>
             <h3 className="text-2xl font-black">Todos</h3>
-            <p className="mb-3 mt-1 text-sm font-semibold text-ink/60">Todos los partidos en grilla, filtrables por paÃ­s y fecha.</p>
+            <p className="mb-3 mt-1 text-sm font-semibold text-ink/60">Todos los partidos en grilla, filtrables por pais y fecha.</p>
           </div>
           <div className="match-card-grid">
             {allFilteredMatches.map((match) => (
@@ -1036,7 +1007,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
                   <ClipboardPaste className="h-5 w-5 text-grass" />
                   Carga masiva
                 </h2>
-                <p className="mt-1 text-sm text-ink/60">PegÃ¡ el texto de $pronosticos o usÃ¡ formato por lÃ­nea: Argentina 2-1 MÃ©xico</p>
+                <p className="mt-1 text-sm text-ink/60">Pega el texto de $pronosticos o usa formato por linea: Argentina 2-1 Mexico</p>
               </div>
               <button className="btn secondary min-w-11 px-0" onClick={() => setBulkOpen(false)} type="button" aria-label="Cerrar">
                 <X className="h-4 w-4" />

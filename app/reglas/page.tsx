@@ -5,25 +5,25 @@ import { BadgeCheck, CircleEqual, Clock, ListChecks, LockKeyhole, PlayCircle, Ta
 
 const examples = [
   {
-    title: "AcertÃ¡s tendencia",
+    title: "Acertas tendencia",
     real: ["Argentina", "Mexico", "2-1"],
     pick: ["Argentina", "Mexico", "1-0"],
     points: "1 punto",
     note: "Misma tendencia: gana Argentina."
   },
   {
-    title: "AcertÃ¡s exacto",
+    title: "Acertas exacto",
     real: ["Brazil", "Morocco", "3-1"],
     pick: ["Brazil", "Morocco", "3-1"],
     points: "3 puntos",
     note: "1 por tendencia + 2 extra por marcador exacto."
   },
   {
-    title: "AcertÃ¡s empate",
+    title: "Acertas empate",
     real: ["Spain", "Uruguay", "0-0"],
     pick: ["Spain", "Uruguay", "1-1"],
     points: "1 punto",
-    note: "El resultado no es exacto, pero la tendencia empate sÃ­."
+    note: "El resultado no es exacto, pero la tendencia empate si."
   },
   {
     title: "Empate exacto",
@@ -60,7 +60,7 @@ function ExampleCard({ example }: { example: (typeof examples)[number] }) {
         <span className="badge">{example.points}</span>
       </div>
       <ScoreLine label="Resultado" home={example.real[0]} away={example.real[1]} score={example.real[2]} />
-      <ScoreLine label="Tu predicciÃ³n" home={example.pick[0]} away={example.pick[1]} score={example.pick[2]} />
+      <ScoreLine label="Tu prediccion" home={example.pick[0]} away={example.pick[1]} score={example.pick[2]} />
       <p className="flex items-center gap-2 text-sm font-semibold text-ink/68">
         <CircleEqual className="h-4 w-4 text-grass" />
         {example.note}
@@ -124,7 +124,7 @@ export default function RulesPage() {
       <PageHero
         badge="Reglas"
         icon={ListChecks}
-        title="CÃ³mo se suman los puntos"
+        title="Como se suman los puntos"
         subtitle="Regla simple: 1 punto por tendencia y 2 puntos extra si el resultado es exacto."
       />
 
@@ -138,12 +138,12 @@ export default function RulesPage() {
         <article className="panel flex h-full flex-col p-5">
           <BadgeCheck className="h-6 w-6 text-gold" />
           <h2 className="mt-3 text-xl font-black">Resultado exacto</h2>
-          <p className="mt-2 text-sm text-ink/70">Si ademÃ¡s acertaste los goles exactos.</p>
+          <p className="mt-2 text-sm text-ink/70">Si ademas acertaste los goles exactos.</p>
           <strong className="mt-auto block pt-4 text-3xl text-gold">+2</strong>
         </article>
         <article className="panel flex h-full flex-col p-5">
           <Trophy className="h-6 w-6 text-blue-300" />
-          <h2 className="mt-3 text-xl font-black">MÃ¡ximo</h2>
+          <h2 className="mt-3 text-xl font-black">Maximo</h2>
           <p className="mt-2 text-sm text-ink/70">Grupos y eliminatorias, 120 minutos.</p>
           <strong className="mt-auto block pt-4 text-3xl text-blue-300">3 pts</strong>
         </article>
@@ -163,25 +163,25 @@ export default function RulesPage() {
         <div className="grid gap-3 md:grid-cols-3">
           <article className="panel flex h-full flex-col p-5">
             <Trophy className="h-6 w-6 text-yellow-200" />
-            <h3 className="mt-3 text-xl font-black">Campeón</h3>
+            <h3 className="mt-3 text-xl font-black">Campeon</h3>
             <p className="mt-2 text-sm text-ink/70">Si acertás el campeón del Mundial.</p>
             <strong className="mt-auto block pt-4 text-3xl text-yellow-200">+3</strong>
           </article>
           <article className="panel flex h-full flex-col p-5">
             <Trophy className="h-6 w-6 text-slate-100" />
-            <h3 className="mt-3 text-xl font-black">2do puesto</h3>
+            <h3 className="mt-3 text-xl font-black">Subcampeon</h3>
             <p className="mt-2 text-sm text-ink/70">Si acertás el subcampeón.</p>
             <strong className="mt-auto block pt-4 text-3xl text-slate-100">+2</strong>
           </article>
           <article className="panel flex h-full flex-col p-5">
             <Trophy className="h-6 w-6 text-orange-200" />
-            <h3 className="mt-3 text-xl font-black">3er puesto</h3>
+            <h3 className="mt-3 text-xl font-black">3er Puesto</h3>
             <p className="mt-2 text-sm text-ink/70">Si acertás quién gana el partido por el tercer puesto.</p>
             <strong className="mt-auto block pt-4 text-3xl text-orange-200">+1</strong>
           </article>
         </div>
         <p className="mt-3 text-sm font-semibold text-ink/65">
-          Esta apuesta queda abierta durante la fase de grupos y se bloquea cuando se habilitan los 16vos.
+          Se puede cargar durante la fase de grupos y se bloquea cuando se habilitan los 16vos.
         </p>
       </section>
 
@@ -191,12 +191,12 @@ export default function RulesPage() {
           <StatusExample
             status="open"
             title="Abierto"
-            text="El partido estÃ¡ disponible y podÃ©s ingresar o modificar tu predicciÃ³n."
+            text="El partido esta disponible y podes ingresar o modificar tu prediccion."
           />
           <StatusExample
             status="locked"
             title="Bloqueado"
-            text="TodavÃ­a no se puede pronosticar porque la llave o los equipos no estÃ¡n definidos oficialmente."
+            text="Todavia no se puede pronosticar porque la llave o los equipos no estan definidos oficialmente."
           />
           <StatusExample
             status="closed"
