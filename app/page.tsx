@@ -72,14 +72,14 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_360px] lg:items-stretch">
+      <section className="grid gap-4 lg:grid-cols-[420px_1fr] lg:items-start">
         <div className="grid gap-3 sm:grid-cols-2">
           {features.map((feature) => (
-            <article className="panel flex gap-4 p-4" key={feature.title}>
-              <feature.icon className="mt-1 h-5 w-5 shrink-0 text-grass" />
+            <article className="panel flex gap-3 p-3" key={feature.title}>
+              <feature.icon className="mt-1 h-4 w-4 shrink-0 text-grass" />
               <div>
-                <h2 className="font-black">{feature.title}</h2>
-                <p className="text-sm text-ink/70">{feature.text}</p>
+                <h2 className="text-sm font-black">{feature.title}</h2>
+                <p className="text-xs text-ink/70">{feature.text}</p>
               </div>
             </article>
           ))}
@@ -90,7 +90,7 @@ export default async function Home() {
             <PlayCircle className="h-5 w-5 text-red-400" />
             <h2 className="text-xl font-black">Video Promocional</h2>
           </div>
-          <div className="aspect-square bg-field">
+          <div className="aspect-video bg-field">
             <iframe
               className="h-full w-full"
               src="https://www.youtube.com/embed/5lev6M_P3h8"
