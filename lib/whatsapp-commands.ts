@@ -2,7 +2,7 @@ import { getMatches, getRanking } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { countryCodeForTeam, displayNameForTeam } from "@/lib/flags";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
-import { recalculateAllPodiumPoints, validatePodiumTeams } from "@/lib/podium";
+import { getPodiumLockState, recalculateAllPodiumPoints, validatePodiumTeams } from "@/lib/podium";
 import { isPredictionLocked } from "@/lib/scoring";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 
@@ -234,6 +234,7 @@ async function answerPodio(text: string, from?: string) {
 
   const db = supabaseAdmin();
   const payload = extractPodiumPayload(text);
+  const lockState = await getPodiumLockState(db);
 
   if (!payload) {
     const { data, error } = await db.from("podium_predictions").select("*").eq("user_id", profile.id).maybeSingle();
@@ -244,9 +245,13 @@ async function answerPodio(text: string, from?: string) {
       podiumTeamLine("2do puesto +2", data?.runner_up_team, data?.runner_up_points),
       podiumTeamLine("3er puesto +1", data?.third_place_team, data?.third_place_points),
       "",
-      "Para cargarlo:",
-      "_$podio Argentina | Brasil | Uruguay_"
+      lockState.locked ? "El podio ya está cerrado." : "Para cargarlo:",
+      lockState.locked ? "" : "_$podio Argentina | Brasil | Uruguay_"
     ].join("\n");
+  }
+
+  if (lockState.locked) {
+    return `🏆 *Podio final*\n${lockState.reason ?? "El podio ya está cerrado."}`;
   }
 
   const rawTeams = splitPodiumTeams(payload);

@@ -538,6 +538,8 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkMessage, setBulkMessage] = useState("");
   const [podium, setPodium] = useState<PodiumDraft | null>(null);
+  const [podiumLocked, setPodiumLocked] = useState(false);
+  const [podiumLockReason, setPodiumLockReason] = useState<string | null>(null);
   const [podiumMessage, setPodiumMessage] = useState("");
   const [podiumSaving, setPodiumSaving] = useState(false);
   const predictionMap = useMemo(() => byId(predictions), [predictions]);
@@ -592,6 +594,8 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
     const data = await res.json();
     if (res.ok) {
       setPodium(data.podium ?? { champion_team: "", runner_up_team: "", third_place_team: "", points: 0 });
+      setPodiumLocked(Boolean(data.locked));
+      setPodiumLockReason(data.reason ?? null);
     }
   }
 
@@ -714,6 +718,8 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "No se pudo guardar el podio.");
       setPodium(data.podium);
+      setPodiumLocked(Boolean(data.locked));
+      setPodiumLockReason(data.reason ?? null);
       setPodiumMessage("Podio guardado.");
     } catch (error) {
       setPodiumMessage(error instanceof Error ? error.message : "No se pudo guardar el podio.");
@@ -758,13 +764,17 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
 
       <section className="panel grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
-          <h2 className="flex items-center gap-2 text-xl font-black">
-            <Trophy className="h-5 w-5 text-gold" />
-            Podio final
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="flex items-center gap-2 text-xl font-black">
+              <Trophy className="h-5 w-5 text-gold" />
+              Podio final
+            </h2>
+            {podiumLocked && <span className="badge bg-field text-sky-100">Cerrado</span>}
+          </div>
           <p className="mt-1 text-sm font-semibold text-ink/60">
-            Elegí campeón, segundo puesto y 3er puesto. Suma +3, +2 y +1 cuando termine el Mundial.
+            Elegí campeón, segundo puesto y 3er puesto. Cierra cuando se habilitan los 16vos.
           </p>
+          {podiumLockReason && <p className="mt-2 text-sm font-bold text-sky-200">{podiumLockReason}</p>}
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {[
               ["champion_team", "Campeón +3"],
@@ -775,7 +785,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
                 {label}
                 <select
                   className="field min-h-11"
-                  disabled={!user}
+                  disabled={!user || podiumLocked}
                   value={(podium?.[field as keyof PodiumDraft] as string | null | undefined) ?? ""}
                   onChange={(event) => updatePodium(field as keyof PodiumDraft, event.target.value)}
                 >
@@ -793,7 +803,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         </div>
         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-gold">{podium?.points ?? 0} Pts</span>
-          <button className="btn" disabled={!user || podiumSaving} onClick={savePodium} type="button">
+          <button className="btn" disabled={!user || podiumSaving || podiumLocked} onClick={savePodium} type="button">
             <Save className="h-4 w-4" />
             {podiumSaving ? "Guardando" : "Guardar"}
           </button>

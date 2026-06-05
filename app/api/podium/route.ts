@@ -1,4 +1,4 @@
-import { recalculateAllPodiumPoints, validatePodiumTeams } from "@/lib/podium";
+import { getPodiumLockState, recalculateAllPodiumPoints, validatePodiumTeams } from "@/lib/podium";
 import { getUserFromRequest, supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -14,10 +14,13 @@ export async function GET(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const db = supabaseAdmin();
-  const { data, error } = await db.from("podium_predictions").select("*").eq("user_id", user.id).maybeSingle();
+  const [{ data, error }, lockState] = await Promise.all([
+    db.from("podium_predictions").select("*").eq("user_id", user.id).maybeSingle(),
+    getPodiumLockState(db)
+  ]);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  return NextResponse.json({ podium: data ?? null });
+  return NextResponse.json({ podium: data ?? null, locked: lockState.locked, reason: lockState.reason });
 }
 
 export async function POST(req: Request) {
@@ -25,11 +28,16 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = PodiumBody.parse(await req.json());
+  const db = supabaseAdmin();
+  const lockState = await getPodiumLockState(db);
+  if (lockState.locked) {
+    return NextResponse.json({ error: lockState.reason ?? "El podio ya está cerrado." }, { status: 409 });
+  }
+
   if (!validatePodiumTeams(body.championTeam, body.runnerUpTeam, body.thirdPlaceTeam)) {
     return NextResponse.json({ error: "No podes repetir seleccion en el podio." }, { status: 400 });
   }
 
-  const db = supabaseAdmin();
   const { data, error } = await db
     .from("podium_predictions")
     .upsert(
@@ -49,5 +57,5 @@ export async function POST(req: Request) {
   await recalculateAllPodiumPoints(db);
   const { data: refreshed } = await db.from("podium_predictions").select("*").eq("user_id", user.id).single();
 
-  return NextResponse.json({ podium: refreshed ?? data });
+  return NextResponse.json({ podium: refreshed ?? data, locked: lockState.locked, reason: lockState.reason });
 }

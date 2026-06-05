@@ -182,6 +182,7 @@ export default function RulesPage() {
         </div>
         <p className="mt-3 text-sm font-semibold text-ink/65">
           Se carga desde Pronósticos o por WhatsApp con <strong>$podio Argentina | Brasil | Uruguay</strong>.
+          Esta apuesta queda abierta durante la fase de grupos y se cierra cuando se habilitan los 16vos.
         </p>
       </section>
 
