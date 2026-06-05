@@ -14,10 +14,10 @@ export function TeamLabel({ name, code }: { name: string; code?: string | null }
 
   return (
     <span className="inline-flex min-w-0 max-w-full items-center gap-2 font-bold">
-      {flag ? (
-        <img src={flag} alt="" className="h-4 w-6 shrink-0 rounded-[2px] object-cover ring-1 ring-black/10" />
-      ) : emoji ? (
+      {emoji ? (
         <span className="grid h-4 w-6 shrink-0 place-items-center text-lg leading-none">{emoji}</span>
+      ) : flag ? (
+        <img src={flag} alt="" className="h-4 w-6 shrink-0 rounded-[2px] object-cover ring-1 ring-black/10" />
       ) : (
         <span className="h-4 w-6 shrink-0 rounded-[2px] bg-line" />
       )}

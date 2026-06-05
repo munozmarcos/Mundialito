@@ -733,26 +733,26 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   return (
     <div className="grid gap-6">
       <section className="grid gap-3 sm:grid-cols-3">
-        <div className="panel flex items-center gap-3 p-4">
-          <ListChecks className="h-6 w-6 text-grass" />
-          <div>
+        <div className="panel grid gap-2 p-4">
+          <div className="flex items-center gap-2">
+            <ListChecks className="h-5 w-5 shrink-0 text-grass" />
             <span className="text-sm font-bold text-ink/60">Predicciones cargadas</span>
-            <strong className="block text-3xl">{loaded} / {availableTotal}</strong>
           </div>
+          <strong className="block text-3xl">{loaded} / {availableTotal}</strong>
         </div>
-        <div className="panel flex items-center gap-3 p-4">
-          <Medal className="h-6 w-6 text-gold" />
-          <div>
+        <div className="panel grid gap-2 p-4">
+          <div className="flex items-center gap-2">
+            <Medal className="h-5 w-5 shrink-0 text-gold" />
             <span className="text-sm font-bold text-ink/60">Podio Anticipado</span>
-            <strong className="block text-3xl">{podiumLoaded} / 3</strong>
           </div>
+          <strong className="block text-3xl">{podiumLoaded} / 3</strong>
         </div>
-        <div className="panel flex items-center gap-3 p-4">
-          <Trophy className="h-6 w-6 text-red-400" />
-          <div>
+        <div className="panel grid gap-2 p-4">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 shrink-0 text-red-400" />
             <span className="text-sm font-bold text-ink/60">Puntos acumulados</span>
-            <strong className="block text-3xl">{totalPoints} Pts</strong>
           </div>
+          <strong className="block text-3xl">{totalPoints} Pts</strong>
         </div>
       </section>
       {!user && !loading && (
@@ -781,17 +781,21 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
 
       <section className="panel grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-end">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="flex items-center gap-2 text-xl font-black">
-              <Trophy className="h-5 w-5 text-gold" />
-              Podio anticipado
-            </h2>
-            <StatusPill status={podiumLocked ? "closed" : "open"} label={podiumLocked ? "Cerrado" : "Abierto"} />
-            {podium?.updated_at && <span className="text-[11px] italic text-ink/45">Actualizado - {formatKickoff(podium.updated_at)}</span>}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-xl font-black">
+                <Trophy className="h-5 w-5 text-gold" />
+                Podio anticipado
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-ink/60">
+                Elegí tu podio antes de que se habiliten los 16vos.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {podium?.updated_at && <span className="text-[11px] italic text-ink/45">Actualizado - {formatKickoff(podium.updated_at)}</span>}
+              <StatusPill status={podiumLocked ? "closed" : "open"} label={podiumLocked ? "Cerrado" : "Abierto"} />
+            </div>
           </div>
-          <p className="mt-1 text-sm font-semibold text-ink/60">
-            Elegí tu podio antes de que se habiliten los 16vos.
-          </p>
           {podiumLockReason && <p className="mt-2 text-sm font-bold text-sky-200">{podiumLockReason}</p>}
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {[

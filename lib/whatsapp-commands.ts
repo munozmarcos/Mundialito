@@ -144,62 +144,139 @@ function extractTeamQuery(text: string) {
 function answerRules() {
   return [
     "📋 *Reglas del Mundialito*",
-    "✅ Tendencia correcta = *1 punto*",
-    "Gana local, gana visitante o empate.",
-    "🎯 Resultado exacto = *+2 puntos extra*",
+    "",
+    "✅ *Tendencia correcta*",
+    "Gana local, gana visitante o empate = *1 punto*.",
+    "",
+    "🎯 *Resultado exacto*",
+    "Si además acertás los goles exactos = *+2 puntos extra*.",
     "Aplica igual en grupos y eliminatorias.",
     "En eliminatorias cuenta el resultado de los *120 minutos*.",
     "",
     "🏆 *Podio anticipado*",
     "Campeón = *3 pts*, Subcampeón = *2 pts*, 3er puesto = *1 pt*.",
-    "Se carga en fase de grupos y se cierra cuando se habilitan los 16vos o 15 minutos antes del primer partido de esa fase.",
+    "Se carga durante la fase de grupos y se cierra cuando se habilitan los 16vos o 15 minutos antes del primer partido de esa fase.",
     "",
-    "*Ejemplos*",
+    "⚽ *Ejemplos*",
     "🇦🇷 Argentina 2-1 🇲🇽 Mexico",
-    "Tu apuesta 1-0 = *1 punto*",
-    "🇧🇷 Brazil 3-1 🇲🇦 Morocco",
-    "Tu apuesta 3-1 = *3 puntos*",
-    "🤝 Si el real es 0-0 y pusiste 1-1: *1 punto* por empate."
+    "_Tu apuesta 1-0 = 1 punto_",
+    "",
+    "🇧🇷 Brasil 3-1 🇲🇦 Marruecos",
+    "_Tu apuesta 3-1 = 3 puntos_",
+    "",
+    "🤝 Real 0-0 y apuesta 1-1 = *1 punto* por empate."
   ].join("\n");
 }
 
 function answerCommands() {
   return [
     "⚽ *Comandos Mundialito*",
+    "",
     "🏆 *$ranking*",
-    "Sin parámetro: _$ranking_",
+    "Tabla completa del prode.",
+    "",
+    "_Sin filtro:_",
+    "_$ranking_",
+    "",
     "📋 *$reglas*",
-    "Sin parámetro: _$reglas_",
+    "Puntos, estados y podio anticipado.",
+    "",
+    "_Sin filtro:_",
+    "_$reglas_",
+    "",
     "📅 *$partidos*",
-    "Sin parámetro: _$partidos_",
-    "Con parámetro: _$partidos Argentina_",
+    "Próximos partidos.",
+    "",
+    "_Sin filtro:_",
+    "_$partidos_",
+    "",
+    "_Con filtro:_",
+    "_$partidos Argentina_",
+    "",
     "🏁 *$resultados*",
-    "Sin parámetro: _$resultados_",
-    "Con parámetro: _$resultados Brasil_",
+    "Marcadores reales cargados.",
+    "",
+    "_Sin filtro:_",
+    "_$resultados_",
+    "",
+    "_Con filtro:_",
+    "_$resultados Brasil_",
+    "",
     "⏳ *$pendientes*",
-    "Sin parámetro: _$pendientes_",
+    "Lo que te falta cargar.",
+    "",
+    "_Sin filtro:_",
+    "_$pendientes_",
+    "",
     "⚽ *$pronosticos*",
-    "Sin parámetro: _$pronosticos_",
+    "Tu historia cargada para copiar.",
+    "",
+    "_Sin filtro:_",
+    "_$pronosticos_",
+    "",
     "🏆 *$podioanticipado*",
-    "Sin parámetro: _$podioanticipado_",
-    "Con parámetro: _$podioanticipado Argentina | Brasil | Uruguay_",
+    "Campeón, subcampeón y 3er puesto.",
+    "",
+    "_Sin cargar:_",
+    "_$podioanticipado_",
+    "",
+    "_Para cargar:_",
+    "_$podioanticipado Argentina Brasil Uruguay_",
+    "",
     "✍️ *$carga*",
-    "Con parámetro multilinea: _$carga_ y abajo pegá Argentina 2-1 Mexico",
+    "Carga masiva de pronósticos.",
+    "",
+    "_Sin carga:_",
+    "_$carga_",
+    "",
+    "_Con carga:_",
+    "_$carga_",
+    "_Argentina 2-1 Mexico_",
+    "_Brasil 3-1 Marruecos_",
+    "",
     "🧭 *$comandos*",
-    "Sin parámetro: _$comandos_"
+    "Ver esta ayuda.",
+    "",
+    "_Sin filtro:_",
+    "_$comandos_"
   ].join("\n");
 }
-
 function extractPodiumPayload(text: string) {
   return stripSelfCommandPrefix(text).replace(/^podio(?:anticipado)?\b[:\s-]*/i, "").trim();
 }
 
-function splitPodiumTeams(payload: string) {
-  return payload
+function splitPodiumTeams(payload: string, teams?: Array<{ name: string; code?: string | null }>) {
+  const separated = payload
     .split(/\s*(?:\||,|>|;|\n)\s*/)
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 3);
+
+  if (separated.length >= 3 || !teams?.length) return separated;
+
+  const words = payload.trim().split(/\s+/).filter(Boolean);
+  const normalizedTeams = teams.map((team) => ({
+    ...team,
+    displayKey: normalizeText(displayNameForTeam(team.name)),
+    key: normalizeText(team.name)
+  }));
+  const isKnownTeam = (value: string) => {
+    const key = normalizeText(value);
+    return normalizedTeams.some((team) => key === team.key || key === team.displayKey);
+  };
+
+  for (let first = 1; first <= words.length - 2; first += 1) {
+    for (let second = first + 1; second <= words.length - 1; second += 1) {
+      const candidates = [
+        words.slice(0, first).join(" "),
+        words.slice(first, second).join(" "),
+        words.slice(second).join(" ")
+      ];
+      if (candidates.every(isKnownTeam)) return candidates;
+    }
+  }
+
+  return separated;
 }
 
 async function getSelectableTeams(db: ReturnType<typeof supabaseAdmin>) {
@@ -252,7 +329,7 @@ async function answerPodio(text: string, from?: string) {
       podiumTeamLine("3er puesto +1", data?.third_place_team, data?.third_place_points),
       "",
       lockState.locked ? "El podio ya está cerrado." : "Para cargarlo:",
-      lockState.locked ? "" : "_$podioanticipado Argentina | Brasil | Uruguay_"
+      lockState.locked ? "" : "_$podioanticipado Argentina Brasil Uruguay_"
     ].join("\n");
   }
 
@@ -260,17 +337,18 @@ async function answerPodio(text: string, from?: string) {
     return `🏆 *Podio anticipado*\n${lockState.reason ?? "El podio ya está cerrado."}`;
   }
 
-  const rawTeams = splitPodiumTeams(payload);
+  const selectableTeams = await getSelectableTeams(db);
+  const rawTeams = splitPodiumTeams(payload, selectableTeams);
   if (rawTeams.length !== 3) {
     return [
       "🏆 *Podio anticipado*",
-      "Mandame 3 selecciones separadas por |",
+      "Mandame 3 selecciones en orden: campeón, subcampeón y 3er puesto.",
+      "",
       "Ejemplo:",
-      "_$podioanticipado Argentina | Brasil | Uruguay_"
+      "_$podioanticipado Argentina Brasil Uruguay_"
     ].join("\n");
   }
 
-  const selectableTeams = await getSelectableTeams(db);
   const selected = rawTeams.map((team) => findSelectableTeam(team, selectableTeams));
   if (selected.some((team) => !team)) {
     return [

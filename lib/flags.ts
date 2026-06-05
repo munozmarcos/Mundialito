@@ -6,6 +6,8 @@ const aliases: Record<string, string> = {
   canada: "ca",
   "bosnia and herzegovina": "ba",
   "bosnia-herzegovina": "ba",
+  "bosnia y herzegovina": "ba",
+  "bosnia herzegovina": "ba",
   bosnia: "ba",
   "south korea": "kr",
   "corea del sur": "kr",
@@ -47,6 +49,7 @@ const aliases: Record<string, string> = {
   "costa de marfil": "ci",
   ecuador: "ec",
   curacao: "cw",
+  curazao: "cw",
   netherlands: "nl",
   "paises bajos": "nl",
   sweden: "se",
@@ -92,6 +95,7 @@ const fifaToIso: Record<string, string> = {
   RSA: "za",
   CAN: "ca",
   BIH: "ba",
+  BOS: "ba",
   KOR: "kr",
   CZE: "cz",
   USA: "us",
@@ -147,6 +151,8 @@ const displayNames: Record<string, string> = {
   canada: "Canadá",
   "bosnia and herzegovina": "Bosnia y Herzegovina",
   "bosnia-herzegovina": "Bosnia y Herzegovina",
+  "bosnia y herzegovina": "Bosnia y Herzegovina",
+  "bosnia herzegovina": "Bosnia y Herzegovina",
   bosnia: "Bosnia y Herzegovina",
   "south korea": "Corea del Sur",
   "corea del sur": "Corea del Sur",
@@ -188,6 +194,7 @@ const displayNames: Record<string, string> = {
   "costa de marfil": "Costa de Marfil",
   ecuador: "Ecuador",
   curacao: "Curazao",
+  curazao: "Curazao",
   netherlands: "Países Bajos",
   "paises bajos": "Países Bajos",
   sweden: "Suecia",
@@ -237,16 +244,17 @@ function isBracketPlaceholder(team: string) {
 
 export function countryCodeForTeam(team: string, explicit?: string | null) {
   if (isBracketPlaceholder(team)) return null;
+  const alias = aliases[normalize(team)];
+  if (alias) return alias;
   if (explicit) {
     const clean = explicit.trim();
     return fifaToIso[clean.toUpperCase()] ?? clean.toLowerCase();
   }
-  return aliases[normalize(team)] ?? null;
+  return null;
 }
 
 export function flagUrlForTeam(team: string, explicit?: string | null) {
   const code = countryCodeForTeam(team, explicit);
-  if (code === "gb-sct" || code === "gb-eng") return null;
   return code ? `https://flagcdn.com/w40/${code}.png` : null;
 }
 

@@ -88,7 +88,7 @@ export default async function Home() {
         ))}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_380px]">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_460px]">
         <div className="grid content-start gap-4">
           <section className="panel overflow-hidden">
             <div className="flex items-center justify-between border-b border-line p-4">
@@ -149,17 +149,17 @@ export default async function Home() {
 
         <div className="grid content-start gap-4">
           <section className="grid gap-3 sm:grid-cols-3">
-            <article className="panel grid min-h-[104px] content-center justify-items-center p-3 text-center">
+            <article className="panel grid min-h-[108px] content-center justify-items-center p-3 text-center">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Pozo</p>
-              <p className="mt-2 text-xl font-black text-grass sm:text-2xl">{money(paymentSummary.prizePool)}</p>
+              <p className="mt-2 whitespace-nowrap text-lg font-black text-grass sm:text-xl xl:text-2xl">{money(paymentSummary.prizePool)}</p>
             </article>
-            <article className="panel grid min-h-[104px] content-center justify-items-center p-3 text-center">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Participantes</p>
-              <p className="mt-2 text-xl font-black text-blue-300 sm:text-2xl">{paymentSummary.totalParticipants}</p>
+            <article className="panel grid min-h-[108px] content-center justify-items-center p-3 text-center">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Personas</p>
+              <p className="mt-2 whitespace-nowrap text-lg font-black text-blue-300 sm:text-xl xl:text-2xl">{paymentSummary.totalParticipants}</p>
             </article>
-            <article className="panel grid min-h-[104px] content-center justify-items-center p-3 text-center">
+            <article className="panel grid min-h-[108px] content-center justify-items-center p-3 text-center">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45">Puntos</p>
-              <p className="mt-2 text-xl font-black text-red-400 sm:text-2xl">{currentUserPoints} Pts</p>
+              <p className="mt-2 whitespace-nowrap text-lg font-black text-red-400 sm:text-xl xl:text-2xl">{currentUserPoints} Pts</p>
             </article>
           </section>
 
