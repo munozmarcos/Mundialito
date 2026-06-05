@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { EmptyState } from "@/components/empty-state";
 import { DateFilter } from "@/components/date-filter";
@@ -340,7 +340,7 @@ function PredictionCard({
     event.preventDefault();
     if (!loggedIn || locked) return;
     if (homeGoals === "" || awayGoals === "") {
-      setMessage("Cargá los dos goles.");
+      setMessage("CargÃ¡ los dos goles.");
       return;
     }
     setSaving(true);
@@ -433,7 +433,7 @@ function PredictionCard({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="btn min-w-11 px-0" disabled={!loggedIn || locked || saving} title="Guardar predicción" type="submit">
+            <button className="btn min-w-11 px-0" disabled={!loggedIn || locked || saving} title="Guardar predicciÃ³n" type="submit">
               {message === "Guardada" ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
             </button>
           </div>
@@ -473,6 +473,67 @@ function GroupProjection({ group, matches, predictions }: { group: string; match
           <span className="text-center">DG</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PodiumPicker({
+  label,
+  value,
+  disabled,
+  teams,
+  onChange
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  teams: Array<{ name: string; code?: string | null; label: string }>;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = teams.find((team) => team.name === value);
+
+  return (
+    <div className="relative grid gap-1 text-sm font-bold text-ink/70">
+      <span>{label}</span>
+      <button
+        className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-lg border border-line bg-field px-3 text-left shadow-sm transition ${
+          disabled ? "cursor-not-allowed opacity-60" : "hover:border-grass/45 hover:bg-mint"
+        }`}
+        disabled={disabled}
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        {selected ? <TeamLabel name={selected.name} code={selected.code} /> : <span className="text-base font-black text-ink/45">Seleccionar</span>}
+        <span className="text-xs font-black text-ink/40">â–¼</span>
+      </button>
+      {open && !disabled && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-72 overflow-y-auto rounded-lg border border-line bg-white p-2 shadow-2xl">
+          <button
+            className="flex min-h-12 w-full items-center rounded-md px-3 text-left text-sm font-black text-ink/45 hover:bg-field"
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+            }}
+            type="button"
+          >
+            Seleccionar
+          </button>
+          {teams.map((team) => (
+            <button
+              className={`flex min-h-12 w-full items-center rounded-md px-3 text-left hover:bg-mint ${team.name === value ? "bg-mint" : ""}`}
+              key={`${label}-${team.name}`}
+              onClick={() => {
+                onChange(team.name);
+                setOpen(false);
+              }}
+              type="button"
+            >
+              <TeamLabel name={team.name} code={team.code} />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -632,7 +693,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
 
   async function applyBulk() {
     if (!user) {
-      setBulkMessage("Entrá con tu usuario para cargar pronósticos.");
+      setBulkMessage("EntrÃ¡ con tu usuario para cargar pronÃ³sticos.");
       return;
     }
 
@@ -699,7 +760,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
 
   async function savePodium() {
     if (!user) {
-      setPodiumMessage("Entrá con tu usuario para guardar el podio.");
+      setPodiumMessage("EntrÃ¡ con tu usuario para guardar el podio.");
       return;
     }
 
@@ -767,42 +828,34 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="flex items-center gap-2 text-xl font-black">
               <Trophy className="h-5 w-5 text-gold" />
-              Podio final
+              Podio anticipado
             </h2>
             {podiumLocked && <span className="badge bg-field text-sky-100">Cerrado</span>}
           </div>
           <p className="mt-1 text-sm font-semibold text-ink/60">
-            Elegí campeón, segundo puesto y 3er puesto. Cierra cuando se habilitan los 16vos.
+            Elegí tu podio antes de que se habiliten los 16vos.
           </p>
           {podiumLockReason && <p className="mt-2 text-sm font-bold text-sky-200">{podiumLockReason}</p>}
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {[
-              ["champion_team", "Campeón +3"],
-              ["runner_up_team", "2do puesto +2"],
-              ["third_place_team", "3er puesto +1"]
+              ["champion_team", "Campeón"],
+              ["runner_up_team", "Subcampeón"],
+              ["third_place_team", "Tercero"]
             ].map(([field, label]) => (
-              <label className="grid gap-1 text-sm font-bold text-ink/70" key={field}>
-                {label}
-                <select
-                  className="field min-h-11"
-                  disabled={!user || podiumLocked}
-                  value={(podium?.[field as keyof PodiumDraft] as string | null | undefined) ?? ""}
-                  onChange={(event) => updatePodium(field as keyof PodiumDraft, event.target.value)}
-                >
-                  <option value="">Seleccionar selección</option>
-                  {teamOptions.map((team) => (
-                    <option key={`${field}-${team.name}`} value={team.name}>
-                      {team.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <PodiumPicker
+                disabled={!user || podiumLocked}
+                key={field}
+                label={label}
+                teams={teamOptions}
+                value={(podium?.[field as keyof PodiumDraft] as string | null | undefined) ?? ""}
+                onChange={(value) => updatePodium(field as keyof PodiumDraft, value)}
+              />
             ))}
           </div>
           {podiumMessage && <p className="mt-3 text-sm font-bold text-grass">{podiumMessage}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-          <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-gold">{podium?.points ?? 0} Pts</span>
+          <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-ink/55">{podium?.points ?? 0} Pts</span>
           <button className="btn" disabled={!user || podiumSaving || podiumLocked} onClick={savePodium} type="button">
             <Save className="h-4 w-4" />
             {podiumSaving ? "Guardando" : "Guardar"}
@@ -812,8 +865,8 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
 
       <section className="panel flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
-          <h2 className="text-xl font-black">Carga rápida</h2>
-          <p className="mt-1 text-sm font-semibold text-ink/60">Pegá un bloque de pronósticos y guardalos de una sola vez.</p>
+          <h2 className="text-xl font-black">Carga rÃ¡pida</h2>
+          <p className="mt-1 text-sm font-semibold text-ink/60">PegÃ¡ un bloque de pronÃ³sticos y guardalos de una sola vez.</p>
         </div>
         <button className="btn secondary" onClick={() => setBulkOpen(true)} type="button">
           <ClipboardPaste className="h-4 w-4" />
@@ -858,7 +911,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         <section className="grid gap-4">
           <div>
             <h3 className="text-2xl font-black">Todos</h3>
-            <p className="mb-3 mt-1 text-sm font-semibold text-ink/60">Todos los partidos en grilla, filtrables por país y fecha.</p>
+            <p className="mb-3 mt-1 text-sm font-semibold text-ink/60">Todos los partidos en grilla, filtrables por paÃ­s y fecha.</p>
           </div>
           <div className="match-card-grid">
             {allFilteredMatches.map((match) => (
@@ -983,7 +1036,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
                   <ClipboardPaste className="h-5 w-5 text-grass" />
                   Carga masiva
                 </h2>
-                <p className="mt-1 text-sm text-ink/60">Pegá el texto de $pronosticos o usá formato por línea: Argentina 2-1 México</p>
+                <p className="mt-1 text-sm text-ink/60">PegÃ¡ el texto de $pronosticos o usÃ¡ formato por lÃ­nea: Argentina 2-1 MÃ©xico</p>
               </div>
               <button className="btn secondary min-w-11 px-0" onClick={() => setBulkOpen(false)} type="button" aria-label="Cerrar">
                 <X className="h-4 w-4" />

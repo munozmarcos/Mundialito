@@ -1,29 +1,29 @@
-import { PageHero } from "@/components/page-hero";
+﻿import { PageHero } from "@/components/page-hero";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { BadgeCheck, CircleEqual, Clock, ListChecks, LockKeyhole, PlayCircle, Target, Trophy, UnlockKeyhole } from "lucide-react";
 
 const examples = [
   {
-    title: "Acertás tendencia",
+    title: "AcertÃ¡s tendencia",
     real: ["Argentina", "Mexico", "2-1"],
     pick: ["Argentina", "Mexico", "1-0"],
     points: "1 punto",
     note: "Misma tendencia: gana Argentina."
   },
   {
-    title: "Acertás exacto",
+    title: "AcertÃ¡s exacto",
     real: ["Brazil", "Morocco", "3-1"],
     pick: ["Brazil", "Morocco", "3-1"],
     points: "3 puntos",
     note: "1 por tendencia + 2 extra por marcador exacto."
   },
   {
-    title: "Acertás empate",
+    title: "AcertÃ¡s empate",
     real: ["Spain", "Uruguay", "0-0"],
     pick: ["Spain", "Uruguay", "1-1"],
     points: "1 punto",
-    note: "El resultado no es exacto, pero la tendencia empate sí."
+    note: "El resultado no es exacto, pero la tendencia empate sÃ­."
   },
   {
     title: "Empate exacto",
@@ -60,7 +60,7 @@ function ExampleCard({ example }: { example: (typeof examples)[number] }) {
         <span className="badge">{example.points}</span>
       </div>
       <ScoreLine label="Resultado" home={example.real[0]} away={example.real[1]} score={example.real[2]} />
-      <ScoreLine label="Tu predicción" home={example.pick[0]} away={example.pick[1]} score={example.pick[2]} />
+      <ScoreLine label="Tu predicciÃ³n" home={example.pick[0]} away={example.pick[1]} score={example.pick[2]} />
       <p className="flex items-center gap-2 text-sm font-semibold text-ink/68">
         <CircleEqual className="h-4 w-4 text-grass" />
         {example.note}
@@ -124,7 +124,7 @@ export default function RulesPage() {
       <PageHero
         badge="Reglas"
         icon={ListChecks}
-        title="Cómo se suman los puntos"
+        title="CÃ³mo se suman los puntos"
         subtitle="Regla simple: 1 punto por tendencia y 2 puntos extra si el resultado es exacto."
       />
 
@@ -138,12 +138,12 @@ export default function RulesPage() {
         <article className="panel flex h-full flex-col p-5">
           <BadgeCheck className="h-6 w-6 text-gold" />
           <h2 className="mt-3 text-xl font-black">Resultado exacto</h2>
-          <p className="mt-2 text-sm text-ink/70">Si además acertaste los goles exactos.</p>
+          <p className="mt-2 text-sm text-ink/70">Si ademÃ¡s acertaste los goles exactos.</p>
           <strong className="mt-auto block pt-4 text-3xl text-gold">+2</strong>
         </article>
         <article className="panel flex h-full flex-col p-5">
           <Trophy className="h-6 w-6 text-blue-300" />
-          <h2 className="mt-3 text-xl font-black">Máximo</h2>
+          <h2 className="mt-3 text-xl font-black">MÃ¡ximo</h2>
           <p className="mt-2 text-sm text-ink/70">Grupos y eliminatorias, 120 minutos.</p>
           <strong className="mt-auto block pt-4 text-3xl text-blue-300">3 pts</strong>
         </article>
@@ -159,7 +159,7 @@ export default function RulesPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-2xl font-black">Podio final</h2>
+        <h2 className="mb-3 text-2xl font-black">Podio anticipado</h2>
         <div className="grid gap-3 md:grid-cols-3">
           <article className="panel flex h-full flex-col p-5">
             <Trophy className="h-6 w-6 text-yellow-200" />
@@ -181,8 +181,7 @@ export default function RulesPage() {
           </article>
         </div>
         <p className="mt-3 text-sm font-semibold text-ink/65">
-          Se carga desde Pronósticos o por WhatsApp con <strong>$podio Argentina | Brasil | Uruguay</strong>.
-          Esta apuesta queda abierta durante la fase de grupos y se cierra cuando se habilitan los 16vos.
+          Esta apuesta queda abierta durante la fase de grupos y se bloquea cuando se habilitan los 16vos.
         </p>
       </section>
 
@@ -192,12 +191,12 @@ export default function RulesPage() {
           <StatusExample
             status="open"
             title="Abierto"
-            text="El partido está disponible y podés ingresar o modificar tu predicción."
+            text="El partido estÃ¡ disponible y podÃ©s ingresar o modificar tu predicciÃ³n."
           />
           <StatusExample
             status="locked"
             title="Bloqueado"
-            text="Todavía no se puede pronosticar porque la llave o los equipos no están definidos oficialmente."
+            text="TodavÃ­a no se puede pronosticar porque la llave o los equipos no estÃ¡n definidos oficialmente."
           />
           <StatusExample
             status="closed"

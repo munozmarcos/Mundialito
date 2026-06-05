@@ -230,7 +230,7 @@ async function answerPodio(text: string, from?: string) {
   if (!supabaseConfigured()) return "⚽ *Mundialito*\nTodavía no está lista la base. Probá de nuevo en unos minutos.";
 
   const profile = await findProfileByPhone(from);
-  if (!profile) return "⚽ *Podio final*\nNo tengo registrado tu WhatsApp como participante.";
+  if (!profile) return "⚽ *Podio anticipado*\nNo tengo registrado tu WhatsApp como participante.";
 
   const db = supabaseAdmin();
   const payload = extractPodiumPayload(text);
@@ -240,7 +240,7 @@ async function answerPodio(text: string, from?: string) {
     const { data, error } = await db.from("podium_predictions").select("*").eq("user_id", profile.id).maybeSingle();
     if (error) throw error;
     return [
-      "🏆 *Podio final*",
+      "🏆 *Podio anticipado*",
       podiumTeamLine("Campeón +3", data?.champion_team, data?.champion_points),
       podiumTeamLine("2do puesto +2", data?.runner_up_team, data?.runner_up_points),
       podiumTeamLine("3er puesto +1", data?.third_place_team, data?.third_place_points),
@@ -251,13 +251,13 @@ async function answerPodio(text: string, from?: string) {
   }
 
   if (lockState.locked) {
-    return `🏆 *Podio final*\n${lockState.reason ?? "El podio ya está cerrado."}`;
+    return `🏆 *Podio anticipado*\n${lockState.reason ?? "El podio ya está cerrado."}`;
   }
 
   const rawTeams = splitPodiumTeams(payload);
   if (rawTeams.length !== 3) {
     return [
-      "🏆 *Podio final*",
+      "🏆 *Podio anticipado*",
       "Mandame 3 selecciones separadas por |",
       "Ejemplo:",
       "_$podio Argentina | Brasil | Uruguay_"
@@ -268,7 +268,7 @@ async function answerPodio(text: string, from?: string) {
   const selected = rawTeams.map((team) => findSelectableTeam(team, selectableTeams));
   if (selected.some((team) => !team)) {
     return [
-      "🏆 *Podio final*",
+      "🏆 *Podio anticipado*",
       "No encontré una de esas selecciones en el fixture.",
       "Probá con nombres como Argentina, Brasil, Francia."
     ].join("\n");
@@ -276,7 +276,7 @@ async function answerPodio(text: string, from?: string) {
 
   const [champion, runnerUp, thirdPlace] = selected as Array<{ name: string; code?: string | null }>;
   if (!validatePodiumTeams(champion.name, runnerUp.name, thirdPlace.name)) {
-    return "🏆 *Podio final*\nNo podés repetir selección en el podio.";
+    return "🏆 *Podio anticipado*\nNo podés repetir selección en el podio.";
   }
 
   const { error } = await db
