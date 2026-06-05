@@ -7,14 +7,15 @@ export function summarizeJob(title: string, payload: any) {
   if (!payload?.ok && payload?.error) return `${title}: error - ${payload.error}`;
 
   const parts = [`${title}: ejecutado`];
-  if (typeof data.fetched === "number") parts.push(`${data.fetched} registros leídos`);
+  if (typeof data.fetched === "number") parts.push(`${data.fetched} registros leidos`);
   if (typeof data.imported === "number") parts.push(`${data.imported} registros importados`);
   if (typeof data.placeholders === "number") parts.push(`${data.placeholders} llaves preparadas`);
   if (typeof data.updated === "number") parts.push(`${data.updated} registros actualizados`);
   if (typeof data.matches === "number") parts.push(`${data.matches} partidos detectados`);
   if (typeof data.users === "number") parts.push(`${data.users} participantes revisados`);
-  if (typeof data.reminders === "number") parts.push(`${data.reminders} pronósticos pendientes`);
+  if (typeof data.reminders === "number") parts.push(`${data.reminders} pronosticos pendientes`);
   if (typeof data.locked === "number") parts.push(`${data.locked} partidos cerrados`);
+  if (typeof data.podiumLocked === "boolean") parts.push(data.podiumLocked ? "podio cerrado" : "podio abierto");
   if (typeof data.sent === "number") parts.push(`${data.sent} mensajes enviados`);
   if (typeof data.notifications === "number") parts.push(`${data.notifications} avisos enviados`);
   if (typeof data.inserted === "number") parts.push(`${data.inserted} registros creados`);

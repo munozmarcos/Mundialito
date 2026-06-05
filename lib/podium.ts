@@ -88,19 +88,28 @@ export function validatePodiumTeams(championTeam?: string | null, runnerUpTeam?:
 export async function getPodiumLockState(db: any) {
   const { data, error } = await db
     .from("matches")
-    .select("stage,status,home_team,away_team")
+    .select("stage,status,home_team,away_team,kickoff_at")
     .eq("stage", "R32");
   if (error) throw error;
 
   const r32Matches = data ?? [];
+  const firstRoundOf32Kickoff = r32Matches
+    .map((match: { kickoff_at?: string | null }) => match.kickoff_at ? new Date(match.kickoff_at).getTime() : Number.POSITIVE_INFINITY)
+    .filter((time: number) => Number.isFinite(time))
+    .sort((left: number, right: number) => left - right)[0];
+  const closesByKickoff = Number.isFinite(firstRoundOf32Kickoff) && firstRoundOf32Kickoff - Date.now() <= 15 * 60 * 1000;
   const hasEnabledRoundOf32 = r32Matches.some((match: { stage: string; status?: string | null; home_team?: string | null; away_team?: string | null }) => {
     if (match.status === "locked" || match.status === "scheduled") return false;
     return isOfficialKnockoutMatchReady(match);
   });
 
   return {
-    locked: hasEnabledRoundOf32,
-    reason: hasEnabledRoundOf32 ? "El podio cerró porque ya se habilitaron los 16vos." : null
+    locked: hasEnabledRoundOf32 || closesByKickoff,
+    reason: closesByKickoff
+      ? "El podio cerro porque faltan 15 minutos o menos para el primer partido de 16vos."
+      : hasEnabledRoundOf32
+        ? "El podio cerro porque ya se habilitaron los 16vos."
+        : null
   };
 }
 

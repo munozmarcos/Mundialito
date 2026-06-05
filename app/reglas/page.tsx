@@ -163,14 +163,14 @@ export default function RulesPage() {
         <div className="grid gap-3 md:grid-cols-3">
           <article className="panel flex h-full flex-col p-5">
             <Trophy className="h-6 w-6 text-yellow-200" />
-            <h3 className="mt-3 text-xl font-black">Campeon</h3>
-            <p className="mt-2 text-sm text-ink/70">Si acertás el campeón del Mundial.</p>
+            <h3 className="mt-3 text-xl font-black">Campeón</h3>
+            <p className="mt-2 text-sm text-ink/70">Por acertar el 1er puesto.</p>
             <strong className="mt-auto block pt-4 text-3xl text-yellow-200">+3</strong>
           </article>
           <article className="panel flex h-full flex-col p-5">
             <Trophy className="h-6 w-6 text-slate-100" />
-            <h3 className="mt-3 text-xl font-black">Subcampeon</h3>
-            <p className="mt-2 text-sm text-ink/70">Si acertás el subcampeón.</p>
+            <h3 className="mt-3 text-xl font-black">Subcampeón</h3>
+            <p className="mt-2 text-sm text-ink/70">Por acertar el 2do puesto.</p>
             <strong className="mt-auto block pt-4 text-3xl text-slate-100">+2</strong>
           </article>
           <article className="panel flex h-full flex-col p-5">
@@ -181,7 +181,7 @@ export default function RulesPage() {
           </article>
         </div>
         <p className="mt-3 text-sm font-semibold text-ink/65">
-          Se puede cargar durante la fase de grupos y se bloquea cuando se habilitan los 16vos.
+          Se puede cargar durante la fase de grupos. Se bloquea cuando se habilitan los 16vos o 15 minutos antes del primer partido de esa fase.
         </p>
       </section>
 

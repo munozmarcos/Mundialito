@@ -3,6 +3,7 @@ import { sendWhatsApp } from "@/lib/whatsapp";
 import { countryCodeForTeam } from "@/lib/flags";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
+import { getPodiumLockState } from "@/lib/podium";
 import { NextResponse } from "next/server";
 
 function assertCron(req: Request) {
@@ -104,7 +105,8 @@ export async function POST(req: Request) {
     }
   }
 
-  const result = { locked: data?.length ?? 0, notifications: sent, failures };
+  const podiumState = await getPodiumLockState(db);
+  const result = { locked: data?.length ?? 0, notifications: sent, podiumLocked: podiumState.locked, podiumReason: podiumState.reason, failures };
   if (req.headers.get("x-vercel-cron") === "1") {
     await recordJobRun({
       jobPath: "/api/jobs/lock-matches",

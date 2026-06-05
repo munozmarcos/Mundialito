@@ -1,7 +1,7 @@
 "use client";
 
 import { Pencil, RefreshCw, Save, Trash2, X, UsersRound } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type Profile = {
   id: string;
@@ -24,9 +24,18 @@ const initialForm = {
 export default function ParticipantesPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [form, setForm] = useState(initialForm);
+  const [query, setQuery] = useState("");
+  const [paidFilter, setPaidFilter] = useState("ALL");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  const filteredProfiles = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return profiles
+      .filter((profile) => !normalizedQuery || profile.display_name.toLowerCase().includes(normalizedQuery) || (profile.phone ?? "").includes(normalizedQuery))
+      .filter((profile) => paidFilter === "ALL" || (paidFilter === "PAID" ? profile.paid : !profile.paid));
+  }, [paidFilter, profiles, query]);
 
   async function loadProfiles() {
     setLoading(true);
@@ -131,8 +140,8 @@ export default function ParticipantesPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[420px_1fr]">
-        <form className="panel grid gap-4 p-5" onSubmit={submit}>
+      <section className="grid items-start gap-4 lg:grid-cols-[360px_1fr]">
+        <form className="panel grid max-w-[360px] gap-4 p-5" onSubmit={submit}>
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-xl font-black">{editingId ? "Editar participante" : "Nuevo participante"}</h2>
             {editingId && (
@@ -198,7 +207,7 @@ export default function ParticipantesPage() {
             />
             Pago recibido
           </label>
-          <button className="btn" disabled={loading} type="submit">
+          <button className="btn w-fit" disabled={loading} type="submit">
             <Save className="h-4 w-4" />
             {editingId ? "Actualizar" : "Guardar"}
           </button>
@@ -206,17 +215,27 @@ export default function ParticipantesPage() {
         </form>
 
         <section className="panel overflow-hidden">
-          <div className="flex items-center justify-between border-b border-line p-4">
-            <h2 className="text-xl font-black">Lista</h2>
-            <button className="btn secondary" disabled={loading} onClick={loadProfiles} type="button">
+          <div className="grid gap-3 border-b border-line p-4 lg:grid-cols-[1fr_180px_auto] lg:items-center">
+            <input
+              className="field"
+              placeholder="Filtrar participante"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <select className="field" value={paidFilter} onChange={(event) => setPaidFilter(event.target.value)}>
+              <option value="ALL">Todos</option>
+              <option value="PAID">Pagos</option>
+              <option value="UNPAID">Impagos</option>
+            </select>
+            <button className="btn secondary min-h-10 px-3" disabled={loading} onClick={loadProfiles} type="button">
               <RefreshCw className="h-4 w-4" />
               Actualizar
             </button>
           </div>
-          {!profiles.length ? (
-            <p className="p-5 text-sm text-ink/70">Todavía no hay participantes cargados.</p>
+          {!filteredProfiles.length ? (
+            <p className="p-5 text-sm text-ink/70">No hay participantes para ese filtro.</p>
           ) : (
-            profiles.map((profile) => (
+            filteredProfiles.map((profile) => (
               <div className="grid gap-3 border-b border-line p-4 last:border-0 md:grid-cols-[1fr_1fr_auto_auto_auto_auto] md:items-center" key={profile.id}>
                 <div>
                   <strong>{profile.display_name}</strong>

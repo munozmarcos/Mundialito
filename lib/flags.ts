@@ -86,6 +86,58 @@ const aliases: Record<string, string> = {
   uzbekistan: "uz"
 };
 
+const fifaToIso: Record<string, string> = {
+  ARG: "ar",
+  MEX: "mx",
+  RSA: "za",
+  CAN: "ca",
+  BIH: "ba",
+  KOR: "kr",
+  CZE: "cz",
+  USA: "us",
+  QAT: "qa",
+  SUI: "ch",
+  BRA: "br",
+  HAI: "ht",
+  SCO: "gb-sct",
+  FRA: "fr",
+  ESP: "es",
+  GER: "de",
+  ITA: "it",
+  ENG: "gb-eng",
+  JPN: "jp",
+  AUS: "au",
+  TUR: "tr",
+  MAR: "ma",
+  POR: "pt",
+  URU: "uy",
+  PAR: "py",
+  CIV: "ci",
+  ECU: "ec",
+  CUW: "cw",
+  NED: "nl",
+  SWE: "se",
+  TUN: "tn",
+  KSA: "sa",
+  CPV: "cv",
+  IRN: "ir",
+  NZL: "nz",
+  BEL: "be",
+  EGY: "eg",
+  SEN: "sn",
+  IRQ: "iq",
+  NOR: "no",
+  ALG: "dz",
+  AUT: "at",
+  JOR: "jo",
+  GHA: "gh",
+  PAN: "pa",
+  CRO: "hr",
+  COD: "cd",
+  COL: "co",
+  UZB: "uz"
+};
+
 const displayNames: Record<string, string> = {
   argentina: "Argentina",
   mexico: "México",
@@ -184,7 +236,10 @@ function isBracketPlaceholder(team: string) {
 
 export function countryCodeForTeam(team: string, explicit?: string | null) {
   if (isBracketPlaceholder(team)) return null;
-  if (explicit) return explicit.toLowerCase();
+  if (explicit) {
+    const clean = explicit.trim();
+    return fifaToIso[clean.toUpperCase()] ?? clean.toLowerCase();
+  }
   return aliases[normalize(team)] ?? null;
 }
 

@@ -480,50 +480,10 @@ function PodiumPicker({
   teams: TeamOption[];
   onChange: (value: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const selected = teams.find((team) => team.name === value);
-
   return (
     <div className="relative grid gap-1 text-sm font-bold text-ink/70">
       <span>{label}</span>
-      <button
-        className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-line bg-field px-3 text-left shadow-sm transition ${
-          disabled ? "cursor-not-allowed opacity-60" : "hover:border-grass/45 hover:bg-mint"
-        }`}
-        disabled={disabled}
-        onClick={() => setOpen((current) => !current)}
-        type="button"
-      >
-        {selected ? <TeamLabel name={selected.name} code={selected.code} /> : <span className="text-base font-black text-ink/45">Selección</span>}
-        <span className="text-xs font-black text-ink/40">▼</span>
-      </button>
-      {open && !disabled && (
-        <div className="absolute left-0 right-0 top-full z-30 mt-2 max-h-72 overflow-y-auto rounded-lg border border-line bg-white p-2 shadow-2xl">
-          <button
-            className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm font-black text-ink/45 hover:bg-field"
-            onClick={() => {
-              onChange("");
-              setOpen(false);
-            }}
-            type="button"
-          >
-            Selección
-          </button>
-          {teams.map((team) => (
-            <button
-              className={`flex min-h-11 w-full items-center rounded-md px-3 text-left hover:bg-mint ${team.name === value ? "bg-mint" : ""}`}
-              key={`${label}-${team.name}`}
-              onClick={() => {
-                onChange(team.name);
-                setOpen(false);
-              }}
-              type="button"
-            >
-              <TeamLabel name={team.name} code={team.code} />
-            </button>
-          ))}
-        </div>
-      )}
+      <CountryFilterPicker disabled={disabled} options={teams} value={value} onChange={onChange} />
     </div>
   );
 }
