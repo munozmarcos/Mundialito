@@ -16,7 +16,7 @@ import { teamOptionsFromMatches, type TeamOption } from "@/lib/team-options";
 import type { Match, MatchStage, Prediction } from "@/lib/types";
 import { Calculator, Check, CircleDot, ClipboardPaste, GitBranch, ListChecks, Lock, LogIn, Medal, Save, Table2, Trophy, X } from "lucide-react";
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type PredictionWithUpdated = Prediction & { updated_at?: string | null };
 type PodiumDraft = {
@@ -128,6 +128,10 @@ function norm(value: string) {
 function teamMatchesBulk(team: string, query: string) {
   const normalizedQuery = norm(query);
   return norm(team) === normalizedQuery || norm(displayNameForTeam(team)) === normalizedQuery;
+}
+
+function podiumKey(podium?: PodiumDraft | null) {
+  return [podium?.champion_team ?? "", podium?.runner_up_team ?? "", podium?.third_place_team ?? ""].join("|");
 }
 
 function projectedGroupTable(matches: Match[], predictions: Record<string, PredictionWithUpdated>) {
@@ -330,15 +334,18 @@ function PredictionCard({
     setAwayGoals(prediction?.away_goals ?? "");
   }, [prediction?.home_goals, prediction?.away_goals]);
 
-  async function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const saveDraft = useCallback(async (showErrors: boolean) => {
     if (!loggedIn || locked) return;
     if (homeGoals === "" || awayGoals === "") {
-      setMessage("Carga los dos goles.");
+      if (showErrors) setMessage("Carga los dos goles.");
       return;
     }
+    const hasChanges = prediction?.home_goals !== homeGoals || prediction?.away_goals !== awayGoals;
+    if (!showErrors && !hasChanges) return;
+    if (saving) return;
+
     setSaving(true);
-    setMessage("");
+    if (showErrors) setMessage("");
 
     const res = await fetch("/api/predictions", {
       method: "POST",
@@ -349,13 +356,26 @@ function PredictionCard({
     setSaving(false);
 
     if (!res.ok) {
-      setMessage(data.error ?? "No se pudo guardar.");
+      if (showErrors) setMessage(data.error ?? "No se pudo guardar.");
       return;
     }
 
     onSaved(data.prediction);
     setMessage("Guardada");
+  }, [awayGoals, homeGoals, locked, loggedIn, match.id, onSaved, prediction?.away_goals, prediction?.home_goals, saving]);
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await saveDraft(true);
   }
+
+  useEffect(() => {
+    if (!loggedIn || locked || homeGoals === "" || awayGoals === "") return;
+    const timer = window.setInterval(() => {
+      void saveDraft(false);
+    }, 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [awayGoals, homeGoals, locked, loggedIn, saveDraft]);
 
   const hasResult = match.home_goals != null && match.away_goals != null;
   const realResult = hasResult ? `${match.home_goals}-${match.away_goals}` : "Pendiente";
@@ -391,7 +411,10 @@ function PredictionCard({
               value={homeGoals}
               onChange={(event) => {
                 const value = parseGoalInput(event.target.value);
-                if (value !== null && (value === "" || value <= 30)) setHomeGoals(value);
+                if (value !== null && (value === "" || value <= 30)) {
+                  setHomeGoals(value);
+                  setMessage("");
+                }
               }}
             />
           </div>
@@ -408,7 +431,10 @@ function PredictionCard({
               value={awayGoals}
               onChange={(event) => {
                 const value = parseGoalInput(event.target.value);
-                if (value !== null && (value === "" || value <= 30)) setAwayGoals(value);
+                if (value !== null && (value === "" || value <= 30)) {
+                  setAwayGoals(value);
+                  setMessage("");
+                }
               }}
             />
           </div>
@@ -572,6 +598,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const [podiumMessage, setPodiumMessage] = useState("");
   const [podiumSaving, setPodiumSaving] = useState(false);
   const [podiumSaved, setPodiumSaved] = useState(false);
+  const [savedPodiumKey, setSavedPodiumKey] = useState("");
   const predictionMap = useMemo(() => byId(predictions), [predictions]);
 
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
@@ -611,7 +638,9 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
     const res = await fetch("/api/podium", { cache: "no-store" });
     const data = await res.json();
     if (res.ok) {
-      setPodium(data.podium ?? { champion_team: "", runner_up_team: "", third_place_team: "", points: 0 });
+      const nextPodium = data.podium ?? { champion_team: "", runner_up_team: "", third_place_team: "", points: 0 };
+      setPodium(nextPodium);
+      setSavedPodiumKey(podiumKey(nextPodium));
       setPodiumLocked(Boolean(data.locked));
       setPodiumLockReason(data.reason ?? null);
     }
@@ -628,6 +657,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         } else {
           setPredictions([]);
           setPodium(null);
+          setSavedPodiumKey("");
         }
       })
       .finally(() => setLoading(false));
@@ -720,18 +750,21 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
     }
   }
 
-  async function savePodium() {
+  const savePodiumDraft = useCallback(async (showErrors: boolean) => {
     if (!user) {
-      setPodiumMessage("Entra con tu usuario para guardar el podio.");
+      if (showErrors) setPodiumMessage("Entra con tu usuario para guardar el podio.");
       return;
     }
     if (!user.paid) {
-      setPodiumMessage("Tenés el pago pendiente. Cuando quede confirmado, se habilita la carga.");
+      if (showErrors) setPodiumMessage("Tenés el pago pendiente. Cuando quede confirmado, se habilita la carga.");
       return;
     }
+    if (podiumLocked || podiumSaving) return;
+    const currentKey = podiumKey(podium);
+    if (!showErrors && (!podium?.champion_team || !podium?.runner_up_team || !podium?.third_place_team || currentKey === savedPodiumKey)) return;
 
     setPodiumSaving(true);
-    setPodiumMessage("");
+    if (showErrors) setPodiumMessage("");
     try {
       const res = await fetch("/api/podium", {
         method: "POST",
@@ -745,16 +778,30 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "No se pudo guardar el podio.");
       setPodium(data.podium);
+      setSavedPodiumKey(podiumKey(data.podium));
       setPodiumLocked(Boolean(data.locked));
       setPodiumLockReason(data.reason ?? null);
       setPodiumSaved(true);
       setPodiumMessage("");
     } catch (error) {
-      setPodiumMessage(error instanceof Error ? error.message : "No se pudo guardar el podio.");
+      if (showErrors) setPodiumMessage(error instanceof Error ? error.message : "No se pudo guardar el podio.");
     } finally {
       setPodiumSaving(false);
     }
+  }, [podium, podiumLocked, podiumSaving, savedPodiumKey, user]);
+
+  async function savePodium() {
+    await savePodiumDraft(true);
   }
+
+  useEffect(() => {
+    if (!user || !user.paid || podiumLocked) return;
+    if (!podium?.champion_team || !podium?.runner_up_team || !podium?.third_place_team) return;
+    const timer = window.setInterval(() => {
+      void savePodiumDraft(false);
+    }, 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [podium?.champion_team, podium?.runner_up_team, podium?.third_place_team, podiumLocked, savePodiumDraft, user]);
 
   function updatePodium(field: keyof PodiumDraft, value: string) {
     setPodiumSaved(false);
