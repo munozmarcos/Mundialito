@@ -1,6 +1,7 @@
 ﻿import { PageHero } from "@/components/page-hero";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
+import { PointsPill } from "@/components/points-pill";
 import { BadgeCheck, CircleEqual, Clock, ListChecks, LockKeyhole, PlayCircle, Target, Trophy, UnlockKeyhole } from "lucide-react";
 
 const examples = [
@@ -8,28 +9,28 @@ const examples = [
     title: "Acertas tendencia",
     real: ["Argentina", "Mexico", "2-1"],
     pick: ["Argentina", "Mexico", "1-0"],
-    points: "1 punto",
+    points: 1,
     note: "Misma tendencia: gana Argentina."
   },
   {
     title: "Acertas exacto",
     real: ["Brazil", "Morocco", "3-1"],
     pick: ["Brazil", "Morocco", "3-1"],
-    points: "3 puntos",
+    points: 3,
     note: "1 por tendencia + 2 extra por marcador exacto."
   },
   {
     title: "Acertas empate",
     real: ["Spain", "Uruguay", "0-0"],
     pick: ["Spain", "Uruguay", "1-1"],
-    points: "1 punto",
+    points: 1,
     note: "El resultado no es exacto, pero la tendencia empate si."
   },
   {
     title: "Empate exacto",
     real: ["Netherlands", "Japan", "1-1"],
     pick: ["Netherlands", "Japan", "1-1"],
-    points: "3 puntos",
+    points: 3,
     note: "Empate correcto + marcador exacto."
   }
 ];
@@ -57,7 +58,7 @@ function ExampleCard({ example }: { example: (typeof examples)[number] }) {
     <article className="panel grid gap-3 p-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-xl font-black">{example.title}</h2>
-        <span className="badge">{example.points}</span>
+        <PointsPill points={example.points} />
       </div>
       <ScoreLine label="Resultado" home={example.real[0]} away={example.real[1]} score={example.real[2]} />
       <ScoreLine label="Tu prediccion" home={example.pick[0]} away={example.pick[1]} score={example.pick[2]} />

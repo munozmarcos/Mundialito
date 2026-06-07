@@ -5,6 +5,7 @@ import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { DateFilter } from "@/components/date-filter";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
+import { PointsPill } from "@/components/points-pill";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { displayNameForTeam } from "@/lib/flags";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
@@ -421,7 +422,7 @@ function PredictionCard({
                 <span className="font-black">{realResult}</span>
               </div>
               <div className="text-right">
-                <span className={`inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-black ${pointsReady ? "bg-mint text-grass" : "bg-field text-ink/55"}`}>{pointsText}</span>
+                {pointsReady ? <PointsPill points={prediction?.points ?? 0} /> : <PointsPill points={0} label={pointsText} />}
               </div>
             </div>
           </div>
@@ -545,7 +546,7 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
           {winner && prediction?.home_goals === prediction?.away_goals && <span className="block font-black text-grass">Ganador: {winner.name}</span>}
         </div>
         <div className="rounded-md bg-field p-2 text-right">
-          <span className={`inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-black ${pointsReady ? "bg-mint text-grass" : "bg-field text-ink/55"}`}>{pointsText}</span>
+          {pointsReady ? <PointsPill points={prediction?.points ?? 0} /> : <PointsPill points={0} label={pointsText} />}
         </div>
       </div>
       {match.stadium && <p className="mt-2 text-xs font-semibold text-ink/55">{match.stadium}</p>}
@@ -863,7 +864,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         </div>
         <div className="grid justify-items-end gap-2">
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-ink/55">{podiumPoints} Pts</span>
+            <PointsPill points={podiumPoints} className="min-h-11 px-4 text-base" />
             <button className="btn min-w-11 px-0" disabled={!user || podiumSaving || podiumLocked || unpaidLocked} onClick={savePodium} title="Guardar podio anticipado" type="button">
               {podiumSaved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
             </button>

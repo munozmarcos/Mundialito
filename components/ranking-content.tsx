@@ -3,6 +3,7 @@
 import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { DateFilter } from "@/components/date-filter";
 import { EmptyState } from "@/components/empty-state";
+import { PointsPill } from "@/components/points-pill";
 import { RankingDescription } from "@/components/ranking-description";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
@@ -69,12 +70,6 @@ function groupBy<T>(items: T[], key: (item: T) => string) {
   }, {});
 }
 
-function pointsClass(points: number) {
-  return points >= 3
-    ? "border-grass/30 bg-emerald-950/55 text-grass"
-    : "border-blue-300/30 bg-blue-950/45 text-blue-200";
-}
-
 function ScoreBox({ value }: { value: number | string | null | undefined }) {
   return (
     <input
@@ -96,7 +91,7 @@ function DetailCard({ detail }: { detail: RankingPredictionDetail }) {
           <span className="badge">{match.group_name ? `Grupo ${match.group_name}` : stageLabels[match.stage] ?? match.stage}</span>
           <p className="mt-2 text-xs font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</p>
         </div>
-        <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(detail.points)}`}>{detail.points} Pts</strong>
+        <PointsPill points={detail.points} className="min-h-8 rounded-full py-1" />
       </div>
       <div className="grid gap-2">
         <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
@@ -131,7 +126,7 @@ function PodiumHit({ label, team, points, colorClass }: { label: string; team?: 
           <Trophy className="h-4 w-4" />
           {label}
         </span>
-        <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(points)}`}>{points} Pts</strong>
+        <PointsPill points={points} className="min-h-8 rounded-full py-1" />
       </div>
       <TeamLabel name={team} />
     </article>

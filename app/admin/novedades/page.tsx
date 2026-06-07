@@ -88,7 +88,9 @@ export default function AdminNewsPage() {
         <label className="grid gap-2">
           <span className="text-sm font-bold">Mensaje</span>
           <textarea
-            className="field min-h-[220px] py-4 text-left leading-6"
+            className="field min-h-[420px] resize-y py-4 text-left text-base leading-7 sm:min-h-[560px]"
+            rows={20}
+            style={{ minHeight: "min(560px, 68vh)" }}
             placeholder={"🇦🇷 Hoy hay partidos importantes.\n⚽ Revisá tus pronósticos pendientes.\n🏆 El ranking se mueve fuerte esta semana."}
             value={body}
             onChange={(event) => setBody(event.target.value)}

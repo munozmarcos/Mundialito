@@ -1,6 +1,7 @@
 "use client";
 
 import { TeamLabel } from "@/components/team-label";
+import { PointsPill } from "@/components/points-pill";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { scorePrediction } from "@/lib/scoring";
@@ -473,9 +474,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
                 <article className="rounded-lg border border-line bg-field p-4" key={profile.id}>
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <strong className="text-lg">{profile.display_name}</strong>
-                    <span className={`rounded-full border px-3 py-1 text-sm font-black ${score >= 3 ? "border-grass/30 bg-emerald-950/55 text-grass" : score > 0 ? "border-blue-300/30 bg-blue-950/45 text-blue-200" : "border-line bg-slate-950/30 text-ink/55"}`}>
-                      {score} Pts
-                    </span>
+                    <PointsPill points={score} className="min-h-8 rounded-full py-1" />
                   </div>
                   <div className="grid gap-2">
                     <div className="grid grid-cols-[minmax(0,1fr)_64px] items-center gap-3 rounded-lg border border-line bg-slate-950/25 p-2">

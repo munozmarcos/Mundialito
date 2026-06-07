@@ -31,7 +31,7 @@ function PasswordInput({ placeholder, value, onChange }: PasswordInputProps) {
         onChange={(event) => onChange(event.target.value)}
       />
       <button
-        aria-label={visible ? "Ocultar contrasena" : "Mostrar contrasena"}
+        aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
         className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md border border-transparent bg-transparent text-ink/60 hover:border-line hover:bg-white/10 hover:text-ink"
         type="button"
         onClick={() => setVisible((current) => !current)}
@@ -159,7 +159,7 @@ function LoginContent() {
                 {mode === "login" ? <KeyRound className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
               </span>
               <div>
-                <h1 className="text-2xl font-black">{mode === "login" ? "Entrar" : mode === "signup" ? "Pedir alta" : "Recuperar contrasena"}</h1>
+                <h1 className="text-2xl font-black">{mode === "login" ? "Entrar" : mode === "signup" ? "Pedir alta" : "Recuperar contraseña"}</h1>
                 <p className="text-sm font-semibold text-ink/60">Mundialito 2026</p>
               </div>
             </div>
@@ -200,9 +200,9 @@ function LoginContent() {
                 {mode === "login" ? (
                   <div className="grid max-w-sm gap-3">
                     <input className="field min-h-10" placeholder="Apodo" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-                    <PasswordInput placeholder="Contrasena" value={password} onChange={setPassword} />
-                    <button className="w-fit text-left text-sm font-black text-grass underline underline-offset-4" type="button" onClick={openResetModal}>
-                      Olvidaste la contrasena?
+                    <PasswordInput placeholder="Contraseña" value={password} onChange={setPassword} />
+                    <button className="w-fit text-left text-sm font-medium text-grass underline underline-offset-4" type="button" onClick={openResetModal}>
+                      ¿Olvidaste tu contraseña?
                     </button>
                     <button className="btn" disabled={loading} type="button" onClick={loginWithPassword}>
                       <LogIn className="h-4 w-4" />
@@ -216,17 +216,17 @@ function LoginContent() {
                     {step === "request" && (
                       <button className="btn" disabled={loading} type="button" onClick={requestCode}>
                         <MessageCircle className="h-4 w-4" />
-                        Enviar codigo
+                        Enviar código
                       </button>
                     )}
                     {step === "verify" && (
                       <>
                         <input className="field min-h-10 text-center text-xl font-black tracking-[0.24em]" inputMode="numeric" maxLength={6} placeholder="CODIGO" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
-                        <PasswordInput placeholder="Crear contrasena" value={password} onChange={setPassword} />
+                        <PasswordInput placeholder="Crear contraseña" value={password} onChange={setPassword} />
                         <div className="flex flex-wrap gap-2">
                           <button className="btn" disabled={loading} type="button" onClick={verifyCodeAndSetPassword}>
                             <ShieldCheck className="h-4 w-4" />
-                            Crear contrasena
+                            Crear contraseña
                           </button>
                           <button className="btn secondary" disabled={loading} type="button" onClick={requestCode}>
                             Reenviar
@@ -252,8 +252,8 @@ function LoginContent() {
                   <MessageCircle className="h-5 w-5" />
                 </span>
                 <div>
-                  <h2 className="text-2xl font-black">Recuperar contrasena</h2>
-                  <p className="text-sm font-semibold text-ink/60">Te mandamos un codigo por WhatsApp.</p>
+                  <h2 className="text-2xl font-black">Recuperar contraseña</h2>
+                  <p className="text-sm font-semibold text-ink/60">Te mandamos un código por WhatsApp.</p>
                 </div>
               </div>
               <button className="btn secondary min-w-10 px-0" type="button" onClick={closeResetModal} aria-label="Cerrar recuperacion">
@@ -266,13 +266,13 @@ function LoginContent() {
               {step === "request" && (
                 <button className="btn" disabled={loading} type="button" onClick={requestCode}>
                   <MessageCircle className="h-4 w-4" />
-                  Enviar codigo
+                  Enviar código
                 </button>
               )}
               {step === "verify" && (
                 <>
                   <input className="field min-h-10 text-center text-xl font-black tracking-[0.24em]" inputMode="numeric" maxLength={6} placeholder="CODIGO" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
-                  <PasswordInput placeholder="Nueva contrasena" value={password} onChange={setPassword} />
+                  <PasswordInput placeholder="Nueva contraseña" value={password} onChange={setPassword} />
                   <div className="flex flex-wrap gap-2">
                     <button className="btn" disabled={loading} type="button" onClick={verifyCodeAndSetPassword}>
                       <ShieldCheck className="h-4 w-4" />

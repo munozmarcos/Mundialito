@@ -19,10 +19,20 @@ const filters: { value: Filter; label: string }[] = [
   { value: "unpaid", label: "Impagos" }
 ];
 
+const broadcastTitle = "*Mundialito* \u{1F3C6}";
+const defaultBroadcastBody = `${broadcastTitle}
+
+Recuerden cargar sus pron\u00f3sticos y revisar pendientes.
+
+Comandos: $ranking, $pendientes, $partidos, $resultados, $reglas, $comandos`;
+
+function withBroadcastTitle(message: string) {
+  const clean = message.trim();
+  return clean.startsWith(broadcastTitle) ? clean : `${broadcastTitle}\n\n${clean}`;
+}
+
 export default function WhatsAppAdminPage() {
-  const [body, setBody] = useState(
-    "🏆 *Mundialito*\n\nRecuerden cargar sus pronósticos y revisar pendientes.\n\nComandos: $ranking, $pendientes, $partidos, $resultados, $reglas, $comandos"
-  );
+  const [body, setBody] = useState(defaultBroadcastBody);
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
@@ -88,11 +98,12 @@ export default function WhatsAppAdminPage() {
     if (!window.confirm(`Enviar este mensaje a ${selectedIds.length} WhatsApp seleccionados?`)) return;
     setSending(true);
     setStatus("Enviando broadcast...");
+    const messageBody = withBroadcastTitle(body);
 
     const res = await fetch("/api/admin/whatsapp-broadcast", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ body, recipientIds: selectedIds })
+      body: JSON.stringify({ body: messageBody, recipientIds: selectedIds })
     });
     const json = await res.json();
     setSending(false);
@@ -115,9 +126,9 @@ export default function WhatsAppAdminPage() {
           <label className="grid gap-2">
             <span className="text-sm font-bold">Mensaje</span>
             <textarea
-              className="field h-[360px] min-h-[360px] w-full resize-y py-4 leading-6 sm:h-[520px] sm:min-h-[520px]"
-              rows={18}
-              style={{ minHeight: "min(520px, 62vh)" }}
+              className="field dark-scrollbar h-[520px] min-h-[520px] w-full resize-y py-4 text-base leading-7 sm:h-[720px] sm:min-h-[720px]"
+              rows={28}
+              style={{ minHeight: "min(720px, 78vh)" }}
               value={body}
               onChange={(event) => setBody(event.target.value)}
             />

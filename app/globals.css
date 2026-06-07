@@ -32,6 +32,30 @@ textarea {
   font: inherit;
 }
 
+* {
+  scrollbar-color: #12365f #061426;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #061426;
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid #061426;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #0b2b4f, #188ef1);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #12365f, #20b643);
+}
+
 .shell {
   width: min(1120px, calc(100% - 32px));
   margin: 0 auto;
@@ -406,6 +430,13 @@ textarea {
   color: #f4f8ff;
   padding: 0 12px;
   text-align: center;
+}
+
+textarea.field {
+  text-align: left;
+  line-height: 1.65;
+  scrollbar-color: #12365f #061426;
+  scrollbar-width: thin;
 }
 
 input.field,

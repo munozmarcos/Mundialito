@@ -9,6 +9,7 @@ import type { Match, MatchStage, PodiumPrediction, Prediction, Profile } from "@
 import { TeamLabel } from "@/components/team-label";
 import { DateFilter } from "@/components/date-filter";
 import { CountryFilterPicker } from "@/components/country-filter-picker";
+import { PointsPill } from "@/components/points-pill";
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import { RankingDescription } from "@/components/ranking-description";
 import { Calculator, CircleDot, ClipboardPaste, Eye, GitBranch, Lock, Medal, RotateCcw, Table2, Trophy, X } from "lucide-react";
@@ -94,12 +95,6 @@ type SimPodiumDetail = {
   runnerUp: number;
   thirdPlace: number;
 };
-
-function pointsClass(points: number) {
-  return points >= 3
-    ? "border-grass/30 bg-emerald-950/55 text-grass"
-    : "border-blue-300/30 bg-blue-950/45 text-blue-200";
-}
 
 function ScoreBox({ value }: { value: number | string | null | undefined }) {
   return (
@@ -955,7 +950,7 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                     <article className="rounded-lg border border-line bg-field p-3">
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <span className="flex items-center gap-2 text-sm text-yellow-200"><Trophy className="h-7 w-7" />Campeón</span>
-                        <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(3)}`}>3 Pts</strong>
+                        <PointsPill points={3} className="min-h-8 rounded-full py-1" />
                       </div>
                       <TeamLabel name={simulatedChampion.name} code={simulatedChampion.code} />
                     </article>
@@ -964,7 +959,7 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                     <article className="rounded-lg border border-line bg-field p-3">
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <span className="flex items-center gap-2 text-sm text-slate-100"><Trophy className="h-7 w-7" />Subcampeón</span>
-                        <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(2)}`}>2 Pts</strong>
+                        <PointsPill points={2} className="min-h-8 rounded-full py-1" />
                       </div>
                       <TeamLabel name={simulatedRunnerUp.name} code={simulatedRunnerUp.code} />
                     </article>
@@ -973,7 +968,7 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                     <article className="rounded-lg border border-line bg-field p-3">
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <span className="flex items-center gap-2 text-sm text-orange-200"><Trophy className="h-7 w-7" />3er Puesto</span>
-                        <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(1)}`}>1 Pts</strong>
+                        <PointsPill points={1} className="min-h-8 rounded-full py-1" />
                       </div>
                       <TeamLabel name={simulatedThirdPlace.name} code={simulatedThirdPlace.code} />
                     </article>
@@ -1003,7 +998,7 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                                   <span className="badge">Grupo {detail.match.group_name}</span>
                                   <p className="mt-2 text-xs font-bold text-ink/60">{formatArgentinaDate(detail.match.kickoff_at)}</p>
                                 </div>
-                                <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(detail.points)}`}>{detail.points} Pts</strong>
+                                <PointsPill points={detail.points} className="min-h-8 rounded-full py-1" />
                               </div>
                               <div className="grid gap-2">
                                 <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
@@ -1031,7 +1026,7 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                           <article className="rounded-lg border border-line bg-field p-3" key={detail.id}>
                             <div className="mb-3 flex items-start justify-between gap-3">
                               <span className="badge">{stageLabels[stage]}</span>
-                              <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(detail.points)}`}>{detail.points} Pts</strong>
+                              <PointsPill points={detail.points} className="min-h-8 rounded-full py-1" />
                             </div>
                             <div className="grid gap-2">
                               <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
