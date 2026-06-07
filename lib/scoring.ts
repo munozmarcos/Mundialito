@@ -46,17 +46,18 @@ export function scorePrediction(input: ScoreInput): ScoreResult {
   const actualHome = ah as number;
   const actualAway = aa as number;
 
-  const trendHit = trend(predictedHome, predictedAway) === trend(actualHome, actualAway);
+  const trendMatched = trend(predictedHome, predictedAway) === trend(actualHome, actualAway);
   const exactHit = predictedHome === actualHome && predictedAway === actualAway;
+  const trendHit = trendMatched && !exactHit;
   let points = 0;
   const prefix = isGroupStage(input.stage) ? "group" : "knockout";
 
-  if (trendHit) {
+  if (trendMatched) {
     points += 1;
-    details.push(`${prefix}-trend`);
+    if (trendHit) details.push(`${prefix}-trend`);
   }
 
-  if (trendHit && exactHit) {
+  if (trendMatched && exactHit) {
     points += 2;
     details.push(`${prefix}-exact`);
   }

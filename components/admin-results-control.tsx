@@ -3,6 +3,7 @@
 import { TeamLabel } from "@/components/team-label";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
+import { scorePrediction } from "@/lib/scoring";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
 import { Calculator, GitBranch, Save, Table2, Trash2, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -445,51 +446,71 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
           <div className="border-b border-line p-4">
             <h2 className="text-xl font-black">Apuestas de jugadores</h2>
           </div>
-          <div className="grid">
+          <div className="match-card-grid p-4">
             {profiles.map((profile) => {
               const key = predictionKey(profile.id, selectedMatch.id);
               const existing = predictionMap[key];
               const draft = drafts[key] ?? { home: existing?.home_goals ?? "", away: existing?.away_goals ?? "", penaltyWinner: existing?.penalty_winner ?? null };
+              const score =
+                selectedMatch.home_goals != null &&
+                selectedMatch.away_goals != null &&
+                draft.home !== "" &&
+                draft.away !== ""
+                  ? scorePrediction({
+                      stage: selectedMatch.stage,
+                      predictedHomeGoals: draft.home,
+                      predictedAwayGoals: draft.away,
+                      actualHomeGoals: selectedMatch.home_goals,
+                      actualAwayGoals: selectedMatch.away_goals
+                    }).points
+                  : existing?.points ?? 0;
               const predictionTieNeedsWinner =
                 selectedMatch.stage !== "GROUP" &&
                 draft.home !== "" &&
                 draft.away !== "" &&
                 draft.home === draft.away;
               return (
-                <div className="grid gap-3 border-b border-line p-4 last:border-0 md:grid-cols-[1fr_78px_78px_auto_auto] md:items-center" key={profile.id}>
-                  <div>
-                    <strong>{profile.display_name}</strong>
-                    <p className="text-xs text-ink/55">
-                      {existing ? `${existing.points} pts` : "Sin cargar"}
-                      {existing?.penalty_winner ? ` - ganador: ${existing.penalty_winner}` : ""}
-                    </p>
+                <article className="rounded-lg border border-line bg-field p-4" key={profile.id}>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <strong className="text-lg">{profile.display_name}</strong>
+                    <span className={`rounded-full border px-3 py-1 text-sm font-black ${score >= 3 ? "border-grass/30 bg-emerald-950/55 text-grass" : score > 0 ? "border-blue-300/30 bg-blue-950/45 text-blue-200" : "border-line bg-slate-950/30 text-ink/55"}`}>
+                      {score} Pts
+                    </span>
                   </div>
-                  <input
-                    className="field text-center"
-                    inputMode="numeric"
-                    maxLength={2}
-                    pattern="[0-9]*"
-                    type="text"
-                    value={draft.home}
-                    onChange={(event) => {
-                      const value = parseGoalInput(event.target.value);
-                      if (value !== null && (value === "" || value <= 30)) setDrafts((current) => ({ ...current, [key]: { ...draft, home: value } }));
-                    }}
-                  />
-                  <input
-                    className="field text-center"
-                    inputMode="numeric"
-                    maxLength={2}
-                    pattern="[0-9]*"
-                    type="text"
-                    value={draft.away}
-                    onChange={(event) => {
-                      const value = parseGoalInput(event.target.value);
-                      if (value !== null && (value === "" || value <= 30)) setDrafts((current) => ({ ...current, [key]: { ...draft, away: value } }));
-                    }}
-                  />
+                  <div className="grid gap-2">
+                    <div className="grid grid-cols-[minmax(0,1fr)_64px] items-center gap-3 rounded-lg border border-line bg-slate-950/25 p-2">
+                      <TeamLabel name={selectedMatch.home_team} code={selectedMatch.home_country_code} />
+                      <input
+                        className="field h-10 px-2 text-center font-black"
+                        inputMode="numeric"
+                        maxLength={2}
+                        pattern="[0-9]*"
+                        type="text"
+                        value={draft.home}
+                        onChange={(event) => {
+                          const value = parseGoalInput(event.target.value);
+                          if (value !== null && (value === "" || value <= 30)) setDrafts((current) => ({ ...current, [key]: { ...draft, home: value } }));
+                        }}
+                      />
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_64px] items-center gap-3 rounded-lg border border-line bg-slate-950/25 p-2">
+                      <TeamLabel name={selectedMatch.away_team} code={selectedMatch.away_country_code} />
+                      <input
+                        className="field h-10 px-2 text-center font-black"
+                        inputMode="numeric"
+                        maxLength={2}
+                        pattern="[0-9]*"
+                        type="text"
+                        value={draft.away}
+                        onChange={(event) => {
+                          const value = parseGoalInput(event.target.value);
+                          if (value !== null && (value === "" || value <= 30)) setDrafts((current) => ({ ...current, [key]: { ...draft, away: value } }));
+                        }}
+                      />
+                    </div>
+                  </div>
                   {predictionTieNeedsWinner && (
-                    <div className="flex flex-wrap gap-1 md:col-span-3">
+                    <div className="mt-3 flex flex-wrap gap-1">
                       <span className="self-center text-xs font-black uppercase text-ink/45">Ganador</span>
                       <button
                         className={`badge ${draft.penaltyWinner === "HOME" ? "bg-mint text-grass" : ""}`}
@@ -509,13 +530,15 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
                       </button>
                     </div>
                   )}
-                  <button className="btn secondary min-h-9 px-3" disabled={saving} onClick={() => savePrediction(profile.id, selectedMatch.id)} type="button">
-                    Guardar
-                  </button>
-                  <button className="btn secondary min-h-9 px-3" disabled={saving || !existing} onClick={() => deletePrediction(profile.id, selectedMatch.id)} type="button">
-                    Eliminar
-                  </button>
-                </div>
+                  <div className="mt-3 flex flex-wrap justify-end gap-2">
+                    <button className="btn secondary min-h-9 px-3" disabled={saving} onClick={() => savePrediction(profile.id, selectedMatch.id)} type="button">
+                      Guardar
+                    </button>
+                    <button className="btn secondary min-h-9 px-3" disabled={saving || !existing} onClick={() => deletePrediction(profile.id, selectedMatch.id)} type="button">
+                      Eliminar
+                    </button>
+                  </div>
+                </article>
               );
             })}
           </div>

@@ -314,6 +314,7 @@ async function answerPodio(text: string, from?: string) {
 
   const profile = await findProfileByPhone(from);
   if (!profile) return "⚽ *Podio anticipado*\nNo tengo registrado tu WhatsApp como participante.";
+  if (!profile.paid) return "🏆 *Podio anticipado*\nTenés el pago pendiente. Cuando quede confirmado, se habilita la carga.";
 
   const db = supabaseAdmin();
   const payload = extractPodiumPayload(text);
@@ -408,6 +409,7 @@ async function savePredictionFromWhatsApp(text: string, from?: string) {
 
   const profile = await findProfileByPhone(from);
   if (!profile) return "⚽ *Mundialito*\nNo tengo registrado tu WhatsApp como participante.";
+  if (!profile.paid) return "⚽ *Mundialito*\nTenés el pago pendiente. Cuando quede confirmado, se habilita la carga de pronósticos.";
 
   const db = supabaseAdmin();
   const { data: matches, error: matchesError } = await db
@@ -461,6 +463,7 @@ async function saveBulkPredictionsFromWhatsApp(text: string, from?: string) {
 
   const profile = await findProfileByPhone(from);
   if (!profile) return "⚽ *Mundialito*\nNo tengo registrado tu WhatsApp como participante.";
+  if (!profile.paid) return "⚽ *Carga masiva*\nTenés el pago pendiente. Cuando quede confirmado, se habilita la carga.";
 
   const db = supabaseAdmin();
   const { data: matches, error: matchesError } = await db

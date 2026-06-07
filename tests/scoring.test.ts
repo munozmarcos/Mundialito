@@ -27,6 +27,7 @@ describe("group scoring from the Qatar 2022 rules Excel", () => {
 
     expect(result.points).toBe(3);
     expect(result.exactHit).toBe(true);
+    expect(result.trendHit).toBe(false);
   });
 
   it("scores draws by trend and exact result", () => {

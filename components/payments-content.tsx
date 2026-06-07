@@ -15,6 +15,12 @@ function normalize(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
+function paymentSelectClass(value: string) {
+  if (value === "PAID") return "field border-grass/35 bg-grass/10 font-black text-grass";
+  if (value === "UNPAID") return "field border-red-400/35 bg-red-500/10 font-black text-red-200";
+  return "field";
+}
+
 export function PaymentsContent({ participants, paidParticipants, totalParticipants }: Props) {
   const [query, setQuery] = useState("");
   const [paidFilter, setPaidFilter] = useState("ALL");
@@ -36,14 +42,16 @@ export function PaymentsContent({ participants, paidParticipants, totalParticipa
             <p className="mt-1 text-sm font-semibold text-ink/60">Apodos registrados y estado de pago.</p>
           </div>
           <div className="rounded-lg bg-field px-4 py-3 text-right">
-            <UsersRound className="ml-auto h-5 w-5 text-grass" />
-            <strong className="mt-1 block text-2xl">{paidParticipants}/{totalParticipants}</strong>
+            <div className="flex items-center justify-end gap-2">
+              <strong className="block text-2xl">{paidParticipants}/{totalParticipants}</strong>
+              <UsersRound className="h-5 w-5 text-grass" />
+            </div>
             <span className="text-xs font-black uppercase text-ink/55">pagaron</span>
           </div>
         </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_160px_auto]">
+        <div className="mt-4 grid max-w-[720px] gap-3 sm:grid-cols-[minmax(260px,1fr)_150px_auto]">
           <input className="field" placeholder="Buscar apodo" value={query} onChange={(event) => setQuery(event.target.value)} />
-          <select className="field" value={paidFilter} onChange={(event) => setPaidFilter(event.target.value)}>
+          <select className={paymentSelectClass(paidFilter)} value={paidFilter} onChange={(event) => setPaidFilter(event.target.value)}>
             <option value="ALL">Todos</option>
             <option value="PAID">Pagos</option>
             <option value="UNPAID">Impagos</option>
@@ -58,14 +66,13 @@ export function PaymentsContent({ participants, paidParticipants, totalParticipa
           <EmptyState title="Sin participantes" text="No hay participantes para ese filtro." />
         </div>
       ) : (
-        <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 p-4 sm:grid-cols-2 lg:grid-cols-5">
           {filteredParticipants.map((participant) => (
-          <div className="rounded-lg border border-line bg-field p-4" key={participant.id}>
+          <div className="rounded-lg border border-line bg-field px-2.5 py-2.5 text-center" key={participant.id}>
             <div>
-              <h3 className="font-black">{participant.display_name}</h3>
-              <p className="text-xs font-black text-ink/55">{participant.role === "admin" ? "Admin" : "Participante"}</p>
+              <h3 className="text-lg font-black leading-tight xl:text-xl">{participant.display_name}</h3>
             </div>
-            <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-black uppercase ${participant.paid ? "bg-mint text-grass" : "bg-slate-100 text-slate-600"}`}>
+            <span className={`mt-1.5 inline-flex rounded-full px-3 py-1 text-xs font-black uppercase ${participant.paid ? "bg-mint text-grass" : "bg-red-500/15 text-red-200"}`}>
               {participant.paid ? "Pago" : "Impago"}
             </span>
           </div>

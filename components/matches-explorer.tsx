@@ -259,7 +259,7 @@ function MatchCard({ match, display }: { match: Match; display?: DisplayMatch })
           <input className="field text-center font-black" disabled value={match.away_goals ?? ""} aria-label={`Goles ${away.name}`} readOnly />
         </div>
       </div>
-      {match.stadium && match.stadium !== "-" && <p className="mt-3 text-xs font-semibold text-ink/55">{match.stadium}</p>}
+      <p className="mt-3 text-xs font-semibold text-ink/55">{match.stadium && match.stadium !== "-" ? match.stadium : "Estadio por confirmar"}</p>
       {unavailable && <p className="mt-2 text-xs font-bold text-slate-500">Bloqueado hasta que se definan los clasificados.</p>}
     </article>
   );

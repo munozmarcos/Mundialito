@@ -255,7 +255,8 @@ export function countryCodeForTeam(team: string, explicit?: string | null) {
 
 export function flagUrlForTeam(team: string, explicit?: string | null) {
   const code = countryCodeForTeam(team, explicit);
-  return code ? `https://flagcdn.com/w40/${code}.png` : null;
+  if (!code) return null;
+  return `https://flagcdn.com/w40/${code}.png`;
 }
 
 export function displayNameForTeam(team: string) {

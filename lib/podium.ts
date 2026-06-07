@@ -31,10 +31,12 @@ function normalizeTeam(value?: string | null) {
 }
 
 function sameTeam(left?: string | null, right?: string | null) {
-  const a = normalizeTeam(left);
-  const b = normalizeTeam(right);
-  if (!a || !b) return false;
-  return a === b || normalizeTeam(displayNameForTeam(left ?? "")) === b || a === normalizeTeam(displayNameForTeam(right ?? ""));
+  const leftNames = new Set([normalizeTeam(left), normalizeTeam(displayNameForTeam(left ?? ""))]);
+  const rightNames = new Set([normalizeTeam(right), normalizeTeam(displayNameForTeam(right ?? ""))]);
+  for (const name of leftNames) {
+    if (name && rightNames.has(name)) return true;
+  }
+  return false;
 }
 
 function matchWinner(match: Pick<Match, "home_team" | "away_team" | "home_goals" | "away_goals" | "penalty_winner">) {

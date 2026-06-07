@@ -31,6 +31,12 @@ export async function POST(req: Request) {
 
   const body = PredictionBody.parse(await req.json());
   const db = supabaseAdmin();
+  const { data: profile, error: profileError } = await db.from("profiles").select("paid").eq("id", user.id).single();
+  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
+  if (!profile?.paid) {
+    return NextResponse.json({ error: "Tenés que tener el pago confirmado para cargar pronósticos." }, { status: 402 });
+  }
+
   const { data: match, error: matchError } = await db.from("matches").select("*").eq("id", body.matchId).single();
   if (matchError) return NextResponse.json({ error: matchError.message }, { status: 404 });
 

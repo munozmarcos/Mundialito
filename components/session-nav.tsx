@@ -28,7 +28,7 @@ export function SessionNav() {
   if (!user) {
     return (
       <Link className="btn header-login-btn min-h-9 px-3 text-sm shadow-sm" href="/login">
-        <LogIn className="header-action-icon" />
+        <LogIn className="header-action-icon header-action-icon-large" />
         <span className="hidden sm:inline">Iniciar sesión</span>
       </Link>
     );
@@ -42,7 +42,7 @@ export function SessionNav() {
         <span className="session-name block max-w-[64px] truncate font-bold sm:max-w-[180px]">{user.displayName}</span>
       </div>
       <button className="btn secondary header-icon-btn min-h-8 px-2" onClick={signOut} title="Salir" type="button">
-        <LogOut className="header-action-icon" />
+        <LogOut className="header-action-icon header-action-icon-large" />
       </button>
     </div>
   );

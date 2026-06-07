@@ -29,6 +29,12 @@ export async function POST(req: Request) {
 
   const body = PodiumBody.parse(await req.json());
   const db = supabaseAdmin();
+  const { data: profile, error: profileError } = await db.from("profiles").select("paid").eq("id", user.id).single();
+  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 400 });
+  if (!profile?.paid) {
+    return NextResponse.json({ error: "Tenés que tener el pago confirmado para cargar el podio anticipado." }, { status: 402 });
+  }
+
   const lockState = await getPodiumLockState(db);
   if (lockState.locked) {
     return NextResponse.json({ error: lockState.reason ?? "El podio ya está cerrado." }, { status: 409 });

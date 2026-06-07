@@ -193,6 +193,7 @@ textarea {
     height: 38px;
     padding-left: 0;
     padding-right: 0;
+    overflow: visible;
   }
 
   .header-icon-btn svg {
@@ -215,6 +216,7 @@ textarea {
     height: 38px;
     padding-left: 0;
     padding-right: 0;
+    overflow: visible;
   }
 
   .session-pill {
@@ -235,12 +237,48 @@ textarea {
 
   .session-name {
     max-width: 58px;
-    font-size: 13px;
+    font-size: 15px;
+    font-weight: 900;
   }
 
   .session-user-icon {
     width: 30px !important;
     height: 30px !important;
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  .header-icon-btn .header-action-icon,
+  .header-login-btn .header-action-icon {
+    width: 26px !important;
+    height: 26px !important;
+    stroke-width: 2.4 !important;
+    transform: none;
+    transform-origin: center;
+  }
+
+  .session-pill .header-action-icon {
+    width: 24px !important;
+    height: 24px !important;
+    transform: none;
+  }
+
+  .header-icon-btn .header-action-icon-large,
+  .header-login-btn .header-action-icon-large,
+  .session-pill .header-icon-btn .header-action-icon-large {
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    stroke-width: 2.4 !important;
+    transform: none !important;
+  }
+
+  .header-action-icon-large path,
+  .header-action-icon-large line,
+  .header-action-icon-large polyline,
+  .header-action-icon-large circle {
+    stroke-width: 2.4 !important;
   }
 }
 

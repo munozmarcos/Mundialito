@@ -11,14 +11,12 @@ type Recipient = {
   paid: boolean;
 };
 
-type Filter = "all" | "paid" | "unpaid" | "admin" | "participant";
+type Filter = "all" | "paid" | "unpaid";
 
 const filters: { value: Filter; label: string }[] = [
   { value: "all", label: "Todos" },
   { value: "paid", label: "Pagos" },
-  { value: "unpaid", label: "Impagos" },
-  { value: "participant", label: "Participantes" },
-  { value: "admin", label: "Admin" }
+  { value: "unpaid", label: "Impagos" }
 ];
 
 export default function WhatsAppAdminPage() {
@@ -51,8 +49,7 @@ export default function WhatsAppAdminPage() {
       const matchesFilter =
         filter === "all" ||
         (filter === "paid" && recipient.paid) ||
-        (filter === "unpaid" && !recipient.paid) ||
-        recipient.role === filter;
+        (filter === "unpaid" && !recipient.paid);
       const matchesQuery =
         !normalized ||
         recipient.display_name.toLowerCase().includes(normalized) ||
@@ -125,7 +122,7 @@ export default function WhatsAppAdminPage() {
               onChange={(event) => setBody(event.target.value)}
             />
           </label>
-          <button className="btn w-[180px]" disabled={sending || !selectedIds.length} type="button" onClick={sendBroadcast}>
+          <button className="btn h-11 w-[180px] justify-center" disabled={sending || !selectedIds.length} type="button" onClick={sendBroadcast}>
             <Send className="h-4 w-4" />
             <span className="tabular-nums">Enviar a {selectedIds.length}</span>
           </button>
@@ -153,7 +150,7 @@ export default function WhatsAppAdminPage() {
             </div>
             <label className="relative block">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
-              <input className="field h-11 pl-9 text-left" placeholder="Buscar apodo o número" value={query} onChange={(event) => setQuery(event.target.value)} />
+              <input className="field h-11 pl-11 text-left" placeholder="Buscar apodo o nro" value={query} onChange={(event) => setQuery(event.target.value)} />
             </label>
             <div className="flex gap-2">
               <button className="btn secondary min-h-9 px-3 text-xs" onClick={selectFiltered} type="button">Seleccionar filtro</button>

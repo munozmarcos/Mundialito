@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff, KeyRound, LogIn, MessageCircle, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, KeyRound, LogIn, MessageCircle, ShieldCheck, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -44,7 +44,6 @@ function PasswordInput({ placeholder, value, onChange }: PasswordInputProps) {
 
 function LoginContent() {
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") || "/mi-prode";
   const payIntent = searchParams.get("pay") === "1";
   const [mode, setMode] = useState<"login" | "signup" | "reset">("login");
   const [displayName, setDisplayName] = useState("");
@@ -55,16 +54,38 @@ function LoginContent() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/session", { cache: "no-store" })
       .then((res) => res.json())
-      .then((data) => setUser(data.user ?? null))
+      .then((data) => {
+        setUser(data.user ?? null);
+        if (data.user) window.location.replace("/");
+      })
       .catch(() => setUser(null));
   }, []);
 
   function switchMode(nextMode: "login" | "signup" | "reset") {
     setMode(nextMode);
+    setStep("request");
+    setCode("");
+    setPassword("");
+    setMessage("");
+  }
+
+  function openResetModal() {
+    setMode("reset");
+    setStep("request");
+    setCode("");
+    setPassword("");
+    setMessage("");
+    setResetOpen(true);
+  }
+
+  function closeResetModal() {
+    setResetOpen(false);
+    setMode("login");
     setStep("request");
     setCode("");
     setPassword("");
@@ -85,7 +106,7 @@ function LoginContent() {
       setMessage(data.error ?? "No se pudo iniciar sesion.");
       return;
     }
-    window.location.href = nextPath;
+    window.location.href = "/";
   }
 
   async function requestCode() {
@@ -120,7 +141,7 @@ function LoginContent() {
       setMessage(data.error ?? "Codigo incorrecto.");
       return;
     }
-    window.location.href = nextPath;
+    window.location.href = "/";
   }
 
   return (
@@ -150,12 +171,12 @@ function LoginContent() {
                 </div>
                 {payIntent ? (
                   <div className="flex flex-wrap gap-2">
-                    <a className="btn w-fit" href="/pagos">Ir a pagar</a>
-                    <a className="btn secondary w-fit" href="/mi-prode">Luego</a>
+                    <a className="btn w-fit" href="/">Ir a Inicio</a>
+                    <a className="btn secondary w-fit" href="/">Luego</a>
                   </div>
                 ) : (
-                  <a className="btn w-fit" href="/mi-prode">
-                    Ir a Pronosticos
+                  <a className="btn w-fit" href="/">
+                    Ir a Inicio
                   </a>
                 )}
               </div>
@@ -168,14 +189,11 @@ function LoginContent() {
                   <button className={`btn min-h-9 ${mode === "signup" ? "" : "secondary"}`} type="button" onClick={() => switchMode("signup")}>
                     Soy nuevo
                   </button>
-                  <button className={`btn min-h-9 ${mode === "reset" ? "" : "secondary"}`} type="button" onClick={() => switchMode("reset")}>
-                    Recuperar
-                  </button>
                 </div>
                 {payIntent && (
                   <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm font-semibold text-ink/70">
                     Entra para asociar MercadoPago a tu apodo automaticamente, o paga luego desde la app.
-                    <a className="ml-2 font-black text-grass underline" href="/mi-prode">Lo hago luego</a>
+                    <a className="ml-2 font-black text-grass underline" href="/">Lo hago luego</a>
                   </div>
                 )}
 
@@ -183,6 +201,9 @@ function LoginContent() {
                   <div className="grid max-w-sm gap-3">
                     <input className="field min-h-10" placeholder="Apodo" value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
                     <PasswordInput placeholder="Contrasena" value={password} onChange={setPassword} />
+                    <button className="w-fit text-left text-sm font-black text-grass underline underline-offset-4" type="button" onClick={openResetModal}>
+                      Olvidaste la contrasena?
+                    </button>
                     <button className="btn" disabled={loading} type="button" onClick={loginWithPassword}>
                       <LogIn className="h-4 w-4" />
                       Entrar
@@ -214,32 +235,7 @@ function LoginContent() {
                       </>
                     )}
                   </div>
-                ) : (
-                  <div className="grid max-w-sm gap-3">
-                    <input className="field min-h-10" inputMode="tel" placeholder={phonePlaceholder} value={phone} onChange={(event) => setPhone(event.target.value)} />
-                    {step === "request" && (
-                      <button className="btn" disabled={loading} type="button" onClick={requestCode}>
-                        <MessageCircle className="h-4 w-4" />
-                        Enviar codigo
-                      </button>
-                    )}
-                    {step === "verify" && (
-                      <>
-                        <input className="field min-h-10 text-center text-xl font-black tracking-[0.24em]" inputMode="numeric" maxLength={6} placeholder="CODIGO" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
-                        <PasswordInput placeholder="Nueva contrasena" value={password} onChange={setPassword} />
-                        <div className="flex flex-wrap gap-2">
-                          <button className="btn" disabled={loading} type="button" onClick={verifyCodeAndSetPassword}>
-                            <ShieldCheck className="h-4 w-4" />
-                            Guardar
-                          </button>
-                          <button className="btn secondary" disabled={loading} type="button" onClick={requestCode}>
-                            Reenviar
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
+                ) : null}
               </>
             )}
 
@@ -247,6 +243,51 @@ function LoginContent() {
           </div>
         </div>
       </div>
+      {resetOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-4">
+          <section className="panel w-full max-w-md p-5 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-lg bg-mint text-grass">
+                  <MessageCircle className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="text-2xl font-black">Recuperar contrasena</h2>
+                  <p className="text-sm font-semibold text-ink/60">Te mandamos un codigo por WhatsApp.</p>
+                </div>
+              </div>
+              <button className="btn secondary min-w-10 px-0" type="button" onClick={closeResetModal} aria-label="Cerrar recuperacion">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid gap-3">
+              <input className="field min-h-10" inputMode="tel" placeholder={phonePlaceholder} value={phone} onChange={(event) => setPhone(event.target.value)} />
+              {step === "request" && (
+                <button className="btn" disabled={loading} type="button" onClick={requestCode}>
+                  <MessageCircle className="h-4 w-4" />
+                  Enviar codigo
+                </button>
+              )}
+              {step === "verify" && (
+                <>
+                  <input className="field min-h-10 text-center text-xl font-black tracking-[0.24em]" inputMode="numeric" maxLength={6} placeholder="CODIGO" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} />
+                  <PasswordInput placeholder="Nueva contrasena" value={password} onChange={setPassword} />
+                  <div className="flex flex-wrap gap-2">
+                    <button className="btn" disabled={loading} type="button" onClick={verifyCodeAndSetPassword}>
+                      <ShieldCheck className="h-4 w-4" />
+                      Guardar
+                    </button>
+                    <button className="btn secondary" disabled={loading} type="button" onClick={requestCode}>
+                      Reenviar
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
@@ -258,3 +299,4 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+

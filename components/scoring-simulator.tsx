@@ -5,12 +5,13 @@ import { formatArgentinaDate } from "@/lib/dates";
 import { matchFitsBasicFilters } from "@/lib/match-filters";
 import { displayNameForTeam } from "@/lib/flags";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
-import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
+import type { Match, MatchStage, PodiumPrediction, Prediction, Profile } from "@/lib/types";
 import { TeamLabel } from "@/components/team-label";
 import { DateFilter } from "@/components/date-filter";
 import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { teamOptionsFromMatches } from "@/lib/team-options";
-import { Calculator, CircleDot, ClipboardPaste, GitBranch, Lock, RotateCcw, Table2, Trophy, X } from "lucide-react";
+import { RankingDescription } from "@/components/ranking-description";
+import { Calculator, CircleDot, ClipboardPaste, Eye, GitBranch, Lock, Medal, RotateCcw, Table2, Trophy, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type SimPrediction = Prediction & { profiles?: Pick<Profile, "display_name"> | null };
@@ -53,6 +54,10 @@ const stageLabels: Record<string, string> = {
 const knockoutOrder: MatchStage[] = ["R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
 const SIMULATOR_STORAGE_KEY = "mundialito-simulator-state";
 
+function simulatorStorageKey(userId: string | null) {
+  return `${SIMULATOR_STORAGE_KEY}:${userId ?? "guest"}`;
+}
+
 function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string) {
   return matchFitsBasicFilters(match, teamFilter, dateFilter);
 }
@@ -67,7 +72,45 @@ type Props = {
   matches: Match[];
   predictions: SimPrediction[];
   profiles: Profile[];
+  podiumPredictions: PodiumPrediction[];
 };
+
+type SimDetail = {
+  id: string;
+  userId: string;
+  match: Match;
+  display: DisplayMatch;
+  homeGoals: number;
+  awayGoals: number;
+  actualHomeGoals: number;
+  actualAwayGoals: number;
+  points: number;
+  exactHit: boolean;
+  trendHit: boolean;
+};
+
+type SimPodiumDetail = {
+  champion: number;
+  runnerUp: number;
+  thirdPlace: number;
+};
+
+function pointsClass(points: number) {
+  return points >= 3
+    ? "border-grass/30 bg-emerald-950/55 text-grass"
+    : "border-blue-300/30 bg-blue-950/45 text-blue-200";
+}
+
+function ScoreBox({ value }: { value: number | string | null | undefined }) {
+  return (
+    <input
+      className="field min-h-10 px-2 text-center font-black leading-none disabled:opacity-100"
+      disabled
+      readOnly
+      value={value ?? ""}
+    />
+  );
+}
 
 function initialResults(matches: Match[]): ResultMap {
   return matches.reduce<ResultMap>((acc, match) => {
@@ -117,6 +160,25 @@ function groupBy<T>(items: T[], key: (item: T) => string) {
     acc[group].push(item);
     return acc;
   }, {});
+}
+
+function normalizeTeam(value?: string | null) {
+  return (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .trim();
+}
+
+function teamNameMatches(left?: string | null, right?: string | null) {
+  const leftNames = new Set([normalizeTeam(left), normalizeTeam(displayNameForTeam(left ?? ""))]);
+  const rightNames = new Set([normalizeTeam(right), normalizeTeam(displayNameForTeam(right ?? ""))]);
+  for (const name of leftNames) {
+    if (name && rightNames.has(name)) return true;
+  }
+  return false;
 }
 
 function matchNumber(match: Match) {
@@ -318,7 +380,7 @@ function deriveSimulatedBracket(groupMatches: Match[], knockoutMatches: Match[],
   return { groupTables, bestThirds, displays };
 }
 
-export function ScoringSimulator({ matches, predictions, profiles }: Props) {
+export function ScoringSimulator({ matches, predictions, profiles, podiumPredictions }: Props) {
   const [results, setResults] = useState<ResultMap>(() => initialResults(matches));
   const [bulk, setBulk] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -329,9 +391,10 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   const [activeGroup, setActiveGroup] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
-  const [podium, setPodium] = useState({ champion_team: "", runner_up_team: "", third_place_team: "" });
+  const [selectedRankingUserId, setSelectedRankingUserId] = useState<string | null>(null);
   const [storageReady, setStorageReady] = useState(false);
   const loadedSimulationRef = useRef(false);
+  const activeStorageKeyRef = useRef("");
   const groupMatches = matches.filter((match) => match.stage === "GROUP");
   const knockoutMatches = matches.filter((match) => match.stage !== "GROUP");
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
@@ -356,28 +419,13 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   const groupPhaseComplete =
     groupMatches.length > 0 &&
     groupMatches.every((match) => results[match.id]?.home !== "" && results[match.id]?.away !== "");
-
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(SIMULATOR_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as { results?: ResultMap; podium?: typeof podium };
-        if (parsed.results) setResults({ ...initialResults(matches), ...parsed.results });
-        if (parsed.podium) setPodium(parsed.podium);
-        loadedSimulationRef.current = true;
-      }
-    } catch {
-      loadedSimulationRef.current = false;
-    } finally {
-      setStorageReady(true);
-    }
-  }, [matches]);
-
-  useEffect(() => {
-    if (!storageReady) return;
-    window.localStorage.setItem(SIMULATOR_STORAGE_KEY, JSON.stringify({ results, podium }));
-  }, [podium, results, storageReady]);
-
+  const finalMatch = knockoutMatches.find((match) => match.stage === "FINAL");
+  const thirdPlaceMatch = knockoutMatches.find((match) => match.stage === "THIRD_PLACE");
+  const simulatedFinalDisplay = finalMatch ? simulated.displays[finalMatch.id] : null;
+  const simulatedThirdPlaceDisplay = thirdPlaceMatch ? simulated.displays[thirdPlaceMatch.id] : null;
+  const simulatedChampion = finalMatch && simulatedFinalDisplay ? winnerFromResult(simulatedFinalDisplay, results[finalMatch.id]) : null;
+  const simulatedRunnerUp = finalMatch && simulatedFinalDisplay ? loserFromResult(simulatedFinalDisplay, results[finalMatch.id]) : null;
+  const simulatedThirdPlace = thirdPlaceMatch && simulatedThirdPlaceDisplay ? winnerFromResult(simulatedThirdPlaceDisplay, results[thirdPlaceMatch.id]) : null;
   useEffect(() => {
     let mounted = true;
     fetch("/api/auth/session", { cache: "no-store" })
@@ -385,19 +433,6 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
       .then((data) => {
         if (!mounted) return;
         setSessionUserId(data.user?.id ?? null);
-        if (data.user) {
-          void fetch("/api/podium", { cache: "no-store" })
-            .then((response) => response.json())
-            .then((podiumData) => {
-              if (!mounted || !podiumData.podium || loadedSimulationRef.current) return;
-              setPodium({
-                champion_team: podiumData.podium.champion_team ?? "",
-                runner_up_team: podiumData.podium.runner_up_team ?? "",
-                third_place_team: podiumData.podium.third_place_team ?? ""
-              });
-            })
-            .catch(() => undefined);
-        }
       })
       .catch(() => {
         if (mounted) setSessionUserId(null);
@@ -408,6 +443,34 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
     };
   }, []);
 
+  useEffect(() => {
+    const key = simulatorStorageKey(sessionUserId);
+    setStorageReady(false);
+    try {
+      const saved = window.localStorage.getItem(key);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { results?: ResultMap };
+        if (parsed.results) setResults({ ...initialResults(matches), ...parsed.results });
+        loadedSimulationRef.current = true;
+      } else {
+        setResults(initialResults(matches));
+        loadedSimulationRef.current = false;
+      }
+    } catch {
+      loadedSimulationRef.current = false;
+    } finally {
+      activeStorageKeyRef.current = key;
+      setStorageReady(true);
+    }
+  }, [matches, sessionUserId]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    const key = simulatorStorageKey(sessionUserId);
+    if (activeStorageKeyRef.current !== key) return;
+    window.localStorage.setItem(key, JSON.stringify({ results }));
+  }, [results, sessionUserId, storageReady]);
+
   const predictionsByMatch = useMemo(() => {
     return predictions.reduce<Record<string, SimPrediction[]>>((acc, prediction) => {
       acc[prediction.match_id] ??= [];
@@ -416,17 +479,28 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
     }, {});
   }, [predictions]);
 
-  const ranking = useMemo(() => {
-    const rows = profiles.reduce<Record<string, { userId: string; name: string; points: number; exacts: number; trends: number; played: number }>>((acc, profile) => {
-      acc[profile.id] = { userId: profile.id, name: profile.display_name, points: 0, exacts: 0, trends: 0, played: 0 };
+  const rankingData = useMemo(() => {
+    const rows = profiles.reduce<Record<string, { userId: string; name: string; points: number; exacts: number; trends: number; played: number; podium: SimPodiumDetail }>>((acc, profile) => {
+      acc[profile.id] = { userId: profile.id, name: profile.display_name, points: 0, exacts: 0, trends: 0, played: 0, podium: { champion: 0, runnerUp: 0, thirdPlace: 0 } };
       return acc;
     }, {});
+    const details: SimDetail[] = [];
 
     for (const match of matches) {
       const result = results[match.id];
-      if (result?.home === "" || result?.away === "") continue;
+      if (!result || result.home === "" || result.away === "") continue;
+      const display =
+        match.stage === "GROUP"
+          ? {
+              home: { name: match.home_team, code: match.home_country_code },
+              away: { name: match.away_team, code: match.away_country_code }
+            }
+          : simulated.displays[match.id] ?? {
+              home: { name: match.home_team, code: match.home_country_code },
+              away: { name: match.away_team, code: match.away_country_code }
+            };
       for (const prediction of predictionsByMatch[match.id] ?? []) {
-        rows[prediction.user_id] ??= { userId: prediction.user_id, name: prediction.profiles?.display_name ?? "Jugador", points: 0, exacts: 0, trends: 0, played: 0 };
+        rows[prediction.user_id] ??= { userId: prediction.user_id, name: prediction.profiles?.display_name ?? "Jugador", points: 0, exacts: 0, trends: 0, played: 0, podium: { champion: 0, runnerUp: 0, thirdPlace: 0 } };
         const score = scorePrediction({
           stage: match.stage,
           predictedHomeGoals: prediction.home_goals,
@@ -436,13 +510,52 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
         });
         rows[prediction.user_id].points += score.points;
         rows[prediction.user_id].exacts += score.exactHit ? 1 : 0;
-        rows[prediction.user_id].trends += score.trendHit ? 1 : 0;
+        rows[prediction.user_id].trends += score.trendHit && !score.exactHit ? 1 : 0;
         rows[prediction.user_id].played += 1;
+        if (score.points > 0) {
+          details.push({
+            id: `${prediction.id}-${match.id}`,
+            userId: prediction.user_id,
+            match,
+            display,
+            homeGoals: prediction.home_goals,
+            awayGoals: prediction.away_goals,
+            actualHomeGoals: result.home,
+            actualAwayGoals: result.away,
+            points: score.points,
+            exactHit: score.exactHit,
+            trendHit: score.trendHit
+          });
+        }
       }
     }
 
-    return Object.values(rows).sort((a, b) => b.points - a.points || b.exacts - a.exacts || b.trends - a.trends || a.name.localeCompare(b.name));
-  }, [matches, predictionsByMatch, profiles, results]);
+    for (const prediction of podiumPredictions) {
+      rows[prediction.user_id] ??= { userId: prediction.user_id, name: "Jugador", points: 0, exacts: 0, trends: 0, played: 0, podium: { champion: 0, runnerUp: 0, thirdPlace: 0 } };
+      const row = rows[prediction.user_id];
+      if (simulatedChampion && teamNameMatches(prediction.champion_team, simulatedChampion.name)) row.podium.champion = 3;
+      if (simulatedRunnerUp && teamNameMatches(prediction.runner_up_team, simulatedRunnerUp.name)) row.podium.runnerUp = 2;
+      if (simulatedThirdPlace && teamNameMatches(prediction.third_place_team, simulatedThirdPlace.name)) row.podium.thirdPlace = 1;
+      row.points += row.podium.champion + row.podium.runnerUp + row.podium.thirdPlace;
+    }
+
+    return {
+      rows: Object.values(rows).sort((a, b) => b.points - a.points || b.exacts - a.exacts || b.trends - a.trends || a.name.localeCompare(b.name)),
+      details
+    };
+  }, [matches, podiumPredictions, predictionsByMatch, profiles, results, simulated.displays, simulatedChampion, simulatedRunnerUp, simulatedThirdPlace]);
+  const ranking = rankingData.rows;
+  const selectedRankingRow = ranking.find((row) => row.userId === selectedRankingUserId) ?? null;
+  const selectedRankingDetails = rankingData.details.filter((detail) => detail.userId === selectedRankingUserId);
+
+  useEffect(() => {
+    if (!selectedRankingRow) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setSelectedRankingUserId(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedRankingRow]);
 
   function setResult(matchId: string, side: "home" | "away", value: string) {
     setResults((current) => ({
@@ -459,16 +572,10 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
   }
 
   function clearSimulation() {
-    const emptyPodium = { champion_team: "", runner_up_team: "", third_place_team: "" };
     loadedSimulationRef.current = true;
     setResults(initialResults(matches));
-    setPodium(emptyPodium);
     setCopyMessage("Simulador limpio.");
-    window.localStorage.setItem(SIMULATOR_STORAGE_KEY, JSON.stringify({ results: initialResults(matches), podium: emptyPodium }));
-  }
-
-  function updatePodium(field: "champion_team" | "runner_up_team" | "third_place_team", value: string) {
-    setPodium((current) => ({ ...current, [field]: value }));
+    window.localStorage.setItem(simulatorStorageKey(sessionUserId), JSON.stringify({ results: initialResults(matches) }));
   }
 
   function copyMyPrediction() {
@@ -504,7 +611,9 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
       }
       return next;
     });
-    setCopyMessage(`Copié ${mine.length} predicciones y tu podio anticipado al simulador.`);
+    const userName = profiles.find((profile) => profile.id === sessionUserId)?.display_name ?? "tu usuario";
+    const hasPodium = podiumPredictions.some((item) => item.user_id === sessionUserId && (item.champion_team || item.runner_up_team || item.third_place_team));
+    setCopyMessage(`Carga exitosa. Se cargaron ${mine.length} partidos${hasPodium ? ` y el podio anticipado de ${userName}` : ""}.`);
   }
 
   function applyBulk() {
@@ -623,36 +732,6 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
           </button>
           {copyMessage && <span className="text-sm font-bold text-ink/65">{copyMessage}</span>}
         </div>
-      </section>
-
-      <section className="panel grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-end">
-        <div>
-          <h2 className="flex items-center gap-2 text-xl font-black">
-            <Trophy className="h-5 w-5 text-gold" />
-            Podio anticipado
-          </h2>
-          <p className="mt-1 text-sm font-semibold text-ink/60">Completa el podio para copiar tu historia. Los puntos se suman solo cuando haya resultados reales.</p>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {[
-              ["champion_team", "Campeón", "text-yellow-200"],
-              ["runner_up_team", "Subcampeón", "text-slate-100"],
-              ["third_place_team", "3er Puesto", "text-orange-200"]
-            ].map(([field, label, colorClass]) => (
-              <label className="grid gap-1 text-sm font-bold text-ink/70" key={field}>
-                <span className={`flex items-center gap-2 ${colorClass}`}>
-                  <Trophy className="h-4 w-4" />
-                  {label}
-                </span>
-                <CountryFilterPicker
-                  value={podium[field as keyof typeof podium]}
-                  options={teamOptions}
-                  onChange={(value) => updatePodium(field as keyof typeof podium, value)}
-                />
-              </label>
-            ))}
-          </div>
-        </div>
-        <span className="inline-flex min-h-11 items-center rounded-lg bg-field px-4 text-base font-black text-ink/55">0 Pts</span>
       </section>
 
       <section className="panel flex flex-wrap gap-2 p-2">
@@ -818,19 +897,165 @@ export function ScoringSimulator({ matches, predictions, profiles }: Props) {
       <section className="panel overflow-hidden">
         <div className="border-b border-line p-4">
           <h2 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-5 w-5 text-gold" />Ranking simulado</h2>
-          <p className="mt-1 text-sm font-semibold text-ink/60">Suma puntos por tendencia, exactos y, cuando exista resultado final real, aciertos del podio anticipado.</p>
+          <p className="mt-1 text-sm text-ink/60">Puntos por exactos y tendencias con los resultados simulados.</p>
         </div>
         {ranking.map((row, index) => (
-          <div className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-line p-3 last:border-0" key={row.userId}>
-            <strong className="text-center text-gold">#{index + 1}</strong>
+          <div className="grid gap-3 border-b border-line p-3 last:border-0 sm:grid-cols-[42px_1fr_auto] sm:items-center" key={row.userId}>
+            <strong className="text-center text-xl font-black text-gold sm:text-2xl">#{index + 1}</strong>
             <div>
-              <strong>{row.name}</strong>
-              <p className="text-xs text-ink/60">{row.exacts} exactos - {row.trends} tendencias - {row.played} puntuados</p>
+              <strong className="text-xl font-black sm:text-2xl">{row.name}</strong>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <RankingDescription
+                  className="text-xs text-ink/60"
+                  exacts={row.exacts}
+                  trends={row.trends}
+                  championPoints={row.podium.champion}
+                  runnerUpPoints={row.podium.runnerUp}
+                  thirdPlacePoints={row.podium.thirdPlace}
+                />
+                <button className="btn secondary min-h-8 w-fit px-3 text-xs" onClick={() => setSelectedRankingUserId(row.userId)} type="button">
+                  <Eye className="h-3.5 w-3.5" />
+                  Detalles
+                </button>
+              </div>
             </div>
             <strong className="text-center">{row.points} Pts</strong>
           </div>
         ))}
       </section>
+      {selectedRankingRow && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-3">
+          <section className="panel dark-scrollbar max-h-[92vh] w-full max-w-6xl overflow-y-auto p-4 shadow-2xl">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
+              <div>
+                <span className="badge">Detalles</span>
+                <div className="mt-2 flex flex-wrap items-baseline gap-3">
+                  <h2 className="text-2xl font-black">{selectedRankingRow.name}</h2>
+                  <strong className="text-3xl font-black text-grass">{selectedRankingRow.points} Pts</strong>
+                </div>
+                <RankingDescription
+                  className="mt-1 text-sm text-ink/60"
+                  exacts={selectedRankingRow.exacts}
+                  trends={selectedRankingRow.trends}
+                  championPoints={selectedRankingRow.podium.champion}
+                  runnerUpPoints={selectedRankingRow.podium.runnerUp}
+                  thirdPlacePoints={selectedRankingRow.podium.thirdPlace}
+                />
+              </div>
+              <button className="btn secondary min-w-11 px-0" onClick={() => setSelectedRankingUserId(null)} type="button" aria-label="Cerrar detalles">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {(selectedRankingRow.podium.champion || selectedRankingRow.podium.runnerUp || selectedRankingRow.podium.thirdPlace) ? (
+              <section className="mt-5 grid gap-3">
+                <h3 className="flex items-center gap-2 text-xl font-black"><Medal className="h-5 w-5 text-gold" />Podio anticipado</h3>
+                <div className="match-card-grid">
+                  {selectedRankingRow.podium.champion > 0 && simulatedChampion && (
+                    <article className="rounded-lg border border-line bg-field p-3">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <span className="flex items-center gap-2 text-sm text-yellow-200"><Trophy className="h-7 w-7" />Campeón</span>
+                        <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(3)}`}>3 Pts</strong>
+                      </div>
+                      <TeamLabel name={simulatedChampion.name} code={simulatedChampion.code} />
+                    </article>
+                  )}
+                  {selectedRankingRow.podium.runnerUp > 0 && simulatedRunnerUp && (
+                    <article className="rounded-lg border border-line bg-field p-3">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <span className="flex items-center gap-2 text-sm text-slate-100"><Trophy className="h-7 w-7" />Subcampeón</span>
+                        <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(2)}`}>2 Pts</strong>
+                      </div>
+                      <TeamLabel name={simulatedRunnerUp.name} code={simulatedRunnerUp.code} />
+                    </article>
+                  )}
+                  {selectedRankingRow.podium.thirdPlace > 0 && simulatedThirdPlace && (
+                    <article className="rounded-lg border border-line bg-field p-3">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <span className="flex items-center gap-2 text-sm text-orange-200"><Trophy className="h-7 w-7" />3er Puesto</span>
+                        <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(1)}`}>1 Pts</strong>
+                      </div>
+                      <TeamLabel name={simulatedThirdPlace.name} code={simulatedThirdPlace.code} />
+                    </article>
+                  )}
+                </div>
+              </section>
+            ) : null}
+
+            {!selectedRankingDetails.length && !(selectedRankingRow.podium.champion || selectedRankingRow.podium.runnerUp || selectedRankingRow.podium.thirdPlace) ? (
+              <p className="mt-5 rounded-lg border border-line bg-field p-4 text-sm text-ink/65">No hay aciertos con puntos para este participante.</p>
+            ) : (
+              <div className="mt-5 grid gap-5">
+                <h3 className="flex items-center gap-2 text-xl font-black"><Eye className="h-5 w-5 text-grass" />Aciertos con puntos</h3>
+                {(["GROUP", ...knockoutOrder] as MatchStage[]).map((stage) => {
+                  const rows = selectedRankingDetails.filter((detail) => detail.match.stage === stage);
+                  if (!rows.length) return null;
+                  if (stage === "GROUP") {
+                    const grouped = groupBy(rows, (detail) => detail.match.group_name || "Sin grupo");
+                    return Object.entries(grouped).map(([group, items]) => (
+                      <section className="grid gap-3" key={`${stage}-${group}`}>
+                        <h3 className="flex items-center gap-2 text-xl font-black"><CircleDot className="h-4 w-4 text-red-400" />Grupo {group}</h3>
+                        <div className="match-card-grid">
+                          {items.map((detail) => (
+                            <article className="rounded-lg border border-line bg-field p-3" key={detail.id}>
+                              <div className="mb-3 flex items-start justify-between gap-3">
+                                <div>
+                                  <span className="badge">Grupo {detail.match.group_name}</span>
+                                  <p className="mt-2 text-xs font-bold text-ink/60">{formatArgentinaDate(detail.match.kickoff_at)}</p>
+                                </div>
+                                <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(detail.points)}`}>{detail.points} Pts</strong>
+                              </div>
+                              <div className="grid gap-2">
+                                <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
+                                  <TeamLabel name={detail.display.home.name} code={detail.display.home.code} />
+                                  <ScoreBox value={detail.homeGoals} />
+                                  <ScoreBox value={detail.actualHomeGoals} />
+                                </div>
+                                <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
+                                  <TeamLabel name={detail.display.away.name} code={detail.display.away.code} />
+                                  <ScoreBox value={detail.awayGoals} />
+                                  <ScoreBox value={detail.actualAwayGoals} />
+                                </div>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      </section>
+                    ));
+                  }
+                  return (
+                    <section className="grid gap-3" key={stage}>
+                      <h3 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-4 w-4 text-gold" />{stageLabels[stage]}</h3>
+                      <div className="match-card-grid">
+                        {rows.map((detail) => (
+                          <article className="rounded-lg border border-line bg-field p-3" key={detail.id}>
+                            <div className="mb-3 flex items-start justify-between gap-3">
+                              <span className="badge">{stageLabels[stage]}</span>
+                              <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(detail.points)}`}>{detail.points} Pts</strong>
+                            </div>
+                            <div className="grid gap-2">
+                              <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
+                                <TeamLabel name={detail.display.home.name} code={detail.display.home.code} />
+                                <ScoreBox value={detail.homeGoals} />
+                                <ScoreBox value={detail.actualHomeGoals} />
+                              </div>
+                              <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
+                                <TeamLabel name={detail.display.away.name} code={detail.display.away.code} />
+                                <ScoreBox value={detail.awayGoals} />
+                                <ScoreBox value={detail.actualAwayGoals} />
+                              </div>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
       {bulkOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/75 p-4">
           <section className="panel w-full max-w-3xl p-4 shadow-2xl">

@@ -198,17 +198,17 @@ export default function RulesPage() {
           <StatusExample
             status="open"
             title="Abierto"
-            text="El partido esta disponible y podes ingresar o modificar tu prediccion."
+            text="Disponible para cargar o modificar tu pronóstico."
           />
           <StatusExample
             status="locked"
             title="Bloqueado"
-            text="Todavia no se puede pronosticar porque la llave o los equipos no estan definidos oficialmente."
+            text="Todavía no se sabe la llave o los equipos."
           />
           <StatusExample
             status="closed"
             title="Cerrado"
-            text="Se cierra 15 minutos antes del inicio. Cuando termina, queda cerrado con resultado final."
+            text="Cierra 15 minutos antes y queda finalizado al cargar resultado."
           />
         </div>
       </section>

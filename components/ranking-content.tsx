@@ -3,6 +3,7 @@
 import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { DateFilter } from "@/components/date-filter";
 import { EmptyState } from "@/components/empty-state";
+import { RankingDescription } from "@/components/ranking-description";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { matchFitsBasicFilters } from "@/lib/match-filters";
@@ -10,7 +11,7 @@ import { teamOptionsFromMatches } from "@/lib/team-options";
 import type { RankingDetails, RankingPredictionDetail, RankingRow } from "@/lib/data";
 import type { Match, MatchStage } from "@/lib/types";
 import { Eye, Medal, Trophy, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   ranking: RankingRow[];
@@ -68,8 +69,21 @@ function groupBy<T>(items: T[], key: (item: T) => string) {
   }, {});
 }
 
-function podiumBreakdown(row: RankingRow) {
-  return `${row.podium_champion_points ?? 0}/${row.podium_runner_up_points ?? 0}/${row.podium_third_place_points ?? 0}`;
+function pointsClass(points: number) {
+  return points >= 3
+    ? "border-grass/30 bg-emerald-950/55 text-grass"
+    : "border-blue-300/30 bg-blue-950/45 text-blue-200";
+}
+
+function ScoreBox({ value }: { value: number | string | null | undefined }) {
+  return (
+    <input
+      className="field min-h-10 px-2 text-center font-black leading-none disabled:opacity-100"
+      disabled
+      readOnly
+      value={value ?? ""}
+    />
+  );
 }
 
 function DetailCard({ detail }: { detail: RankingPredictionDetail }) {
@@ -82,18 +96,18 @@ function DetailCard({ detail }: { detail: RankingPredictionDetail }) {
           <span className="badge">{match.group_name ? `Grupo ${match.group_name}` : stageLabels[match.stage] ?? match.stage}</span>
           <p className="mt-2 text-xs font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</p>
         </div>
-        <strong className="rounded-full border border-grass/30 bg-emerald-950/70 px-3 py-1 text-sm text-grass">{detail.points} Pts</strong>
+        <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(detail.points)}`}>{detail.points} Pts</strong>
       </div>
       <div className="grid gap-2">
         <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
           <TeamLabel name={match.home_team} code={match.home_country_code} />
-          <span className="field min-h-10 px-2 text-center font-black">{detail.home_goals}</span>
-          <span className="field min-h-10 px-2 text-center font-black">{match.home_goals ?? ""}</span>
+          <ScoreBox value={detail.home_goals} />
+          <ScoreBox value={match.home_goals} />
         </div>
         <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
           <TeamLabel name={match.away_team} code={match.away_country_code} />
-          <span className="field min-h-10 px-2 text-center font-black">{detail.away_goals}</span>
-          <span className="field min-h-10 px-2 text-center font-black">{match.away_goals ?? ""}</span>
+          <ScoreBox value={detail.away_goals} />
+          <ScoreBox value={match.away_goals} />
         </div>
         <div className="grid grid-cols-[1fr_72px_72px] gap-2 px-2 text-[11px] font-black uppercase text-ink/45">
           <span />
@@ -117,7 +131,7 @@ function PodiumHit({ label, team, points, colorClass }: { label: string; team?: 
           <Trophy className="h-4 w-4" />
           {label}
         </span>
-        <strong className="rounded-full border border-gold/30 bg-yellow-950/60 px-3 py-1 text-sm text-gold">{points} Pts</strong>
+        <strong className={`rounded-full border px-3 py-1 text-sm ${pointsClass(points)}`}>{points} Pts</strong>
       </div>
       <TeamLabel name={team} />
     </article>
@@ -155,13 +169,22 @@ export function RankingContent({ ranking, details }: Props) {
     [normalizedQuery, ranking]
   );
 
+  useEffect(() => {
+    if (!selectedRow) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setSelectedUserId(null);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedRow]);
+
   return (
     <section className="grid gap-4">
       <article className="panel overflow-hidden">
         <div className="border-b border-line p-5">
           <h2 className="text-2xl font-black">Ranking</h2>
-          <p className="mt-1 text-sm font-semibold text-ink/60">Puntos por exactos, tendencias y aciertos del podio anticipado cuando ya exista resultado real.</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <p className="mt-1 text-sm text-ink/60">Puntos por exactos, tendencias y aciertos del podio anticipado cuando ya exista resultado real.</p>
+          <div className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-[minmax(280px,1fr)_44px]">
             <input className="field" placeholder="Buscar apodo" value={query} onChange={(event) => setQuery(event.target.value)} />
             <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => setQuery("")}>
               <X className="h-4 w-4" />
@@ -174,21 +197,28 @@ export function RankingContent({ ranking, details }: Props) {
           </div>
         ) : (
           filteredRanking.map((row, index) => (
-            <div className={`grid gap-3 border-b p-4 last:border-0 sm:grid-cols-[48px_1fr_auto_auto] sm:items-center ${podiumClass(index)}`} key={row.user_id}>
-              <div className={`text-2xl font-black ${index < 3 ? "" : "text-gold"}`}>#{index + 1}</div>
+            <div className={`grid gap-3 border-b p-4 last:border-0 sm:grid-cols-[48px_1fr_auto] sm:items-center ${podiumClass(index)}`} key={row.user_id}>
+              <div className={`text-xl font-black sm:text-2xl ${index < 3 ? "" : "text-gold"}`}>#{index + 1}</div>
               <div>
-                <h3 className="font-black">{row.display_name}</h3>
-                <p className="text-sm text-ink/60">{row.exact_hits} exactos - {row.trend_hits} tendencias</p>
-                <p className="mt-1 text-sm font-bold text-blue-200">{podiumBreakdown(row)} podio anticipado</p>
+                <h3 className="text-xl font-black sm:text-2xl">{row.display_name}</h3>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <RankingDescription
+                    exacts={row.exact_hits}
+                    trends={row.trend_hits}
+                    championPoints={row.podium_champion_points}
+                    runnerUpPoints={row.podium_runner_up_points}
+                    thirdPlacePoints={row.podium_third_place_points}
+                  />
+                  <button className="btn secondary min-h-8 w-fit px-3 text-xs" onClick={() => setSelectedUserId(row.user_id)} type="button">
+                    <Eye className="h-3.5 w-3.5" />
+                    Detalles
+                  </button>
+                </div>
               </div>
               <div className="text-left sm:text-right">
                 <strong className="block text-2xl font-black">{row.total_points}</strong>
                 <span className="text-xs font-black uppercase text-ink/45">pts</span>
               </div>
-              <button className="btn secondary w-fit" onClick={() => setSelectedUserId(row.user_id)} type="button">
-                <Eye className="h-4 w-4" />
-                Detalles
-              </button>
             </div>
           ))
         )}
@@ -200,8 +230,18 @@ export function RankingContent({ ranking, details }: Props) {
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
               <div>
                 <span className="badge">Detalles</span>
-                <h2 className="mt-2 text-2xl font-black">{selectedRow.display_name}</h2>
-                <p className="mt-1 text-sm font-semibold text-ink/60">{selectedRow.total_points} Pts - {selectedRow.exact_hits} exactos - {selectedRow.trend_hits} tendencias - {podiumBreakdown(selectedRow)} podio anticipado</p>
+                <div className="mt-2 flex flex-wrap items-baseline gap-3">
+                  <h2 className="text-2xl font-black">{selectedRow.display_name}</h2>
+                  <strong className="text-3xl font-black text-grass">{selectedRow.total_points} Pts</strong>
+                </div>
+                <RankingDescription
+                  className="mt-1 text-sm text-ink/60"
+                  exacts={selectedRow.exact_hits}
+                  trends={selectedRow.trend_hits}
+                  championPoints={selectedRow.podium_champion_points}
+                  runnerUpPoints={selectedRow.podium_runner_up_points}
+                  thirdPlacePoints={selectedRow.podium_third_place_points}
+                />
               </div>
               <button className="btn secondary min-w-11 px-0" onClick={() => setSelectedUserId(null)} type="button" aria-label="Cerrar detalles">
                 <X className="h-4 w-4" />

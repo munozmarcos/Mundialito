@@ -137,7 +137,7 @@ language sql stable as $$
       pr.user_id,
       coalesce(sum(pr.points), 0)::bigint as points,
       coalesce(sum(case when pr.exact_hit then 1 else 0 end), 0)::bigint as exact_hits,
-      coalesce(sum(case when pr.trend_hit then 1 else 0 end), 0)::bigint as trend_hits
+      coalesce(sum(case when pr.trend_hit and not pr.exact_hit then 1 else 0 end), 0)::bigint as trend_hits
     from predictions pr
     group by pr.user_id
   ),

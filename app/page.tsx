@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/empty-state";
 import { HomePrimaryAction } from "@/components/home-primary-action";
+import { RankingDescription } from "@/components/ranking-description";
 import { ShareLinkButton } from "@/components/share-link-button";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
@@ -92,11 +93,10 @@ export default async function Home() {
         <div className="grid content-start gap-4">
           <section className="panel overflow-hidden">
             <div className="flex items-center justify-between border-b border-line p-4">
-              <h2 className="text-xl font-black">Proximos partidos</h2>
-              <Link className="btn secondary min-h-9 px-3" href="/mi-prode">Pronosticos</Link>
+              <h2 className="text-xl font-black">Próximos partidos</h2>
             </div>
             {!matches.length ? (
-              <EmptyState title="Todavia no hay partidos" text="Carga el calendario desde Admin para empezar." />
+              <EmptyState title="Todavía no hay partidos" text="Cargá el calendario desde Admin para empezar." />
             ) : (
               <div className="grid">
                 {matches.map((match) => (
@@ -169,14 +169,21 @@ export default async function Home() {
               <h2 className="text-xl font-black">Ranking</h2>
             </div>
             {!ranking.length ? (
-              <p className="p-5 text-sm font-semibold text-ink/65">Todavia no hay ranking.</p>
+              <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay ranking.</p>
             ) : (
               ranking.slice(0, 3).map((row, index) => (
                 <div className={`grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b p-4 last:border-0 ${podiumClass(index)}`} key={row.user_id}>
-                  <strong>#{index + 1}</strong>
+                  <strong className="text-xl font-black">#{index + 1}</strong>
                   <div>
-                    <strong>{row.display_name}</strong>
-                    <p className="text-xs text-ink/60">{row.exact_hits} exactos - {row.trend_hits} tendencias</p>
+                    <strong className="text-xl font-black">{row.display_name}</strong>
+                    <RankingDescription
+                      className="mt-0.5 flex text-xs text-ink/60"
+                      exacts={row.exact_hits}
+                      trends={row.trend_hits}
+                      championPoints={row.podium_champion_points}
+                      runnerUpPoints={row.podium_runner_up_points}
+                      thirdPlacePoints={row.podium_third_place_points}
+                    />
                   </div>
                   <strong>{row.total_points}</strong>
                 </div>

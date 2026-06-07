@@ -21,6 +21,14 @@ const initialForm = {
   paid: false
 };
 
+function paymentSelectClass(value: boolean | string) {
+  const paid = value === true || value === "PAID";
+  const unpaid = value === false || value === "UNPAID";
+  if (paid) return "field border-grass/35 bg-grass/10 font-black text-grass";
+  if (unpaid) return "field border-red-400/35 bg-red-500/10 font-black text-red-200";
+  return "field";
+}
+
 export default function ParticipantesPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [form, setForm] = useState(initialForm);
@@ -199,13 +207,16 @@ export default function ParticipantesPage() {
               <option value="admin">Admin</option>
             </select>
           </label>
-          <label className="flex items-center gap-3 rounded-lg border border-line bg-field p-3 text-sm font-bold">
-            <input
-              checked={form.paid}
-              type="checkbox"
-              onChange={(event) => setForm({ ...form, paid: event.target.checked })}
-            />
-            Pago recibido
+          <label className="grid gap-1 text-sm font-bold">
+            Estado de pago
+            <select
+              className={paymentSelectClass(form.paid)}
+              value={form.paid ? "PAID" : "UNPAID"}
+              onChange={(event) => setForm({ ...form, paid: event.target.value === "PAID" })}
+            >
+              <option value="PAID">Pago</option>
+              <option value="UNPAID">Impago</option>
+            </select>
           </label>
           <button className="btn w-fit" disabled={loading} type="submit">
             <Save className="h-4 w-4" />
@@ -215,14 +226,14 @@ export default function ParticipantesPage() {
         </form>
 
         <section className="panel overflow-hidden">
-          <div className="grid gap-3 border-b border-line p-4 lg:grid-cols-[1fr_180px_auto] lg:items-center">
+          <div className="grid max-w-4xl gap-3 border-b border-line p-4 lg:grid-cols-[minmax(260px,1fr)_150px_auto] lg:items-center">
             <input
               className="field"
               placeholder="Filtrar participante"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
-            <select className="field" value={paidFilter} onChange={(event) => setPaidFilter(event.target.value)}>
+            <select className={paymentSelectClass(paidFilter)} value={paidFilter} onChange={(event) => setPaidFilter(event.target.value)}>
               <option value="ALL">Todos</option>
               <option value="PAID">Pagos</option>
               <option value="UNPAID">Impagos</option>
@@ -236,14 +247,15 @@ export default function ParticipantesPage() {
             <p className="p-5 text-sm text-ink/70">No hay participantes para ese filtro.</p>
           ) : (
             filteredProfiles.map((profile) => (
-              <div className="grid gap-3 border-b border-line p-4 last:border-0 md:grid-cols-[1fr_1fr_auto_auto_auto_auto] md:items-center" key={profile.id}>
+              <div className="grid gap-3 border-b border-line p-4 last:border-0 md:grid-cols-[1fr_1fr_auto_auto_auto] md:items-center" key={profile.id}>
                 <div>
                   <strong>{profile.display_name}</strong>
                   <p className="text-sm text-ink/60">{profile.auth_email.endsWith("@mundialito.local") ? "Auth interno por WhatsApp" : profile.auth_email}</p>
                 </div>
                 <p className="text-sm text-ink/70">{profile.phone ?? "Sin WhatsApp"}</p>
-                <span className="badge w-fit">{profile.role === "admin" ? "Admin" : "Participante"}</span>
-                <span className={`badge w-fit ${profile.paid ? "" : "bg-white text-ink/60"}`}>{profile.paid ? "Pago" : "Impago"}</span>
+                <span className={`w-fit rounded-full px-3 py-1 text-xs font-black uppercase ${profile.paid ? "bg-mint text-grass" : "bg-red-500/15 text-red-200"}`}>
+                  {profile.paid ? "Pago" : "Impago"}
+                </span>
                 <button className="btn secondary min-h-9 w-10 px-0" onClick={() => editProfile(profile)} title="Editar participante" type="button">
                   <Pencil className="h-4 w-4" />
                 </button>

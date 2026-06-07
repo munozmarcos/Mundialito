@@ -45,7 +45,7 @@ export function SoundToggle() {
         title={enabled ? "Mutear musica" : "Activar musica"}
         type="button"
       >
-        {enabled ? <Volume2 className="header-action-icon" /> : <VolumeX className="header-action-icon" />}
+        {enabled ? <Volume2 className="header-action-icon header-action-icon-large" /> : <VolumeX className="header-action-icon header-action-icon-large" />}
       </button>
       <audio ref={audioRef} loop preload="auto" src={audioSrc} />
     </>
