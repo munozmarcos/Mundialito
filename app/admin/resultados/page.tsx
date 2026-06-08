@@ -1,4 +1,5 @@
 import { EmptyState } from "@/components/empty-state";
+import { AdminBackButton } from "@/components/admin-back-button";
 import { AdminResultsControl } from "@/components/admin-results-control";
 import { getMatches } from "@/lib/data";
 import { getPodiumLockState, type PodiumStatus } from "@/lib/podium";
@@ -43,8 +44,13 @@ export default async function ResultsAdminPage() {
   return (
     <div className="grid gap-6">
       <section className="panel p-6">
-        <h1 className="text-3xl font-black">Cargar resultados</h1>
-        <p className="mt-2 text-ink/70">Revisa los marcadores cargados y actualiza el ranking cuando termine cada partido.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-black">Cargar resultados</h1>
+            <p className="mt-2 text-ink/70">Revisa los marcadores cargados y actualiza el ranking cuando termine cada partido.</p>
+          </div>
+          <AdminBackButton />
+        </div>
       </section>
       {!matches.length ? (
         <EmptyState title="No hay partidos" text="Primero carga el calendario del Mundialito." />

@@ -1,3 +1,4 @@
+import { AdminBackButton } from "@/components/admin-back-button";
 import { PageHero } from "@/components/page-hero";
 import { CalendarPlus, FileSpreadsheet, RefreshCw } from "lucide-react";
 
@@ -12,7 +13,9 @@ export default function ImportAdminPage() {
         icon={CalendarPlus}
         title="Cargar partidos"
         subtitle="Herramienta de respaldo para agregar partidos manualmente si el calendario oficial cambia o falta algun cruce."
-      />
+      >
+        <AdminBackButton />
+      </PageHero>
 
       <section className="grid gap-4 md:grid-cols-3">
         <article className="panel p-5">

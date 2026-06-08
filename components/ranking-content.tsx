@@ -265,6 +265,12 @@ export function RankingContent({ ranking, details }: Props) {
               </div>
               <div className="flex flex-wrap items-start justify-end gap-2">
                 <DetailCounter
+                  className="border border-red-400/25 text-red-400"
+                  icon={Target}
+                  label="puntos"
+                  value={`${selectedRow.total_points} Pts`}
+                />
+                <DetailCounter
                   className="border border-grass/25 text-grass"
                   icon={ListChecks}
                   label="predicciones"
@@ -275,12 +281,6 @@ export function RankingContent({ ranking, details }: Props) {
                   icon={Medal}
                   label="podio"
                   value={`${selectedSummary?.podium_loaded ?? 0}/3`}
-                />
-                <DetailCounter
-                  className="border border-red-400/25 text-red-400"
-                  icon={Target}
-                  label="puntos"
-                  value={`${selectedRow.total_points} Pts`}
                 />
                 <button className="btn secondary min-w-11 px-0" onClick={() => setSelectedUserId(null)} type="button" aria-label="Cerrar detalles">
                   <X className="h-4 w-4" />

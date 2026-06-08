@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminBackButton } from "@/components/admin-back-button";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { Newspaper, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -72,12 +73,17 @@ export default function AdminNewsPage() {
   return (
     <div className="grid gap-6">
       <section className="panel p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
         <span className="badge">Admin</span>
         <h1 className="mt-3 flex items-center gap-2 text-3xl font-black">
           <Newspaper className="h-7 w-7 text-grass" />
           Crear novedad
         </h1>
         <p className="mt-2 text-ink/70">Publicá avisos que aparecen en Novedades de la pantalla de inicio y en la nueva sección pública.</p>
+          </div>
+          <AdminBackButton />
+        </div>
       </section>
 
       <section className="panel grid gap-4 p-6">
@@ -88,9 +94,8 @@ export default function AdminNewsPage() {
         <label className="grid gap-2">
           <span className="text-sm font-bold">Mensaje</span>
           <textarea
-            className="field min-h-[420px] resize-y py-4 text-left text-base leading-7 sm:min-h-[560px]"
-            rows={20}
-            style={{ minHeight: "min(560px, 68vh)" }}
+            className="field dark-scrollbar max-h-[180px] min-h-[130px] resize-y py-3 text-left text-base leading-6"
+            rows={5}
             placeholder={"🇦🇷 Hoy hay partidos importantes.\n⚽ Revisá tus pronósticos pendientes.\n🏆 El ranking se mueve fuerte esta semana."}
             value={body}
             onChange={(event) => setBody(event.target.value)}

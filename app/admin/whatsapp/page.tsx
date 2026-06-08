@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminBackButton } from "@/components/admin-back-button";
 import { CheckSquare, MessageCircle, Search, Send, Square } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -113,12 +114,17 @@ export default function WhatsAppAdminPage() {
   return (
     <div className="grid gap-6">
       <section className="panel p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
         <span className="badge">WhatsApp</span>
         <h1 className="mt-3 flex items-center gap-2 text-3xl font-black">
           <MessageCircle className="h-7 w-7 text-grass" />
           Broadcasts
         </h1>
         <p className="mt-2 text-ink/70">Envío de mensaje general por WhatsApp a los participantes seleccionados.</p>
+          </div>
+          <AdminBackButton />
+        </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -126,9 +132,8 @@ export default function WhatsAppAdminPage() {
           <label className="grid gap-2">
             <span className="text-sm font-bold">Mensaje</span>
             <textarea
-              className="field dark-scrollbar h-[520px] min-h-[520px] w-full resize-y py-4 text-base leading-7 sm:h-[720px] sm:min-h-[720px]"
-              rows={28}
-              style={{ minHeight: "min(720px, 78vh)" }}
+              className="field dark-scrollbar max-h-[180px] min-h-[130px] w-full resize-y py-3 text-base leading-6"
+              rows={5}
               value={body}
               onChange={(event) => setBody(event.target.value)}
             />

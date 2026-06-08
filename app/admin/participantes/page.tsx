@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminBackButton } from "@/components/admin-back-button";
 import { Pencil, RefreshCw, Save, Trash2, X, UsersRound } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
@@ -139,12 +140,15 @@ export default function ParticipantesPage() {
   return (
     <div className="grid gap-6">
       <section className="panel p-6">
-        <div className="flex items-start gap-3">
-          <UsersRound className="mt-1 h-6 w-6 text-grass" />
-          <div>
-            <h1 className="text-3xl font-black">Participantes</h1>
-            <p className="mt-2 text-ink/70">Carga y edita apodo, WhatsApp, rol y estado de pago de cada jugador.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <UsersRound className="mt-1 h-6 w-6 text-grass" />
+            <div>
+              <h1 className="text-3xl font-black">Participantes</h1>
+              <p className="mt-2 text-ink/70">Carga y edita apodo, WhatsApp, rol y estado de pago de cada jugador.</p>
+            </div>
           </div>
+          <AdminBackButton />
         </div>
       </section>
 

@@ -973,6 +973,12 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
               </div>
               <div className="flex flex-wrap items-start justify-end gap-2">
                 <DetailCounter
+                  className="border border-red-400/25 text-red-400"
+                  icon={Target}
+                  label="puntos"
+                  value={`${selectedRankingRow.points} Pts`}
+                />
+                <DetailCounter
                   className="border border-grass/25 text-grass"
                   icon={ListChecks}
                   label="predicciones"
@@ -983,12 +989,6 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                   icon={Medal}
                   label="podio"
                   value={`${selectedUserPodiumLoaded}/3`}
-                />
-                <DetailCounter
-                  className="border border-red-400/25 text-red-400"
-                  icon={Target}
-                  label="puntos"
-                  value={`${selectedRankingRow.points} Pts`}
                 />
                 <button className="btn secondary min-w-11 px-0" onClick={() => setSelectedRankingUserId(null)} type="button" aria-label="Cerrar detalles">
                   <X className="h-4 w-4" />
