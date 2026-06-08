@@ -11,7 +11,7 @@ import { matchFitsBasicFilters } from "@/lib/match-filters";
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import type { RankingDetails, RankingPredictionDetail, RankingRow } from "@/lib/data";
 import type { Match, MatchStage } from "@/lib/types";
-import { Eye, Medal, Trophy, X } from "lucide-react";
+import { Eye, ListChecks, Medal, Target, Trophy, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type Props = {
@@ -133,6 +133,28 @@ function PodiumHit({ label, team, points, colorClass }: { label: string; team?: 
   );
 }
 
+function DetailCounter({
+  icon: Icon,
+  label,
+  value,
+  className
+}: {
+  icon: typeof ListChecks;
+  label: string;
+  value: string;
+  className: string;
+}) {
+  return (
+    <div className={`rounded-lg bg-field px-4 py-3 text-right ${className}`}>
+      <div className="flex items-center justify-end gap-2">
+        <strong className="block text-2xl">{value}</strong>
+        <Icon className="h-5 w-5" />
+      </div>
+      <span className="text-xs font-black uppercase text-ink/55">{label}</span>
+    </div>
+  );
+}
+
 export function RankingContent({ ranking, details }: Props) {
   const [query, setQuery] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -140,6 +162,8 @@ export function RankingContent({ ranking, details }: Props) {
   const [dateFilter, setDateFilter] = useState("");
   const normalizedQuery = normalize(query);
   const selectedRow = ranking.find((row) => row.user_id === selectedUserId) ?? null;
+  const selectedSummary = selectedUserId ? details.summaries.find((summary) => summary.user_id === selectedUserId) : null;
+  const fallbackAvailable = details.summaries.find((summary) => summary.available_predictions > 0)?.available_predictions ?? 0;
   const detailRows = useMemo(
     () => details.predictions.filter((detail) => detail.user_id === selectedUserId),
     [details.predictions, selectedUserId]
@@ -238,9 +262,29 @@ export function RankingContent({ ranking, details }: Props) {
                   thirdPlacePoints={selectedRow.podium_third_place_points}
                 />
               </div>
-              <button className="btn secondary min-w-11 px-0" onClick={() => setSelectedUserId(null)} type="button" aria-label="Cerrar detalles">
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex flex-wrap items-start justify-end gap-2">
+                <DetailCounter
+                  className="border border-grass/25 text-grass"
+                  icon={ListChecks}
+                  label="predicciones"
+                  value={`${selectedSummary?.loaded_predictions ?? 0}/${selectedSummary?.available_predictions ?? fallbackAvailable}`}
+                />
+                <DetailCounter
+                  className="border border-gold/25 text-gold"
+                  icon={Medal}
+                  label="podio"
+                  value={`${selectedSummary?.podium_loaded ?? 0}/3`}
+                />
+                <DetailCounter
+                  className="border border-red-400/25 text-red-400"
+                  icon={Target}
+                  label="puntos"
+                  value={`${selectedRow.total_points} Pts`}
+                />
+                <button className="btn secondary min-w-11 px-0" onClick={() => setSelectedUserId(null)} type="button" aria-label="Cerrar detalles">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             <section className="mt-4 grid gap-2 p-0 sm:grid-cols-[minmax(280px,1fr)_150px_auto] lg:grid-cols-[320px_150px_44px] lg:items-center">

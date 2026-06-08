@@ -14,7 +14,7 @@ import { dateKey, matchFitsBasicFilters } from "@/lib/match-filters";
 import { matchStatus } from "@/lib/scoring";
 import { teamOptionsFromMatches, type TeamOption } from "@/lib/team-options";
 import type { Match, MatchStage, Prediction } from "@/lib/types";
-import { Calculator, Check, CircleDot, ClipboardPaste, GitBranch, ListChecks, Lock, LogIn, Medal, Save, Table2, Trophy, X } from "lucide-react";
+import { Calculator, Check, CircleDot, ClipboardPaste, GitBranch, ListChecks, Lock, LogIn, Medal, Save, Table2, Target, Trophy, X } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -829,7 +829,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         </div>
         <div className="panel grid gap-2 p-4">
           <div className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 shrink-0 text-red-400" />
+            <Target className="h-5 w-5 shrink-0 text-red-400" />
             <span className="text-sm font-bold text-ink/60">Puntos acumulados</span>
           </div>
           <strong className="block text-3xl">{totalPoints} Pts</strong>

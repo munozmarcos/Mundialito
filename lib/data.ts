@@ -1,4 +1,6 @@
 import { demoMatches, demoRanking } from "@/lib/demo-data";
+import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
+import { isPredictionLocked } from "@/lib/scoring";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 
 export type RankingRow = {
@@ -65,6 +67,14 @@ export type RankingPodiumDetail = {
 export type RankingDetails = {
   predictions: RankingPredictionDetail[];
   podium: RankingPodiumDetail[];
+  summaries: RankingUserSummary[];
+};
+
+export type RankingUserSummary = {
+  user_id: string;
+  loaded_predictions: number;
+  available_predictions: number;
+  podium_loaded: number;
 };
 
 export type ActivityRow = {
@@ -162,11 +172,17 @@ export async function getRanking(): Promise<RankingRow[]> {
 }
 
 export async function getRankingDetails(): Promise<RankingDetails> {
-  if (!supabaseConfigured()) return { predictions: [], podium: [] };
+  if (!supabaseConfigured()) return { predictions: [], podium: [], summaries: [] };
 
   try {
     const db = supabaseAdmin();
-    const [{ data: predictions, error: predictionError }, { data: podium, error: podiumError }] = await Promise.all([
+    const [
+      { data: predictions, error: predictionError },
+      { data: podium, error: podiumError },
+      { data: allPredictions, error: allPredictionsError },
+      { data: allPodiums, error: allPodiumsError },
+      { data: matches, error: matchesError }
+    ] = await Promise.all([
       db
         .from("predictions")
         .select("id,user_id,points,exact_hit,trend_hit,home_goals,away_goals,penalty_winner,updated_at,matches(id,home_team,away_team,home_country_code,away_country_code,kickoff_at,stage,group_name,home_goals,away_goals,penalty_winner)")
@@ -175,17 +191,47 @@ export async function getRankingDetails(): Promise<RankingDetails> {
       db
         .from("podium_predictions")
         .select("user_id,champion_team,runner_up_team,third_place_team,champion_points,runner_up_points,third_place_points,points,updated_at")
-        .gt("points", 0)
+        .gt("points", 0),
+      db.from("predictions").select("user_id,match_id"),
+      db.from("podium_predictions").select("user_id,champion_team,runner_up_team,third_place_team"),
+      db.from("matches").select("id,home_team,away_team,kickoff_at,stage,status,locked")
     ]);
     if (predictionError) throw predictionError;
     if (podiumError) throw podiumError;
+    if (allPredictionsError) throw allPredictionsError;
+    if (allPodiumsError) throw allPodiumsError;
+    if (matchesError) throw matchesError;
+
+    const availableMatches = (matches ?? []).filter((match) => {
+      if (match.status === "locked" || match.status === "scheduled" || match.status === "closed" || match.status === "final") return false;
+      if (isMatchBlockedUntilOfficial({ stage: match.stage ?? "GROUP", status: match.status, home_team: match.home_team, away_team: match.away_team })) return false;
+      if (isPredictionLocked(match.kickoff_at, Boolean(match.locked))) return false;
+      return true;
+    });
+    const availableIds = new Set(availableMatches.map((match) => match.id));
+    const summaryMap = new Map<string, RankingUserSummary>();
+    for (const prediction of allPredictions ?? []) {
+      const userId = prediction.user_id;
+      if (!summaryMap.has(userId)) {
+        summaryMap.set(userId, { user_id: userId, loaded_predictions: 0, available_predictions: availableIds.size, podium_loaded: 0 });
+      }
+      if (availableIds.has(prediction.match_id)) summaryMap.get(userId)!.loaded_predictions += 1;
+    }
+    for (const item of allPodiums ?? []) {
+      const userId = item.user_id;
+      if (!summaryMap.has(userId)) {
+        summaryMap.set(userId, { user_id: userId, loaded_predictions: 0, available_predictions: availableIds.size, podium_loaded: 0 });
+      }
+      summaryMap.get(userId)!.podium_loaded = [item.champion_team, item.runner_up_team, item.third_place_team].filter(Boolean).length;
+    }
     return {
       predictions: (predictions ?? []) as unknown as RankingPredictionDetail[],
-      podium: (podium ?? []) as RankingPodiumDetail[]
+      podium: (podium ?? []) as RankingPodiumDetail[],
+      summaries: [...summaryMap.values()]
     };
   } catch (error) {
     console.warn("[ranking-details:fallback]", error);
-    return { predictions: [], podium: [] };
+    return { predictions: [], podium: [], summaries: [] };
   }
 }
 
