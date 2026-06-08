@@ -914,7 +914,10 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                 </button>
               </div>
             </div>
-            <strong className="text-center">{row.points} Pts</strong>
+            <div className="text-center sm:text-right">
+              <strong className="block text-2xl font-black">{row.points}</strong>
+              <span className="text-xs font-black uppercase text-ink/45">Pts</span>
+            </div>
           </div>
         ))}
       </section>

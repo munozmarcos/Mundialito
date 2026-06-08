@@ -145,8 +145,8 @@ function DetailCounter({
   className: string;
 }) {
   return (
-    <div className={`rounded-lg bg-field px-4 py-3 text-right ${className}`}>
-      <div className="flex items-center justify-end gap-2">
+    <div className={`rounded-lg bg-field px-4 py-3 text-center ${className}`}>
+      <div className="flex items-center justify-center gap-2">
         <strong className="block text-2xl">{value}</strong>
         <Icon className="h-5 w-5" />
       </div>
@@ -251,7 +251,6 @@ export function RankingContent({ ranking, details }: Props) {
                 <span className="badge">Detalles</span>
                 <div className="mt-2 flex flex-wrap items-baseline gap-3">
                   <h2 className="text-2xl font-black">{selectedRow.display_name}</h2>
-                  <strong className="text-3xl font-black text-grass">{selectedRow.total_points} Pts</strong>
                 </div>
                 <RankingDescription
                   className="mt-1 text-sm text-ink/60"

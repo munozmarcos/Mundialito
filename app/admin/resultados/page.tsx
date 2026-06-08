@@ -10,15 +10,27 @@ export default async function ResultsAdminPage() {
   const matches = await getMatches();
   let profiles: Profile[] = [];
   let predictions: (Prediction & { profiles?: Pick<Profile, "display_name"> | null })[] = [];
+  let podiums: Array<{
+    user_id: string;
+    champion_team?: string | null;
+    runner_up_team?: string | null;
+    third_place_team?: string | null;
+    champion_points?: number | null;
+    runner_up_points?: number | null;
+    third_place_points?: number | null;
+    points?: number | null;
+  }> = [];
 
   if (supabaseConfigured()) {
     const db = supabaseAdmin();
-    const [profileRes, predictionRes] = await Promise.all([
+    const [profileRes, predictionRes, podiumRes] = await Promise.all([
       db.from("profiles").select("id,auth_email,display_name,role,phone,paid").order("display_name"),
-      db.from("predictions").select("*, profiles(display_name)")
+      db.from("predictions").select("*, profiles(display_name)"),
+      db.from("podium_predictions").select("user_id,champion_team,runner_up_team,third_place_team,champion_points,runner_up_points,third_place_points,points")
     ]);
     profiles = (profileRes.data ?? []) as Profile[];
     predictions = (predictionRes.data ?? []) as (Prediction & { profiles?: Pick<Profile, "display_name"> | null })[];
+    podiums = podiumRes.data ?? [];
   }
 
   return (
@@ -30,7 +42,7 @@ export default async function ResultsAdminPage() {
       {!matches.length ? (
         <EmptyState title="No hay partidos" text="Primero carga el calendario del Mundialito." />
       ) : (
-        <AdminResultsControl initialMatches={matches} profiles={profiles} predictions={predictions} />
+        <AdminResultsControl initialMatches={matches} profiles={profiles} predictions={predictions} podiums={podiums} />
       )}
     </div>
   );

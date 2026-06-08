@@ -2,23 +2,36 @@
 
 import { TeamLabel } from "@/components/team-label";
 import { PointsPill } from "@/components/points-pill";
+import { countryCodeForTeam, displayNameForTeam } from "@/lib/flags";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
-import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
+import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { scorePrediction } from "@/lib/scoring";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
-import { Calculator, GitBranch, Save, Table2, Trash2, Trophy } from "lucide-react";
+import { Calculator, GitBranch, Medal, Save, Table2, Trash2, Trophy } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type AdminPrediction = Prediction & { profiles?: Pick<Profile, "display_name"> | null };
+type AdminPodium = {
+  user_id: string;
+  champion_team?: string | null;
+  runner_up_team?: string | null;
+  third_place_team?: string | null;
+  champion_points?: number | null;
+  runner_up_points?: number | null;
+  third_place_points?: number | null;
+  points?: number | null;
+};
 
 type Props = {
   initialMatches: Match[];
   profiles: Profile[];
   predictions: AdminPrediction[];
+  podiums: AdminPodium[];
 };
 
 type ScoreDraft = Record<string, { home: number | ""; away: number | ""; penaltyWinner?: string | null }>;
 type PredictionDraft = Record<string, { home: number | ""; away: number | ""; penaltyWinner?: string | null }>;
+type PodiumDraft = Record<string, { championTeam: string; runnerUpTeam: string; thirdPlaceTeam: string }>;
 
 const stageLabels: Record<MatchStage, string> = {
   GROUP: "Grupos",
@@ -69,11 +82,36 @@ function parseGoalInput(value: string) {
   return Number(value);
 }
 
-export function AdminResultsControl({ initialMatches, profiles, predictions }: Props) {
+function initialPodiumDrafts(podiums: AdminPodium[]) {
+  return podiums.reduce<PodiumDraft>((acc, podium) => {
+    acc[podium.user_id] = {
+      championTeam: podium.champion_team ?? "",
+      runnerUpTeam: podium.runner_up_team ?? "",
+      thirdPlaceTeam: podium.third_place_team ?? ""
+    };
+    return acc;
+  }, {});
+}
+
+function flagEmoji(team: string) {
+  const code = countryCodeForTeam(team);
+  if (!code) return "🏳️";
+  if (code === "gb-eng") return "🏴";
+  if (code === "gb-sct") return "🏴";
+  return code
+    .toUpperCase()
+    .split("")
+    .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
+    .join("");
+}
+
+export function AdminResultsControl({ initialMatches, profiles, predictions, podiums }: Props) {
   const [matches, setMatches] = useState(initialMatches);
   const [scores, setScores] = useState<ScoreDraft>(() => initialScores(initialMatches));
   const [drafts, setDrafts] = useState<PredictionDraft>(() => initialPredictionDrafts(predictions));
-  const [activeTab, setActiveTab] = useState<"grupos" | "tablas" | "llaves">("grupos");
+  const [podiumRows, setPodiumRows] = useState<AdminPodium[]>(podiums);
+  const [podiumDrafts, setPodiumDrafts] = useState<PodiumDraft>(() => initialPodiumDrafts(podiums));
+  const [activeTab, setActiveTab] = useState<"podio" | "grupos" | "tablas" | "llaves">("grupos");
   const [activeGroup, setActiveGroup] = useState("");
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [selectedMatchId, setSelectedMatchId] = useState(initialMatches[0]?.id ?? "");
@@ -99,6 +137,20 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
       return acc;
     }, {});
   }, [predictions]);
+  const podiumMap = useMemo(() => {
+    return podiumRows.reduce<Record<string, AdminPodium>>((acc, podium) => {
+      acc[podium.user_id] = podium;
+      return acc;
+    }, {});
+  }, [podiumRows]);
+  const teamOptions = useMemo(() => {
+    const teams = new Map<string, string>();
+    for (const match of matches) {
+      if (match.home_team && !isPlaceholderTeamName(match.home_team)) teams.set(match.home_team, displayNameForTeam(match.home_team));
+      if (match.away_team && !isPlaceholderTeamName(match.away_team)) teams.set(match.away_team, displayNameForTeam(match.away_team));
+    }
+    return [...teams.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [matches]);
 
   function updateLocalMatch(matchId: string, patch: Partial<Match>) {
     setMatches((current) => current.map((match) => (match.id === matchId ? { ...match, ...patch } : match)));
@@ -194,6 +246,68 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
     } finally {
       setSaving(false);
     }
+  }
+
+  async function savePodium(userId: string) {
+    const draft = podiumDrafts[userId] ?? { championTeam: "", runnerUpTeam: "", thirdPlaceTeam: "" };
+    const chosen = [draft.championTeam, draft.runnerUpTeam, draft.thirdPlaceTeam].filter(Boolean);
+    if (new Set(chosen).size !== chosen.length) {
+      setMessage("No se puede repetir selección en el podio.");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    try {
+      const data = await request("/api/admin/podium", "PUT", {
+        userId,
+        championTeam: draft.championTeam || null,
+        runnerUpTeam: draft.runnerUpTeam || null,
+        thirdPlaceTeam: draft.thirdPlaceTeam || null
+      });
+      setPodiumRows((current) => {
+        const next = current.filter((row) => row.user_id !== userId);
+        return [...next, data.podium];
+      });
+      setMessage("Podio anticipado guardado y puntos recalculados.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo guardar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deletePodium(userId: string) {
+    setSaving(true);
+    setMessage("");
+    try {
+      await request("/api/admin/podium", "DELETE", { userId });
+      setPodiumRows((current) => current.filter((row) => row.user_id !== userId));
+      setPodiumDrafts((current) => ({ ...current, [userId]: { championTeam: "", runnerUpTeam: "", thirdPlaceTeam: "" } }));
+      setMessage("Podio anticipado eliminado.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo eliminar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function podiumSelect(userId: string, field: keyof PodiumDraft[string]) {
+    const draft = podiumDrafts[userId] ?? { championTeam: "", runnerUpTeam: "", thirdPlaceTeam: "" };
+    return (
+      <select
+        className="field h-11 text-center font-bold"
+        disabled={saving}
+        value={draft[field]}
+        onChange={(event) => setPodiumDrafts((current) => ({ ...current, [userId]: { ...draft, [field]: event.target.value } }))}
+      >
+        <option value="">Selección</option>
+        {teamOptions.map(([team, label]) => (
+          <option key={team} value={team}>
+            {flagEmoji(team)} {label}
+          </option>
+        ))}
+      </select>
+    );
   }
 
   function matchButton(match: Match) {
@@ -361,6 +475,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
     <div className="grid gap-4">
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
+          ["podio", "Podio", Medal],
           ["grupos", "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llaves", "Llaves", GitBranch]
@@ -368,7 +483,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
           <button
             className={`btn ${activeTab === key ? "" : "secondary"}`}
             key={key as string}
-            onClick={() => setActiveTab(key as "grupos" | "tablas" | "llaves")}
+            onClick={() => setActiveTab(key as "podio" | "grupos" | "tablas" | "llaves")}
             type="button"
           >
             <Icon className="h-4 w-4" />
@@ -376,6 +491,61 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
           </button>
         ))}
       </section>
+
+      {activeTab === "podio" && (
+        <section className="grid gap-4">
+          {message && <p className="panel p-3 text-sm font-bold text-ink/70">{message}</p>}
+          <article className="panel overflow-hidden">
+            <div className="border-b border-line p-4">
+              <h2 className="flex items-center gap-2 text-xl font-black"><Medal className="h-5 w-5 text-gold" />Podio anticipado por jugador</h2>
+              <p className="mt-1 text-sm text-ink/60">Edita campeón, subcampeón y 3er puesto de cada participante.</p>
+            </div>
+            <div className="grid gap-3 p-4 lg:grid-cols-2">
+              {profiles.map((profile) => {
+                const podium = podiumMap[profile.id];
+                return (
+                  <article className="rounded-lg border border-line bg-field p-4" key={profile.id}>
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <strong className="text-xl font-black">{profile.display_name}</strong>
+                      <PointsPill points={podium?.points ?? 0} className="min-h-8 rounded-full py-1" />
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="grid gap-1">
+                        <span className="text-xs font-black uppercase text-yellow-200">Campeón</span>
+                        {podiumSelect(profile.id, "championTeam")}
+                      </div>
+                      <div className="grid gap-1">
+                        <span className="text-xs font-black uppercase text-slate-100">Subcampeón</span>
+                        {podiumSelect(profile.id, "runnerUpTeam")}
+                      </div>
+                      <div className="grid gap-1">
+                        <span className="text-xs font-black uppercase text-orange-200">3er puesto</span>
+                        {podiumSelect(profile.id, "thirdPlaceTeam")}
+                      </div>
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap gap-2 text-xs font-black uppercase">
+                        <span className="rounded-full border border-yellow-300/35 bg-yellow-300/10 px-2 py-1 text-yellow-200">{podium?.champion_points ?? 0} campeón</span>
+                        <span className="rounded-full border border-slate-200/35 bg-slate-200/10 px-2 py-1 text-slate-100">{podium?.runner_up_points ?? 0} sub</span>
+                        <span className="rounded-full border border-orange-300/35 bg-orange-400/10 px-2 py-1 text-orange-200">{podium?.third_place_points ?? 0} 3er</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button className="btn min-h-9 px-3" disabled={saving} onClick={() => savePodium(profile.id)} type="button">
+                          <Save className="h-4 w-4" />
+                          Guardar
+                        </button>
+                        <button className="btn secondary min-h-9 px-3" disabled={saving || !podium} onClick={() => deletePodium(profile.id)} type="button">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </article>
+        </section>
+      )}
 
       {activeTab === "grupos" && (
         <section className="panel overflow-x-auto p-2">
@@ -431,7 +601,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
             </article>
           ))}
         </section>
-      ) : (
+      ) : activeTab !== "podio" ? (
     <section className="grid gap-4">
       <div className="grid gap-3">
         <h2 className="text-xl font-black">{activeTab === "llaves" ? (selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves") : `Grupo ${selectedGroup}`}</h2>
@@ -544,7 +714,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions }: P
         </article>
       </section>
     </section>
-      )}
+      ) : null}
     </div>
   );
 }

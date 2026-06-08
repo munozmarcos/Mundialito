@@ -185,7 +185,10 @@ export default async function Home() {
                       thirdPlacePoints={row.podium_third_place_points}
                     />
                   </div>
-                  <strong>{row.total_points}</strong>
+                  <div className="text-right">
+                    <strong className="block text-2xl font-black">{row.total_points}</strong>
+                    <span className="text-xs font-black uppercase text-ink/45">Pts</span>
+                  </div>
                 </div>
               ))
             )}
