@@ -26,9 +26,9 @@ const commands = [
   { command: "$reglas", text: "Explica la puntuación y el podio anticipado. Sin parámetro: $reglas" },
   { command: "$partidos", text: "Lista próximos partidos. Sin parámetro: $partidos. Con parámetro: $partidos Francia" },
   { command: "$resultados", text: "Muestra resultados reales. Sin parámetro: $resultados. Con parámetro: $resultados Argentina" },
-  { command: "$pendientes", text: "Muestra pronósticos pendientes del usuario. Sin parámetro: $pendientes" },
+  { command: "$pendientes", text: "Muestra sólo pronósticos abiertos que faltan cargar. No incluye cerrados, bloqueados ni partidos ya cargados. Sin parámetro: $pendientes" },
   { command: "$pronosticos", text: "Devuelve el fixture cargado por el usuario para copiar. Sin parámetro: $pronosticos" },
-  { command: "$podioanticipado", text: "Guarda o muestra el podio. Sin parámetro: $podioanticipado. Con parámetro: $podioanticipado Argentina Brasil Uruguay" },
+  { command: "$podio", text: "Guarda o muestra el podio anticipado. Sin parámetro: $podio. Con parámetro: $podio Argentina Brasil Uruguay" },
   { command: "$carga", text: "Carga muchos pronósticos desde WhatsApp. Con parámetro multilinea: $carga y abajo Argentina 2-1 Mexico" }
 ];
 

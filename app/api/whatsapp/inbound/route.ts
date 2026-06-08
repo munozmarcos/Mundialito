@@ -21,13 +21,23 @@ function firstText(...values: unknown[]) {
   return "";
 }
 
+function firstPhoneLike(...values: unknown[]) {
+  for (const value of values) {
+    const text = firstText(value);
+    if (!text) continue;
+    const digits = text.replace(/@.+$/, "").replace(/:.+$/, "").replace(/\D/g, "");
+    if (digits.length >= 8 || /@c\.us|@s\.whatsapp\.net/i.test(text)) return text;
+  }
+  return firstText(...values);
+}
+
 export async function POST(req: Request) {
   if (!allowed(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
   const payload = body.data ?? body;
   const text = firstText(payload.body, payload.text, payload.message, payload.caption, payload.Body, body.body);
-  const from = firstText(payload.author, payload.sender, payload.from, payload.phone, payload.From, body.from);
+  const from = firstPhoneLike(payload.author, payload.sender, payload.from, payload.phone, payload.From, body.from);
   const to = firstText(payload.to, payload.chatId, payload.chat_id, body.to);
   const isOutgoing = Boolean(payload.fromMe ?? payload.from_me ?? body.fromMe ?? body.from_me);
   const textValue = String(text);

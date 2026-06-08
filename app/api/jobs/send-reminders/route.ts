@@ -1,6 +1,8 @@
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { countryCodeForTeam, displayNameForTeam } from "@/lib/flags";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
+import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
+import { isPredictionLocked } from "@/lib/scoring";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
@@ -63,11 +65,29 @@ function stageLabel(match: ReminderMatch) {
   return match.stage ?? "Partido";
 }
 
-function reminderMessage(user: Profile, matches: ReminderMatch[], appUrl: string, manual: boolean) {
+function isReminderPredictionCandidate(match: ReminderMatch) {
+  if (match.status === "locked" || match.status === "scheduled" || match.status === "closed" || match.status === "final") return false;
+  if (isMatchBlockedUntilOfficial({ stage: match.stage ?? "GROUP", status: match.status, home_team: match.home_team, away_team: match.away_team })) return false;
+  if (isPredictionLocked(match.kickoff_at, Boolean(match.locked))) return false;
+  return true;
+}
+
+function reminderMessage(
+  user: Profile,
+  matches: ReminderMatch[],
+  appUrl: string,
+  manual: boolean,
+  stats: { loaded: number; available: number; pending: number }
+) {
   return [
     manual ? "⚽ *Pendientes Mundialito*" : "⚽ *Mundialito - pendientes 4h*",
     "",
     `👋 ${user.display_name}, te falta cargar ${matches.length === 1 ? "este pronóstico" : "estos pronósticos"}:`,
+    "",
+    `Cargados: *${stats.loaded} / ${stats.available}* pronósticos disponibles.`,
+    `Pendientes a cargar: *${stats.pending}*.`,
+    "",
+    "Estos son los pendientes a cargar más cercanos:",
     "",
     ...matches.flatMap((match) => [
       `*${matchLabel(match)}*`,
@@ -75,7 +95,7 @@ function reminderMessage(user: Profile, matches: ReminderMatch[], appUrl: string
       ""
     ]),
     "Cargalos desde la app:",
-    appUrl ? `${appUrl}/mi-prode` : "/mi-prode",
+    appUrl ? `${appUrl}/pronosticos` : "/pronosticos",
     "",
     "También podés responder *$pendientes* para ver lo que te falta cuando quieras."
   ].join("\n").trim();
@@ -104,7 +124,7 @@ export async function POST(req: Request) {
 
   if (matchError) return NextResponse.json({ error: matchError.message }, { status: 400 });
 
-  const matches = ((matchRows ?? []) as ReminderMatch[]).filter((match) => !match.locked && match.status !== "locked" && match.status !== "closed");
+  const matches = ((matchRows ?? []) as ReminderMatch[]).filter(isReminderPredictionCandidate);
   const matchIds = matches.map((match) => match.id);
 
   if (!matchIds.length) {
@@ -155,15 +175,17 @@ export async function POST(req: Request) {
   for (const user of (users ?? []) as Profile[]) {
     if (!user.phone) continue;
 
-    const pending = matches.filter((match) => {
+    const userPending = matches.filter((match) => {
       const key = `${user.id}:${match.id}`;
       const dedupeKey = `${match.id}:${user.id}:4h`;
       return !predicted.has(key) && (manual || !sentLogs.has(dedupeKey));
-    }).slice(0, manual ? 8 : undefined);
+    });
+    const stats = { loaded: matches.length - userPending.length, available: matches.length, pending: userPending.length };
+    const pending = userPending.slice(0, manual ? 8 : undefined);
     if (!pending.length) continue;
 
     try {
-      await sendWhatsApp(user.phone, reminderMessage(user, pending, appUrl, manual));
+      await sendWhatsApp(user.phone, reminderMessage(user, pending, appUrl, manual, stats));
       sent += 1;
       reminders += pending.length;
 

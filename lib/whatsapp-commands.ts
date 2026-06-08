@@ -103,7 +103,10 @@ function normalizeText(value: string) {
 }
 
 function normalizePhone(value: string) {
-  return value.replace(/@.+$/, "").replace(/\D/g, "");
+  return value
+    .replace(/@.+$/, "")
+    .replace(/:.+$/, "")
+    .replace(/\D/g, "");
 }
 
 function phonesMatch(left: string, right: string) {
@@ -203,7 +206,7 @@ function answerCommands() {
     "_$resultados Brasil_",
     "",
     "⏳ *$pendientes*",
-    "Lo que te falta cargar.",
+    "Pronósticos abiertos que te faltan cargar. No incluye cerrados, bloqueados ni partidos que ya cargaste.",
     "",
     "_Sin filtro:_",
     "_$pendientes_",
@@ -214,14 +217,14 @@ function answerCommands() {
     "_Sin filtro:_",
     "_$pronosticos_",
     "",
-    "🏆 *$podioanticipado*",
+    "🏆 *$podio*",
     "Campeón, subcampeón y 3er puesto.",
     "",
     "_Sin cargar:_",
-    "_$podioanticipado_",
+    "_$podio_",
     "",
     "_Para cargar:_",
-    "_$podioanticipado Argentina Brasil Uruguay_",
+    "_$podio Argentina Brasil Uruguay_",
     "",
     "✍️ *$carga*",
     "Carga masiva de pronósticos.",
@@ -330,7 +333,7 @@ async function answerPodio(text: string, from?: string) {
       podiumTeamLine("3er puesto +1", data?.third_place_team, data?.third_place_points),
       "",
       lockState.locked ? "El podio ya está cerrado." : "Para cargarlo:",
-      lockState.locked ? "" : "_$podioanticipado Argentina Brasil Uruguay_"
+      lockState.locked ? "" : "_$podio Argentina Brasil Uruguay_"
     ].join("\n");
   }
 
@@ -346,7 +349,7 @@ async function answerPodio(text: string, from?: string) {
       "Mandame 3 selecciones en orden: campeón, subcampeón y 3er puesto.",
       "",
       "Ejemplo:",
-      "_$podioanticipado Argentina Brasil Uruguay_"
+      "_$podio Argentina Brasil Uruguay_"
     ].join("\n");
   }
 
@@ -385,7 +388,7 @@ async function answerPodio(text: string, from?: string) {
     podiumTeamLine("Subcampeón +2", runnerUp.name),
     podiumTeamLine("3er puesto +1", thirdPlace.name),
     "",
-    "Podés verlo cuando quieras con *$podioanticipado*."
+    "Podés verlo cuando quieras con *$podio*."
   ].join("\n");
 }
 
@@ -583,12 +586,10 @@ async function answerResults(text: string) {
 async function answerPending(from?: string) {
   const profile = await findProfileByPhone(from);
   if (!profile || !supabaseConfigured()) {
-    const matches = (await getMatches()) as MatchLite[];
-    const pending = matches.filter((match) => match.home_goals == null && isPendingPredictionCandidate(match)).slice(0, 5);
-    if (!pending.length) return "⏳ *Pendientes*\nNo hay nada pendiente.";
     return [
-      "⏳ *Pendientes*",
-      ...pending.map((match) => `${matchLabel(match)}\n🕒 ${formatArgentinaDateTime(match.kickoff_at)}`)
+      "⏳ *Pendientes de predicción*",
+      "No pude identificar tu WhatsApp como participante.",
+      "Escribile al admin para revisar que tu número esté bien cargado."
     ].join("\n");
   }
 
@@ -607,11 +608,23 @@ async function answerPending(from?: string) {
   if (predictionsError) throw predictionsError;
 
   const predicted = new Set((predictions ?? []).map((prediction) => prediction.match_id));
-  const pending = ((matches ?? []) as PendingMatch[]).filter((match) => match.id && !predicted.has(match.id) && isPendingPredictionCandidate(match));
-  if (!pending.length) return "⏳ *Pendientes*\nNo hay nada pendiente.";
+  const available = ((matches ?? []) as PendingMatch[]).filter((match) => match.id && isPendingPredictionCandidate(match));
+  const pending = available.filter((match) => match.id && !predicted.has(match.id));
+  const loaded = available.length - pending.length;
+  if (!pending.length) {
+    return [
+      "⏳ *Pendientes de predicción*",
+      `Cargados: *${loaded} / ${available.length}* pronósticos disponibles.`,
+      "No tenés partidos pendientes para predecir.",
+      "Los partidos cerrados o bloqueados no cuentan."
+    ].join("\n");
+  }
 
   return [
-    "⏳ *Pendientes*",
+    "⏳ *Pendientes de predicción*",
+    `Cargados: *${loaded} / ${available.length}* pronósticos disponibles.`,
+    "Próximos pendientes a jugarse:",
+    "",
     ...pending.slice(0, 8).map((match) => `${matchLabel(match)}\n🕒 ${formatArgentinaDateTime(match.kickoff_at)}`)
   ].join("\n");
 }
