@@ -9,10 +9,10 @@ import type { Match, MatchStage, PodiumPrediction, Prediction, Profile } from "@
 import { TeamLabel } from "@/components/team-label";
 import { DateFilter } from "@/components/date-filter";
 import { CountryFilterPicker } from "@/components/country-filter-picker";
-import { PointsPill } from "@/components/points-pill";
+import { PointsPill, pointsPillClass } from "@/components/points-pill";
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import { RankingDescription } from "@/components/ranking-description";
-import { Calculator, CircleDot, ClipboardPaste, Eye, GitBranch, Lock, Medal, RotateCcw, Table2, Trophy, X } from "lucide-react";
+import { Calculator, CircleDot, ClipboardPaste, Eye, GitBranch, ListChecks, Lock, Medal, RotateCcw, Table2, Target, Trophy, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type SimPrediction = Prediction & { profiles?: Pick<Profile, "display_name"> | null };
@@ -63,6 +63,13 @@ function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string) 
   return matchFitsBasicFilters(match, teamFilter, dateFilter);
 }
 
+function podiumClass(index: number) {
+  if (index === 0) return "border-yellow-300/50 bg-yellow-300/12 text-yellow-200";
+  if (index === 1) return "border-slate-200/50 bg-slate-200/12 text-slate-100";
+  if (index === 2) return "border-orange-300/50 bg-orange-400/12 text-orange-200";
+  return "border-line";
+}
+
 function parseGoalInput(value: string) {
   if (!/^\d*$/.test(value)) return null;
   if (value === "") return "";
@@ -90,16 +97,38 @@ type SimDetail = {
   trendHit: boolean;
 };
 
+function DetailCounter({
+  icon: Icon,
+  label,
+  value,
+  className
+}: {
+  icon: typeof ListChecks;
+  label: string;
+  value: string;
+  className: string;
+}) {
+  return (
+    <div className={`rounded-lg bg-field px-4 py-3 text-center ${className}`}>
+      <div className="flex items-center justify-center gap-2">
+        <strong className="block text-2xl">{value}</strong>
+        <Icon className="h-5 w-5" />
+      </div>
+      <span className="text-xs font-black uppercase text-ink/55">{label}</span>
+    </div>
+  );
+}
+
 type SimPodiumDetail = {
   champion: number;
   runnerUp: number;
   thirdPlace: number;
 };
 
-function ScoreBox({ value }: { value: number | string | null | undefined }) {
+function ScoreBox({ value, className = "" }: { value: number | string | null | undefined; className?: string }) {
   return (
     <input
-      className="field min-h-10 px-2 text-center font-black leading-none disabled:opacity-100"
+      className={`field min-h-10 px-2 text-center font-black leading-none disabled:opacity-100 ${className}`}
       disabled
       readOnly
       value={value ?? ""}
@@ -542,6 +571,9 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
   const ranking = rankingData.rows;
   const selectedRankingRow = ranking.find((row) => row.userId === selectedRankingUserId) ?? null;
   const selectedRankingDetails = rankingData.details.filter((detail) => detail.userId === selectedRankingUserId);
+  const selectedUserPredictionCount = selectedRankingUserId ? predictions.filter((prediction) => prediction.user_id === selectedRankingUserId).length : 0;
+  const selectedUserPodium = selectedRankingUserId ? podiumPredictions.find((prediction) => prediction.user_id === selectedRankingUserId) : null;
+  const selectedUserPodiumLoaded = [selectedUserPodium?.champion_team, selectedUserPodium?.runner_up_team, selectedUserPodium?.third_place_team].filter(Boolean).length;
 
   useEffect(() => {
     if (!selectedRankingRow) return;
@@ -895,8 +927,8 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
           <p className="mt-1 text-sm text-ink/60">Puntos por exactos y tendencias con los resultados simulados.</p>
         </div>
         {ranking.map((row, index) => (
-          <div className="grid gap-3 border-b border-line p-3 last:border-0 sm:grid-cols-[42px_1fr_auto] sm:items-center" key={row.userId}>
-            <strong className="text-center text-xl font-black text-gold sm:text-2xl">#{index + 1}</strong>
+          <div className={`grid gap-3 border-b p-3 last:border-0 sm:grid-cols-[42px_1fr_auto] sm:items-center ${podiumClass(index)}`} key={row.userId}>
+            <strong className={`text-center text-xl font-black sm:text-2xl ${index < 3 ? "" : "text-gold"}`}>#{index + 1}</strong>
             <div>
               <strong className="text-xl font-black sm:text-2xl">{row.name}</strong>
               <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -929,7 +961,6 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                 <span className="badge">Detalles</span>
                 <div className="mt-2 flex flex-wrap items-baseline gap-3">
                   <h2 className="text-2xl font-black">{selectedRankingRow.name}</h2>
-                  <strong className="text-3xl font-black text-grass">{selectedRankingRow.points} Pts</strong>
                 </div>
                 <RankingDescription
                   className="mt-1 text-sm text-ink/60"
@@ -940,9 +971,29 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                   thirdPlacePoints={selectedRankingRow.podium.thirdPlace}
                 />
               </div>
-              <button className="btn secondary min-w-11 px-0" onClick={() => setSelectedRankingUserId(null)} type="button" aria-label="Cerrar detalles">
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex flex-wrap items-start justify-end gap-2">
+                <DetailCounter
+                  className="border border-grass/25 text-grass"
+                  icon={ListChecks}
+                  label="predicciones"
+                  value={`${selectedUserPredictionCount}/${matches.length}`}
+                />
+                <DetailCounter
+                  className="border border-gold/25 text-gold"
+                  icon={Medal}
+                  label="podio"
+                  value={`${selectedUserPodiumLoaded}/3`}
+                />
+                <DetailCounter
+                  className="border border-red-400/25 text-red-400"
+                  icon={Target}
+                  label="puntos"
+                  value={`${selectedRankingRow.points} Pts`}
+                />
+                <button className="btn secondary min-w-11 px-0" onClick={() => setSelectedRankingUserId(null)} type="button" aria-label="Cerrar detalles">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             {(selectedRankingRow.podium.champion || selectedRankingRow.podium.runnerUp || selectedRankingRow.podium.thirdPlace) ? (
@@ -996,6 +1047,10 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                         <div className="match-card-grid">
                           {items.map((detail) => (
                             <article className="rounded-lg border border-line bg-field p-3" key={detail.id}>
+                              {(() => {
+                                const resultTone = pointsPillClass(detail.points);
+                                return (
+                                  <>
                               <div className="mb-3 flex items-start justify-between gap-3">
                                 <div>
                                   <span className="badge">Grupo {detail.match.group_name}</span>
@@ -1004,17 +1059,25 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                                 <PointsPill points={detail.points} className="min-h-8 rounded-full py-1" />
                               </div>
                               <div className="grid gap-2">
+                                <div className="grid grid-cols-[1fr_72px_72px] gap-2 px-2 text-[11px] font-black uppercase text-ink/45">
+                                  <span />
+                                  <span />
+                                  <span className={`rounded-full border px-2 py-1 text-center ${resultTone}`}>Final</span>
+                                </div>
                                 <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
                                   <TeamLabel name={detail.display.home.name} code={detail.display.home.code} />
                                   <ScoreBox value={detail.homeGoals} />
-                                  <ScoreBox value={detail.actualHomeGoals} />
+                                  <ScoreBox className={resultTone} value={detail.actualHomeGoals} />
                                 </div>
                                 <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
                                   <TeamLabel name={detail.display.away.name} code={detail.display.away.code} />
                                   <ScoreBox value={detail.awayGoals} />
-                                  <ScoreBox value={detail.actualAwayGoals} />
+                                  <ScoreBox className={resultTone} value={detail.actualAwayGoals} />
                                 </div>
                               </div>
+                                  </>
+                                );
+                              })()}
                             </article>
                           ))}
                         </div>
@@ -1027,22 +1090,34 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                       <div className="match-card-grid">
                         {rows.map((detail) => (
                           <article className="rounded-lg border border-line bg-field p-3" key={detail.id}>
+                            {(() => {
+                              const resultTone = pointsPillClass(detail.points);
+                              return (
+                                <>
                             <div className="mb-3 flex items-start justify-between gap-3">
                               <span className="badge">{stageLabels[stage]}</span>
                               <PointsPill points={detail.points} className="min-h-8 rounded-full py-1" />
                             </div>
                             <div className="grid gap-2">
+                              <div className="grid grid-cols-[1fr_72px_72px] gap-2 px-2 text-[11px] font-black uppercase text-ink/45">
+                                <span />
+                                <span />
+                                <span className={`rounded-full border px-2 py-1 text-center ${resultTone}`}>Final</span>
+                              </div>
                               <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
                                 <TeamLabel name={detail.display.home.name} code={detail.display.home.code} />
                                 <ScoreBox value={detail.homeGoals} />
-                                <ScoreBox value={detail.actualHomeGoals} />
+                                <ScoreBox className={resultTone} value={detail.actualHomeGoals} />
                               </div>
                               <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
                                 <TeamLabel name={detail.display.away.name} code={detail.display.away.code} />
                                 <ScoreBox value={detail.awayGoals} />
-                                <ScoreBox value={detail.actualAwayGoals} />
+                                <ScoreBox className={resultTone} value={detail.actualAwayGoals} />
                               </div>
                             </div>
+                                </>
+                              );
+                            })()}
                           </article>
                         ))}
                       </div>

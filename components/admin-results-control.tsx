@@ -1,14 +1,16 @@
 "use client";
 
+import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { TeamLabel } from "@/components/team-label";
 import { PointsPill } from "@/components/points-pill";
 import { countryCodeForTeam, displayNameForTeam } from "@/lib/flags";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { scorePrediction } from "@/lib/scoring";
+import { teamOptionsFromMatches, type TeamOption } from "@/lib/team-options";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
 import { Calculator, GitBranch, Medal, Save, Table2, Trash2, Trophy } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 type AdminPrediction = Prediction & { profiles?: Pick<Profile, "display_name"> | null };
 type AdminPodium = {
@@ -93,6 +95,26 @@ function initialPodiumDrafts(podiums: AdminPodium[]) {
   }, {});
 }
 
+function AdminPodiumPicker({
+  label,
+  colorClass,
+  children
+}: {
+  label: string;
+  colorClass: string;
+  children: ReactNode;
+}) {
+  return (
+    <article className="panel flex h-full flex-col gap-4 p-4">
+      <div>
+        <Trophy className={`h-7 w-7 ${colorClass}`} />
+        <h3 className={`mt-3 text-xl font-black ${colorClass}`}>{label}</h3>
+      </div>
+      <div className="mt-auto pt-2">{children}</div>
+    </article>
+  );
+}
+
 function flagEmoji(team: string) {
   const code = countryCodeForTeam(team);
   if (!code) return "🏳️";
@@ -143,14 +165,17 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
       return acc;
     }, {});
   }, [podiumRows]);
-  const teamOptions = useMemo(() => {
-    const teams = new Map<string, string>();
-    for (const match of matches) {
-      if (match.home_team && !isPlaceholderTeamName(match.home_team)) teams.set(match.home_team, displayNameForTeam(match.home_team));
-      if (match.away_team && !isPlaceholderTeamName(match.away_team)) teams.set(match.away_team, displayNameForTeam(match.away_team));
+  const teamOptions = useMemo<TeamOption[]>(() => {
+    const options = new Map<string, TeamOption>();
+    for (const option of teamOptionsFromMatches(matches)) options.set(option.name, option);
+    for (const podium of podiumRows) {
+      [podium.champion_team, podium.runner_up_team, podium.third_place_team].forEach((team) => {
+        if (!team) return;
+        if (!options.has(team)) options.set(team, { name: team, code: countryCodeForTeam(team) });
+      });
     }
-    return [...teams.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [matches]);
+    return [...options.values()].sort((a, b) => displayNameForTeam(a.name).localeCompare(displayNameForTeam(b.name), "es"));
+  }, [matches, podiumRows]);
 
   function updateLocalMatch(matchId: string, patch: Partial<Match>) {
     setMatches((current) => current.map((match) => (match.id === matchId ? { ...match, ...patch } : match)));
@@ -294,19 +319,12 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
   function podiumSelect(userId: string, field: keyof PodiumDraft[string]) {
     const draft = podiumDrafts[userId] ?? { championTeam: "", runnerUpTeam: "", thirdPlaceTeam: "" };
     return (
-      <select
-        className="field h-11 text-center font-bold"
+      <CountryFilterPicker
         disabled={saving}
+        options={teamOptions}
         value={draft[field]}
-        onChange={(event) => setPodiumDrafts((current) => ({ ...current, [userId]: { ...draft, [field]: event.target.value } }))}
-      >
-        <option value="">Selección</option>
-        {teamOptions.map(([team, label]) => (
-          <option key={team} value={team}>
-            {flagEmoji(team)} {label}
-          </option>
-        ))}
-      </select>
+        onChange={(value) => setPodiumDrafts((current) => ({ ...current, [userId]: { ...draft, [field]: value } }))}
+      />
     );
   }
 
@@ -475,7 +493,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
     <div className="grid gap-4">
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
-          ["podio", "Podio", Medal],
+          ["podio", "Podio Anticipado", Medal],
           ["grupos", "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llaves", "Llaves", GitBranch]
@@ -497,7 +515,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
           {message && <p className="panel p-3 text-sm font-bold text-ink/70">{message}</p>}
           <article className="panel overflow-hidden">
             <div className="border-b border-line p-4">
-              <h2 className="flex items-center gap-2 text-xl font-black"><Medal className="h-5 w-5 text-gold" />Podio anticipado por jugador</h2>
+              <h2 className="flex items-center gap-2 text-xl font-black"><Medal className="h-5 w-5 text-gold" />Podio Anticipado por jugador</h2>
               <p className="mt-1 text-sm text-ink/60">Edita campeón, subcampeón y 3er puesto de cada participante.</p>
             </div>
             <div className="grid gap-3 p-4 lg:grid-cols-2">
@@ -509,19 +527,16 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
                       <strong className="text-xl font-black">{profile.display_name}</strong>
                       <PointsPill points={podium?.points ?? 0} className="min-h-8 rounded-full py-1" />
                     </div>
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <div className="grid gap-1">
-                        <span className="text-xs font-black uppercase text-yellow-200">Campeón</span>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <AdminPodiumPicker colorClass="text-yellow-200" label="Campeón">
                         {podiumSelect(profile.id, "championTeam")}
-                      </div>
-                      <div className="grid gap-1">
-                        <span className="text-xs font-black uppercase text-slate-100">Subcampeón</span>
+                      </AdminPodiumPicker>
+                      <AdminPodiumPicker colorClass="text-slate-100" label="Subcampeón">
                         {podiumSelect(profile.id, "runnerUpTeam")}
-                      </div>
-                      <div className="grid gap-1">
-                        <span className="text-xs font-black uppercase text-orange-200">3er puesto</span>
+                      </AdminPodiumPicker>
+                      <AdminPodiumPicker colorClass="text-orange-200" label="3er Puesto">
                         {podiumSelect(profile.id, "thirdPlaceTeam")}
-                      </div>
+                      </AdminPodiumPicker>
                     </div>
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap gap-2 text-xs font-black uppercase">
