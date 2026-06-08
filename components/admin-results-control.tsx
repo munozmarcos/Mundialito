@@ -3,9 +3,11 @@
 import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { TeamLabel } from "@/components/team-label";
 import { PointsPill } from "@/components/points-pill";
+import { StatusPill } from "@/components/status-pill";
 import { countryCodeForTeam, displayNameForTeam } from "@/lib/flags";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
-import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
+import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
+import type { PodiumStatus } from "@/lib/podium";
 import { scorePrediction } from "@/lib/scoring";
 import { teamOptionsFromMatches, type TeamOption } from "@/lib/team-options";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
@@ -29,6 +31,7 @@ type Props = {
   profiles: Profile[];
   predictions: AdminPrediction[];
   podiums: AdminPodium[];
+  initialPodiumStatus: PodiumStatus;
 };
 
 type ScoreDraft = Record<string, { home: number | ""; away: number | ""; penaltyWinner?: string | null }>;
@@ -105,12 +108,12 @@ function AdminPodiumPicker({
   children: ReactNode;
 }) {
   return (
-    <article className="panel flex h-full flex-col gap-4 p-4">
-      <div>
-        <Trophy className={`h-7 w-7 ${colorClass}`} />
-        <h3 className={`mt-3 text-xl font-black ${colorClass}`}>{label}</h3>
+    <article className="panel grid gap-3 p-3 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
+      <div className="flex items-center gap-3">
+        <Trophy className={`h-8 w-8 shrink-0 ${colorClass}`} />
+        <h3 className={`text-lg font-black ${colorClass}`}>{label}</h3>
       </div>
-      <div className="mt-auto pt-2">{children}</div>
+      <div>{children}</div>
     </article>
   );
 }
@@ -127,12 +130,13 @@ function flagEmoji(team: string) {
     .join("");
 }
 
-export function AdminResultsControl({ initialMatches, profiles, predictions, podiums }: Props) {
+export function AdminResultsControl({ initialMatches, profiles, predictions, podiums, initialPodiumStatus }: Props) {
   const [matches, setMatches] = useState(initialMatches);
   const [scores, setScores] = useState<ScoreDraft>(() => initialScores(initialMatches));
   const [drafts, setDrafts] = useState<PredictionDraft>(() => initialPredictionDrafts(predictions));
   const [podiumRows, setPodiumRows] = useState<AdminPodium[]>(podiums);
   const [podiumDrafts, setPodiumDrafts] = useState<PodiumDraft>(() => initialPodiumDrafts(podiums));
+  const [podiumStatus, setPodiumStatus] = useState<PodiumStatus>(initialPodiumStatus);
   const [activeTab, setActiveTab] = useState<"podio" | "grupos" | "tablas" | "llaves">("grupos");
   const [activeGroup, setActiveGroup] = useState("");
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
@@ -311,6 +315,20 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
       setMessage("Podio anticipado eliminado.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo eliminar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function changePodiumStatus(status: PodiumStatus) {
+    setSaving(true);
+    setMessage("");
+    try {
+      const data = await request("/api/admin/podium", "PATCH", { status });
+      setPodiumStatus((data.status ?? status) as PodiumStatus);
+      setMessage(status === "open" ? "Podio anticipado abierto." : status === "closed" ? "Podio anticipado cerrado." : "Podio anticipado bloqueado.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo actualizar el estado del podio.");
     } finally {
       setSaving(false);
     }
@@ -514,9 +532,24 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
         <section className="grid gap-4">
           {message && <p className="panel p-3 text-sm font-bold text-ink/70">{message}</p>}
           <article className="panel overflow-hidden">
-            <div className="border-b border-line p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line p-4">
+              <div>
               <h2 className="flex items-center gap-2 text-xl font-black"><Medal className="h-5 w-5 text-gold" />Podio Anticipado por jugador</h2>
               <p className="mt-1 text-sm text-ink/60">Edita campeón, subcampeón y 3er puesto de cada participante.</p>
+            </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <StatusPill status={podiumStatus} />
+                <select
+                  className="field min-h-10 w-36 px-3 text-sm font-black"
+                  disabled={saving}
+                  value={podiumStatus}
+                  onChange={(event) => changePodiumStatus(event.target.value as PodiumStatus)}
+                >
+                  <option value="open">Abierto</option>
+                  <option value="closed">Cerrado</option>
+                  <option value="locked">Bloqueado</option>
+                </select>
+              </div>
             </div>
             <div className="grid gap-3 p-4 lg:grid-cols-2">
               {profiles.map((profile) => {
@@ -527,7 +560,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
                       <strong className="text-xl font-black">{profile.display_name}</strong>
                       <PointsPill points={podium?.points ?? 0} className="min-h-8 rounded-full py-1" />
                     </div>
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-3">
                       <AdminPodiumPicker colorClass="text-yellow-200" label="Campeón">
                         {podiumSelect(profile.id, "championTeam")}
                       </AdminPodiumPicker>
@@ -538,13 +571,8 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
                         {podiumSelect(profile.id, "thirdPlaceTeam")}
                       </AdminPodiumPicker>
                     </div>
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex flex-wrap gap-2 text-xs font-black uppercase">
-                        <span className="rounded-full border border-yellow-300/35 bg-yellow-300/10 px-2 py-1 text-yellow-200">{podium?.champion_points ?? 0} campeón</span>
-                        <span className="rounded-full border border-slate-200/35 bg-slate-200/10 px-2 py-1 text-slate-100">{podium?.runner_up_points ?? 0} sub</span>
-                        <span className="rounded-full border border-orange-300/35 bg-orange-400/10 px-2 py-1 text-orange-200">{podium?.third_place_points ?? 0} 3er</span>
-                      </div>
-                      <div className="flex gap-2">
+                    <div className="mt-4 flex justify-end">
+                      <div className="flex flex-wrap gap-2">
                         <button className="btn min-h-9 px-3" disabled={saving} onClick={() => savePodium(profile.id)} type="button">
                           <Save className="h-4 w-4" />
                           Guardar

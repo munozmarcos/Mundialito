@@ -10,6 +10,12 @@ export function pointsPillClass(points: number) {
   return "border-line bg-field text-ink/55";
 }
 
+export function pointsInputClass(points: number) {
+  if (points >= 3) return "!border-grass/35 !bg-emerald-950/60 !text-grass";
+  if (points > 0) return "!border-blue-300/35 !bg-blue-950/55 !text-blue-200";
+  return "";
+}
+
 export function PointsPill({ points, label, className = "" }: PointsPillProps) {
   return (
     <span className={`inline-flex min-h-10 items-center justify-center rounded-lg border px-3 text-sm font-black ${pointsPillClass(points)} ${className}`}>

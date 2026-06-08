@@ -1,4 +1,4 @@
-import { recalculateAllPodiumPoints, validatePodiumTeams } from "@/lib/podium";
+import { getPodiumLockState, recalculateAllPodiumPoints, validatePodiumTeams } from "@/lib/podium";
 import { requireAdmin, supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -8,6 +8,10 @@ const Body = z.object({
   championTeam: z.string().trim().min(1).max(80).nullable(),
   runnerUpTeam: z.string().trim().min(1).max(80).nullable(),
   thirdPlaceTeam: z.string().trim().min(1).max(80).nullable()
+});
+
+const StatusBody = z.object({
+  status: z.enum(["open", "closed", "locked"])
 });
 
 export async function PUT(req: Request) {
@@ -50,4 +54,19 @@ export async function DELETE(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   await recalculateAllPodiumPoints(db);
   return NextResponse.json({ ok: true });
+}
+
+export async function PATCH(req: Request) {
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = StatusBody.parse(await req.json());
+  const db = supabaseAdmin();
+  const { error } = await db
+    .from("podium_settings")
+    .upsert({ id: true, status: body.status }, { onConflict: "id" });
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  const state = await getPodiumLockState(db);
+  return NextResponse.json({ ok: true, status: state.status, locked: state.locked, reason: state.reason });
 }

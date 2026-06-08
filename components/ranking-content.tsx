@@ -3,7 +3,7 @@
 import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { DateFilter } from "@/components/date-filter";
 import { EmptyState } from "@/components/empty-state";
-import { PointsPill, pointsPillClass } from "@/components/points-pill";
+import { PointsPill, pointsInputClass, pointsPillClass } from "@/components/points-pill";
 import { RankingDescription } from "@/components/ranking-description";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
@@ -85,6 +85,7 @@ function DetailCard({ detail }: { detail: RankingPredictionDetail }) {
   const match = asMatch(detail.matches);
   if (!match) return null;
   const resultTone = pointsPillClass(detail.points);
+  const resultInputTone = pointsInputClass(detail.points);
   return (
     <article className="rounded-lg border border-line bg-field p-3">
       <div className="mb-3 flex items-start justify-between gap-3">
@@ -98,17 +99,17 @@ function DetailCard({ detail }: { detail: RankingPredictionDetail }) {
         <div className="grid grid-cols-[1fr_72px_72px] gap-2 px-2 text-[11px] font-black uppercase text-ink/45">
           <span />
           <span />
-          <span className={`rounded-full border px-2 py-1 text-center ${resultTone}`}>Final</span>
+          <span className="rounded-full border border-line bg-field px-2 py-1 text-center text-ink/55">Final</span>
         </div>
         <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
           <TeamLabel name={match.home_team} code={match.home_country_code} />
           <ScoreBox value={detail.home_goals} />
-          <ScoreBox className={resultTone} value={match.home_goals} />
+          <ScoreBox className={resultInputTone} value={match.home_goals} />
         </div>
         <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
           <TeamLabel name={match.away_team} code={match.away_country_code} />
           <ScoreBox value={detail.away_goals} />
-          <ScoreBox className={resultTone} value={match.away_goals} />
+          <ScoreBox className={resultInputTone} value={match.away_goals} />
         </div>
       </div>
       <p className="mt-3 text-xs font-semibold text-ink/60">

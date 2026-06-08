@@ -1,6 +1,7 @@
 import { EmptyState } from "@/components/empty-state";
 import { AdminResultsControl } from "@/components/admin-results-control";
 import { getMatches } from "@/lib/data";
+import { getPodiumLockState, type PodiumStatus } from "@/lib/podium";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 import type { Prediction, Profile } from "@/lib/types";
 
@@ -10,6 +11,7 @@ export default async function ResultsAdminPage() {
   const matches = await getMatches();
   let profiles: Profile[] = [];
   let predictions: (Prediction & { profiles?: Pick<Profile, "display_name"> | null })[] = [];
+  let podiumStatus: PodiumStatus = "open";
   let podiums: Array<{
     user_id: string;
     champion_team?: string | null;
@@ -31,6 +33,11 @@ export default async function ResultsAdminPage() {
     profiles = (profileRes.data ?? []) as Profile[];
     predictions = (predictionRes.data ?? []) as (Prediction & { profiles?: Pick<Profile, "display_name"> | null })[];
     podiums = podiumRes.data ?? [];
+    try {
+      podiumStatus = (await getPodiumLockState(db)).status;
+    } catch {
+      podiumStatus = "open";
+    }
   }
 
   return (
@@ -42,7 +49,7 @@ export default async function ResultsAdminPage() {
       {!matches.length ? (
         <EmptyState title="No hay partidos" text="Primero carga el calendario del Mundialito." />
       ) : (
-        <AdminResultsControl initialMatches={matches} profiles={profiles} predictions={predictions} podiums={podiums} />
+        <AdminResultsControl initialMatches={matches} profiles={profiles} predictions={predictions} podiums={podiums} initialPodiumStatus={podiumStatus} />
       )}
     </div>
   );

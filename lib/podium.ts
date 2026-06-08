@@ -8,6 +8,8 @@ export const PODIUM_POINTS = {
   thirdPlace: 1
 } as const;
 
+export type PodiumStatus = "open" | "closed" | "locked";
+
 type PodiumPrediction = {
   champion_team?: string | null;
   runner_up_team?: string | null;
@@ -88,6 +90,28 @@ export function validatePodiumTeams(championTeam?: string | null, runnerUpTeam?:
 }
 
 export async function getPodiumLockState(db: any) {
+  const { data: settings, error: settingsError } = await db
+    .from("podium_settings")
+    .select("status")
+    .eq("id", true)
+    .maybeSingle();
+  if (settingsError && settingsError.code !== "42P01") throw settingsError;
+  const manualStatus = (settings?.status ?? "open") as PodiumStatus;
+  if (manualStatus === "locked") {
+    return {
+      locked: true,
+      status: "locked" as PodiumStatus,
+      reason: "El podio anticipado esta bloqueado por el admin."
+    };
+  }
+  if (manualStatus === "closed") {
+    return {
+      locked: true,
+      status: "closed" as PodiumStatus,
+      reason: "El podio anticipado esta cerrado por el admin."
+    };
+  }
+
   const { data, error } = await db
     .from("matches")
     .select("stage,status,home_team,away_team,kickoff_at")
@@ -107,6 +131,7 @@ export async function getPodiumLockState(db: any) {
 
   return {
     locked: hasEnabledRoundOf32 || closesByKickoff,
+    status: hasEnabledRoundOf32 || closesByKickoff ? "closed" as PodiumStatus : "open" as PodiumStatus,
     reason: closesByKickoff
       ? "El podio cerro porque faltan 15 minutos o menos para el primer partido de 16vos."
       : hasEnabledRoundOf32

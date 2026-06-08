@@ -64,6 +64,12 @@ create table if not exists podium_predictions (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists podium_settings (
+  id boolean primary key default true check (id),
+  status text not null default 'open' check (status in ('open', 'closed', 'locked')),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists notification_logs (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references profiles(id) on delete cascade,
@@ -110,6 +116,15 @@ for each row execute function touch_updated_at();
 drop trigger if exists podium_predictions_touch_updated_at on podium_predictions;
 create trigger podium_predictions_touch_updated_at
 before update on podium_predictions
+for each row execute function touch_updated_at();
+
+insert into podium_settings (id, status)
+values (true, 'open')
+on conflict (id) do nothing;
+
+drop trigger if exists podium_settings_touch_updated_at on podium_settings;
+create trigger podium_settings_touch_updated_at
+before update on podium_settings
 for each row execute function touch_updated_at();
 
 create or replace function public.handle_new_user()
@@ -191,6 +206,7 @@ alter table profiles enable row level security;
 alter table matches enable row level security;
 alter table predictions enable row level security;
 alter table podium_predictions enable row level security;
+alter table podium_settings enable row level security;
 alter table notification_logs enable row level security;
 alter table payment_attempts enable row level security;
 alter table news_items enable row level security;

@@ -9,7 +9,7 @@ import type { Match, MatchStage, PodiumPrediction, Prediction, Profile } from "@
 import { TeamLabel } from "@/components/team-label";
 import { DateFilter } from "@/components/date-filter";
 import { CountryFilterPicker } from "@/components/country-filter-picker";
-import { PointsPill, pointsPillClass } from "@/components/points-pill";
+import { PointsPill, pointsInputClass, pointsPillClass } from "@/components/points-pill";
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import { RankingDescription } from "@/components/ranking-description";
 import { Calculator, CircleDot, ClipboardPaste, Eye, GitBranch, ListChecks, Lock, Medal, RotateCcw, Table2, Target, Trophy, X } from "lucide-react";
@@ -1049,6 +1049,7 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                             <article className="rounded-lg border border-line bg-field p-3" key={detail.id}>
                               {(() => {
                                 const resultTone = pointsPillClass(detail.points);
+                                const resultInputTone = pointsInputClass(detail.points);
                                 return (
                                   <>
                               <div className="mb-3 flex items-start justify-between gap-3">
@@ -1062,17 +1063,17 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                                 <div className="grid grid-cols-[1fr_72px_72px] gap-2 px-2 text-[11px] font-black uppercase text-ink/45">
                                   <span />
                                   <span />
-                                  <span className={`rounded-full border px-2 py-1 text-center ${resultTone}`}>Final</span>
+                                  <span className="rounded-full border border-line bg-field px-2 py-1 text-center text-ink/55">Final</span>
                                 </div>
                                 <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
                                   <TeamLabel name={detail.display.home.name} code={detail.display.home.code} />
                                   <ScoreBox value={detail.homeGoals} />
-                                  <ScoreBox className={resultTone} value={detail.actualHomeGoals} />
+                                  <ScoreBox className={resultInputTone} value={detail.actualHomeGoals} />
                                 </div>
                                 <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
                                   <TeamLabel name={detail.display.away.name} code={detail.display.away.code} />
                                   <ScoreBox value={detail.awayGoals} />
-                                  <ScoreBox className={resultTone} value={detail.actualAwayGoals} />
+                                  <ScoreBox className={resultInputTone} value={detail.actualAwayGoals} />
                                 </div>
                               </div>
                                   </>
@@ -1092,6 +1093,7 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                           <article className="rounded-lg border border-line bg-field p-3" key={detail.id}>
                             {(() => {
                               const resultTone = pointsPillClass(detail.points);
+                              const resultInputTone = pointsInputClass(detail.points);
                               return (
                                 <>
                             <div className="mb-3 flex items-start justify-between gap-3">
@@ -1102,17 +1104,17 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                               <div className="grid grid-cols-[1fr_72px_72px] gap-2 px-2 text-[11px] font-black uppercase text-ink/45">
                                 <span />
                                 <span />
-                                <span className={`rounded-full border px-2 py-1 text-center ${resultTone}`}>Final</span>
+                                <span className="rounded-full border border-line bg-field px-2 py-1 text-center text-ink/55">Final</span>
                               </div>
                               <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
                                 <TeamLabel name={detail.display.home.name} code={detail.display.home.code} />
                                 <ScoreBox value={detail.homeGoals} />
-                                <ScoreBox className={resultTone} value={detail.actualHomeGoals} />
+                                <ScoreBox className={resultInputTone} value={detail.actualHomeGoals} />
                               </div>
                               <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
                                 <TeamLabel name={detail.display.away.name} code={detail.display.away.code} />
                                 <ScoreBox value={detail.awayGoals} />
-                                <ScoreBox className={resultTone} value={detail.actualAwayGoals} />
+                                <ScoreBox className={resultInputTone} value={detail.actualAwayGoals} />
                               </div>
                             </div>
                                 </>
