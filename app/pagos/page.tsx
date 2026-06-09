@@ -2,6 +2,7 @@
 import { PaymentCard } from "@/components/payment-card";
 import { PaymentsContent } from "@/components/payments-content";
 import { getParticipantPayments, getPaymentSummary } from "@/lib/data";
+import { applyMercadoPagoPayment } from "@/lib/mercadopago-payments";
 import { CreditCard, Trophy } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,17 @@ function money(value: number) {
   }).format(value);
 }
 
-export default async function PaymentsPage({ searchParams }: { searchParams?: { payment?: string } }) {
+type PaymentSearchParams = {
+  payment?: string;
+  payment_id?: string;
+  collection_id?: string;
+  status?: string;
+};
+
+export default async function PaymentsPage({ searchParams }: { searchParams?: PaymentSearchParams }) {
+  const returnPaymentId = searchParams?.payment_id || searchParams?.collection_id;
+  if (returnPaymentId) await applyMercadoPagoPayment(returnPaymentId);
+
   const [summary, participants] = await Promise.all([getPaymentSummary(), getParticipantPayments()]);
 
   return (

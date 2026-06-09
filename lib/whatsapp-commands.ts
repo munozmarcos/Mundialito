@@ -1,6 +1,6 @@
 ﻿import { getMatches, getRanking } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
-import { countryCodeForTeam, displayNameForTeam } from "@/lib/flags";
+import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { getPodiumLockState, recalculateAllPodiumPoints, validatePodiumTeams } from "@/lib/podium";
 import { isPredictionLocked } from "@/lib/scoring";
@@ -122,15 +122,7 @@ function teamsAreClose(query: string, team: string) {
 }
 
 function flagEmoji(team: string, explicit?: string | null) {
-  const code = countryCodeForTeam(team, explicit);
-  if (!code) return "🏳️";
-  if (code === "gb-sct") return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0073, 0xe0063, 0xe0074, 0xe007f);
-  if (code === "gb-eng") return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0065, 0xe006e, 0xe0067, 0xe007f);
-  return code
-    .toUpperCase()
-    .split("")
-    .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
-    .join("");
+  return flagEmojiForTeam(team, explicit);
 }
 
 function matchLabel(match: Pick<MatchLite, "home_team" | "away_team" | "home_country_code" | "away_country_code">) {

@@ -127,13 +127,13 @@ export default function WhatsAppAdminPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <section className="grid items-start gap-4 lg:grid-cols-[420px_minmax(0,1fr)]">
         <div className="panel grid gap-4 p-6">
           <label className="grid gap-2">
             <span className="text-sm font-bold">Mensaje</span>
             <textarea
-              className="field dark-scrollbar max-h-[180px] min-h-[130px] w-full resize-y py-3 text-base leading-6"
-              rows={5}
+              className="field dark-scrollbar h-[220px] max-h-[260px] min-h-[180px] w-full resize-y py-3 text-base leading-6"
+              rows={8}
               value={body}
               onChange={(event) => setBody(event.target.value)}
             />
@@ -152,7 +152,7 @@ export default function WhatsAppAdminPage() {
           </div>
 
           <div className="grid gap-3 border-b border-line p-4">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2">
               {filters.map((item) => (
                 <button
                   className={`rounded-full border px-3 py-2 text-xs font-black ${filter === item.value ? "border-grass bg-grass text-slate-950" : "border-line bg-field text-ink/70"}`}
@@ -168,7 +168,7 @@ export default function WhatsAppAdminPage() {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
               <input className="field h-11 pl-11 text-left" placeholder="Buscar apodo o nro" value={query} onChange={(event) => setQuery(event.target.value)} />
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button className="btn secondary min-h-9 px-3 text-xs" onClick={selectFiltered} type="button">Seleccionar filtro</button>
               <button className="btn secondary min-h-9 px-3 text-xs" onClick={clearFiltered} type="button">Limpiar filtro</button>
             </div>

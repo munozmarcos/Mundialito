@@ -259,6 +259,18 @@ export function flagUrlForTeam(team: string, explicit?: string | null) {
   return `https://flagcdn.com/w40/${code}.png`;
 }
 
+export function flagEmojiForTeam(team: string, explicit?: string | null) {
+  const code = countryCodeForTeam(team, explicit);
+  if (!code) return "🏳️";
+  if (code === "gb-sct") return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0073, 0xe0063, 0xe0074, 0xe007f);
+  if (code === "gb-eng") return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0065, 0xe006e, 0xe0067, 0xe007f);
+  return code
+    .toUpperCase()
+    .split("")
+    .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
+    .join("");
+}
+
 export function displayNameForTeam(team: string) {
   if (isBracketPlaceholder(team)) return team;
   return displayNames[normalize(team)] ?? team;

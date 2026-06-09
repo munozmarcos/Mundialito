@@ -1,4 +1,4 @@
-import { countryCodeForTeam } from "@/lib/flags";
+import { flagEmojiForTeam } from "@/lib/flags";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
@@ -14,14 +14,7 @@ function assertCron(req: Request) {
 }
 
 function flagEmoji(team: string, explicit?: string | null) {
-  const code = countryCodeForTeam(team, explicit);
-  if (!code) return "🏳️";
-  if (code === "gb-eng" || code === "gb-sct") return "🏴";
-  return code
-    .toUpperCase()
-    .split("")
-    .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
-    .join("");
+  return flagEmojiForTeam(team, explicit);
 }
 
 async function notifyMatch(matchId: string) {
@@ -78,3 +71,5 @@ export async function POST(req: Request) {
   const result = await notifyMatch(body.matchId);
   return NextResponse.json(result);
 }
+
+

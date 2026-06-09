@@ -1,5 +1,5 @@
 import { formatArgentinaDateTime } from "@/lib/dates";
-import { countryCodeForTeam } from "@/lib/flags";
+import { flagEmojiForTeam } from "@/lib/flags";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
@@ -16,14 +16,7 @@ function assertCron(req: Request) {
 }
 
 function flagEmoji(team: string, explicit?: string | null) {
-  const code = countryCodeForTeam(team, explicit);
-  if (!code) return "🏳️";
-  if (code === "gb-eng" || code === "gb-sct") return "🏴";
-  return code
-    .toUpperCase()
-    .split("")
-    .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
-    .join("");
+  return flagEmojiForTeam(team, explicit);
 }
 
 export async function POST(req: Request) {
@@ -100,3 +93,5 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   return POST(req);
 }
+
+

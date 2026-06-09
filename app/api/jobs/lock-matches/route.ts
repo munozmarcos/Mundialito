@@ -1,6 +1,6 @@
-﻿import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
-import { countryCodeForTeam } from "@/lib/flags";
+import { flagEmojiForTeam } from "@/lib/flags";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { getPodiumLockState } from "@/lib/podium";
@@ -14,14 +14,7 @@ function assertCron(req: Request) {
 }
 
 function flagEmoji(team: string, explicit?: string | null) {
-  const code = countryCodeForTeam(team, explicit);
-  if (!code) return "🏳️";
-  if (code === "gb-eng" || code === "gb-sct") return "🏴";
-  return code
-    .toUpperCase()
-    .split("")
-    .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
-    .join("");
+  return flagEmojiForTeam(team, explicit);
 }
 
 async function usersMissingPrediction(db: ReturnType<typeof supabaseAdmin>, matchId: string) {
@@ -89,13 +82,13 @@ export async function POST(req: Request) {
         await sendWhatsApp(
           user.phone,
           [
-            "🔒 Mundialito - partido cerrado",
+            "?? Mundialito - partido cerrado",
             "",
             `*${matchLabel}*`,
             "",
-            `🕒 Empieza: ${formatArgentinaDateTime(match.kickoff_at)}`,
-            "⛔ Ya no se pueden cargar ni modificar predicciones.",
-            "📌 Si no cargaste, quedo vacia para este partido."
+            `?? Empieza: ${formatArgentinaDateTime(match.kickoff_at)}`,
+            "? Ya no se pueden cargar ni modificar predicciones.",
+            "?? Si no cargaste, quedo vacia para este partido."
           ].join("\n")
         );
         sent += 1;
@@ -123,3 +116,5 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   return POST(req);
 }
+
+

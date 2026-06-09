@@ -1,5 +1,5 @@
 import { formatArgentinaDateTime } from "@/lib/dates";
-import { countryCodeForTeam, displayNameForTeam } from "@/lib/flags";
+import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { isPredictionLocked } from "@/lib/scoring";
@@ -39,15 +39,7 @@ function assertCron(req: Request) {
 }
 
 function flagEmoji(team: string, explicit?: string | null) {
-  const code = countryCodeForTeam(team, explicit);
-  if (!code) return "🏳️";
-  if (code === "gb-eng") return "🏴";
-  if (code === "gb-sct") return "🏴";
-  return code
-    .toUpperCase()
-    .split("")
-    .map((letter) => String.fromCodePoint(127397 + letter.charCodeAt(0)))
-    .join("");
+  return flagEmojiForTeam(team, explicit);
 }
 
 function matchLabel(match: ReminderMatch) {
@@ -95,7 +87,7 @@ function reminderMessage(
       ""
     ]),
     "Cargalos desde la app:",
-    appUrl ? `${appUrl}/pronosticos` : "/pronosticos",
+    appUrl ? `${appUrl}/mi-prode` : "/mi-prode",
     "",
     "También podés responder *$pendientes* para ver lo que te falta cuando quieras."
   ].join("\n").trim();
