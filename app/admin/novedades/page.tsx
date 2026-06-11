@@ -95,7 +95,7 @@ export default function AdminNewsPage() {
       setMessage(data.error ?? "No se pudo editar la novedad.");
       return;
     }
-    setNews((current) => current.map((item) => (item.id === editingId ? data.news : item)));
+    await loadNews();
     setEditingId(null);
     setMessage("Novedad actualizada.");
   }
@@ -178,13 +178,11 @@ export default function AdminNewsPage() {
                       <X className="h-4 w-4" />
                     </button>
                   </>
-                ) : (
-                  canEdit && (
-                    <button className="btn secondary min-h-9 px-3" onClick={() => startEdit(item)} type="button">
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  )
-                )}
+                ) : canEdit ? (
+                  <button className="btn secondary min-h-9 px-3" onClick={() => startEdit(item)} type="button">
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                ) : null}
                 <button className="btn secondary min-h-9 px-3" onClick={() => deleteNews(item.id)} type="button">
                   <Trash2 className="h-4 w-4" />
                 </button>

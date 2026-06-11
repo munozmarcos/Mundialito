@@ -186,7 +186,7 @@ async function getClosedMatchNotifications(limit: number): Promise<LatestNotific
       body: isLive
         ? "Esta en vivo."
         : hasResult
-        ? "Ya cerro."
+        ? ""
         : "Ya cerro la carga de pronosticos.",
       created_at: match.kickoff_at,
       type: "closed" as const,

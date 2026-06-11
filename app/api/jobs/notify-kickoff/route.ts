@@ -32,8 +32,7 @@ export async function POST(req: Request) {
     .from("matches")
     .select("*")
     .gte("kickoff_at", from)
-    .lte("kickoff_at", to)
-    .is("home_goals", null);
+    .lte("kickoff_at", to);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   const { data: users, error: usersError } = await db

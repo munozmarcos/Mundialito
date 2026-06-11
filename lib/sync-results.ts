@@ -1,7 +1,9 @@
 import { recalculateMatch } from "@/lib/recalculate";
 import { recalculateAllPodiumPoints } from "@/lib/podium";
+import { flagEmojiForTeam } from "@/lib/flags";
 import { fetchProviderResults, teamsMatch, type ProviderResult } from "@/lib/results-provider";
 import { supabaseAdmin, supabaseAdminConfigured } from "@/lib/supabase";
+import { sendWhatsApp } from "@/lib/whatsapp";
 
 function resultTimeMatches(match: any, result: ProviderResult) {
   if (!result.playedAt) return true;
@@ -21,6 +23,49 @@ function findLocalMatch(matches: any[], result: ProviderResult) {
     const reverse = teamsMatch(match.home_team, result.awayTeam) && teamsMatch(match.away_team, result.homeTeam);
     return direct || reverse;
   });
+}
+
+async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: any) {
+  if (match.home_goals == null || match.away_goals == null) return { sent: 0, failures: [] as string[] };
+
+  const { data: users, error: usersError } = await db
+    .from("profiles")
+    .select("id,display_name,phone,role")
+    .not("phone", "is", null)
+    .in("role", ["participant", "admin"]);
+  if (usersError) throw usersError;
+
+  let sent = 0;
+  const failures: string[] = [];
+  for (const user of users ?? []) {
+    const dedupeKey = `${match.id}:${user.id}:result-final`;
+    const { error: logError } = await db.from("notification_logs").insert({
+      user_id: user.id,
+      match_id: match.id,
+      kind: "whatsapp-result-final",
+      dedupe_key: dedupeKey
+    });
+    if (logError) continue;
+
+    try {
+      await sendWhatsApp(
+        user.phone,
+        [
+          "🏁 *Partido cerrado*",
+          "",
+          `${flagEmojiForTeam(match.home_team, match.home_country_code)} ${match.home_team} *${match.home_goals}-${match.away_goals}* ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${match.away_team}`,
+          "",
+          "🏆 El ranking ya fue actualizado.",
+          "Responde *$ranking* para ver la tabla."
+        ].join("\n")
+      );
+      sent += 1;
+    } catch (error) {
+      failures.push(`${user.display_name}: ${error instanceof Error ? error.message : "unknown"}`);
+    }
+  }
+
+  return { sent, failures };
 }
 
 export async function syncResultsFromProvider() {
@@ -58,7 +103,9 @@ export async function syncResultsFromProvider() {
 
   let updated = 0;
   let liveInitialized = 0;
+  let resultNotifications = 0;
   const unmatched: ProviderResult[] = [];
+  const notificationFailures: string[] = [];
   const matchedLocalIds = new Set<string>();
 
   for (const result of providerResults) {
@@ -114,6 +161,17 @@ export async function syncResultsFromProvider() {
 
     if (updateError) throw updateError;
     await recalculateMatch(local.id);
+    if (result.status === "closed") {
+      const notification = await notifyFinalResult(db, {
+        ...local,
+        home_goals: homeGoals,
+        away_goals: awayGoals,
+        penalty_winner: penaltyWinner,
+        status: "closed"
+      });
+      resultNotifications += notification.sent;
+      notificationFailures.push(...notification.failures);
+    }
     updated += 1;
   }
 
@@ -151,6 +209,8 @@ export async function syncResultsFromProvider() {
     fetched: providerResults.length,
     updated,
     liveInitialized,
+    resultNotifications,
+    notificationFailures,
     unmatched: unmatched.map((item) => `${item.homeTeam} vs ${item.awayTeam}`)
   };
 }

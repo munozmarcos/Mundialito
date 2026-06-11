@@ -17,6 +17,7 @@ export function summarizeJob(title: string, payload: any) {
   if (typeof data.locked === "number") parts.push(`${data.locked} partidos cerrados`);
   if (typeof data.podiumLocked === "boolean") parts.push(data.podiumLocked ? "podio cerrado" : "podio abierto");
   if (typeof data.sent === "number") parts.push(`${data.sent} mensajes enviados`);
+  if (typeof data.resultNotifications === "number") parts.push(`${data.resultNotifications} resultados enviados`);
   if (typeof data.notifications === "number") parts.push(`${data.notifications} avisos enviados`);
   if (typeof data.inserted === "number") parts.push(`${data.inserted} registros creados`);
   if (Array.isArray(data.unmatched) && data.unmatched.length) parts.push(`${data.unmatched.length} sin asociar`);

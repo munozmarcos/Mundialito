@@ -38,9 +38,11 @@ export async function PATCH(req: Request) {
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id, ...body } = NewsBody.extend({ id: z.string().min(2) }).parse(await req.json());
-  if (!id.startsWith("admin:")) return NextResponse.json({ error: "Solo se pueden editar novedades manuales." }, { status: 400 });
-
   const db = supabaseAdmin();
+  if (!id.startsWith("admin:")) {
+    return NextResponse.json({ error: "Las novedades automaticas solo se pueden borrar." }, { status: 400 });
+  }
+
   const { data, error } = await db
     .from("news_items")
     .update(body)

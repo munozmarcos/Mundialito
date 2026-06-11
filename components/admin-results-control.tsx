@@ -679,31 +679,31 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
                 onChange={(event) => setParticipantFilter(event.target.value)}
               />
               <label className="grid gap-1">
-                <span className="px-1 text-xs font-black uppercase tracking-[0.12em] text-ink/55">Pronósticos</span>
+                <span className="px-1 text-xs font-black uppercase tracking-[0.12em] text-ink/55">Pronosticos</span>
                 <select
-                  className="field min-h-10 px-3 text-center font-black"
+                  className={`field min-h-10 px-3 text-center font-black ${loadStatusFilter === "all" ? "text-ink/45" : "text-ink"}`}
                   value={loadStatusFilter}
                   onChange={(event) => setLoadStatusFilter(event.target.value)}
                   title="Filtro de pronosticos"
                 >
-                <option value="all">Pronósticos</option>
-                <option value="none">Ninguno</option>
-                <option value="pending">Pendientes</option>
-                <option value="complete">Completos</option>
+                  <option value="all">Seleccion</option>
+                  <option value="none">Ninguno</option>
+                  <option value="pending">Pendientes</option>
+                  <option value="complete">Completos</option>
                 </select>
               </label>
               <label className="grid gap-1">
                 <span className="px-1 text-xs font-black uppercase tracking-[0.12em] text-ink/55">Podio</span>
                 <select
-                  className="field min-h-10 px-3 text-center font-black"
+                  className={`field min-h-10 px-3 text-center font-black ${podiumLoadStatusFilter === "all" ? "text-ink/45" : "text-ink"}`}
                   value={podiumLoadStatusFilter}
                   onChange={(event) => setPodiumLoadStatusFilter(event.target.value)}
                   title="Filtro de podio anticipado"
                 >
-                <option value="all">Podio</option>
-                <option value="none">Ninguno</option>
-                <option value="pending">Pendientes</option>
-                <option value="complete">Completos</option>
+                  <option value="all">Seleccion</option>
+                  <option value="none">Ninguno</option>
+                  <option value="pending">Pendientes</option>
+                  <option value="complete">Completos</option>
                 </select>
               </label>
               <button

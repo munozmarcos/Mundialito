@@ -7,6 +7,14 @@ function pointClass(points: number) {
   return "border-line bg-field text-ink/70";
 }
 
+function groupedPointPlayers(players: { name: string; points: number }[]) {
+  const groups = new Map<number, string[]>();
+  for (const player of players) {
+    groups.set(player.points, [...(groups.get(player.points) ?? []), player.name]);
+  }
+  return [...groups.entries()].sort(([a], [b]) => b - a);
+}
+
 export function NotificationBody({ item, compact = false }: { item: LatestNotification; compact?: boolean }) {
   return (
     <div className={compact ? "mt-1 grid gap-1 text-sm font-semibold text-ink/70" : "mt-4 grid gap-3 text-base font-semibold leading-7 text-ink/78"}>
@@ -23,11 +31,11 @@ export function NotificationBody({ item, compact = false }: { item: LatestNotifi
         </div>
       )}
       {item.point_players?.length ? (
-        <div className="flex flex-wrap gap-2">
-          {item.point_players.map((player) => (
-            <span className="rounded-full border border-line bg-field/70 px-2.5 py-1 text-xs font-black text-ink" key={`${player.name}-${player.points}`}>
-              {player.name}{" "}
-              <span className={`ml-1 rounded-full border px-1.5 py-0.5 ${pointClass(player.points)}`}>+{player.points}</span>
+        <div className="grid gap-2">
+          {groupedPointPlayers(item.point_players).map(([points, names]) => (
+            <span className="text-sm font-semibold text-ink/78" key={points}>
+              <span className={`mr-2 rounded-full border px-2 py-1 text-xs font-black ${pointClass(points)}`}>{points} Pts</span>
+              <strong className="font-black text-ink">{names.join(", ")}</strong>
             </span>
           ))}
         </div>
