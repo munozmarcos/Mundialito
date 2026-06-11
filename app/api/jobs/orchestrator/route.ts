@@ -3,10 +3,7 @@ import { NextResponse } from "next/server";
 const always = [
   "/api/jobs/lock-matches",
   "/api/jobs/notify-kickoff",
-  "/api/jobs/sync-results"
-];
-
-const every15 = [
+  "/api/jobs/sync-results",
   "/api/jobs/send-reminders"
 ];
 
@@ -39,7 +36,6 @@ export async function POST(req: Request) {
   const hour = now.getUTCHours();
   const due = new Set<string>(always);
 
-  if (minute % 15 === 0) every15.forEach((path) => due.add(path));
   if (hour === 6 && minute < 5) due.add("/api/jobs/sync-fixtures");
 
   const results = [];
