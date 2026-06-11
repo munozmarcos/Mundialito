@@ -247,7 +247,12 @@ function MatchCard({ match, display }: { match: Match; display?: DisplayMatch })
           <span className="badge">{match.group_name ? `Grupo ${match.group_name}` : stageLabels[match.stage]}</span>
           <p className="mt-2 text-xs font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</p>
         </div>
-        <StatusPill status={unavailable ? "locked" : status} label={unavailable ? "Bloqueado" : undefined} />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {status === "playing" && match.result_updated_at && (
+            <span className="text-[11px] italic text-ink/45">Actualizado - {formatArgentinaDateTime(match.result_updated_at)}</span>
+          )}
+          <StatusPill status={unavailable ? "locked" : status} label={unavailable ? "Bloqueado" : undefined} />
+        </div>
       </div>
       <div className="grid gap-2">
         <div className="grid grid-cols-[1fr_68px] items-center gap-3 rounded-md border border-line bg-field p-2">

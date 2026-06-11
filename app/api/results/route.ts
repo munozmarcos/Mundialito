@@ -38,7 +38,8 @@ export async function POST(req: Request) {
       away_goals: body.awayGoals,
       penalty_winner: body.penaltyWinner ?? null,
       status: "closed",
-      locked: true
+      locked: true,
+      result_updated_at: new Date().toISOString()
     })
     .eq("id", body.matchId);
 
@@ -61,7 +62,7 @@ export async function PATCH(req: Request) {
         ? { locked: true, status: "locked" }
         : body.action === "open"
           ? { locked: false, status: "open" }
-          : { locked: false, status: "open", home_goals: null, away_goals: null, penalty_winner: null };
+          : { locked: false, status: "open", home_goals: null, away_goals: null, penalty_winner: null, result_updated_at: null };
 
   const { error } = await db.from("matches").update(update).eq("id", body.matchId);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

@@ -36,6 +36,7 @@ type PointMatchRow = {
   away_country_code?: string | null;
   home_goals: number | null;
   away_goals: number | null;
+  status?: string | null;
 };
 
 type PointActivityRow = {
@@ -79,7 +80,7 @@ async function getPointMatchNotifications(limit: number): Promise<LatestNotifica
   const db = supabaseAdmin();
   const { data, error } = await db
     .from("predictions")
-    .select("id,user_id,points,updated_at,profiles(display_name),matches(id,home_team,away_team,home_country_code,away_country_code,home_goals,away_goals)")
+    .select("id,user_id,points,updated_at,profiles(display_name),matches(id,home_team,away_team,home_country_code,away_country_code,home_goals,away_goals,status)")
     .gt("points", 0)
     .order("updated_at", { ascending: false })
     .limit(limit * 40);
@@ -93,6 +94,8 @@ async function getPointMatchNotifications(limit: number): Promise<LatestNotifica
   for (const item of (data ?? []) as unknown as PointActivityRow[]) {
     const match = firstRelation(item.matches);
     if (!match?.id) continue;
+    if (match.status !== "closed" && match.status !== "final") continue;
+    if (match.home_goals == null || match.away_goals == null) continue;
     const profile = firstRelation(item.profiles);
     const group = groups.get(match.id) ?? { match, updatedAt: item.updated_at ?? new Date().toISOString(), players: new Map() };
     if (new Date(item.updated_at ?? 0).getTime() > new Date(group.updatedAt).getTime()) group.updatedAt = item.updated_at ?? group.updatedAt;
@@ -102,18 +105,15 @@ async function getPointMatchNotifications(limit: number): Promise<LatestNotifica
 
   return [...groups.entries()]
     .map(([matchId, group]) => {
-      const score =
-        group.match.home_goals == null || group.match.away_goals == null
-          ? ""
-          : ` (${group.match.home_goals}-${group.match.away_goals})`;
+      const score = ` (${group.match.home_goals}-${group.match.away_goals})`;
       const players = [...group.players.values()]
         .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name, "es"))
-        .map((player) => `${player.name}: ${player.points} pts`)
-        .join("\n");
+        .map((player) => `${player.name} +${player.points}`)
+        .join(", ");
       return {
         id: `points-match:${matchId}:${group.match.home_goals ?? "x"}-${group.match.away_goals ?? "x"}`,
         title: "Puntos sumados",
-        body: `${matchLabel(group.match)}${score}\n${players}`,
+        body: `${matchLabel(group.match)}${score}: ${players}.`,
         created_at: group.updatedAt,
         type: "points" as const
       };

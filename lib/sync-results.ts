@@ -62,13 +62,24 @@ export async function syncResultsFromProvider() {
     const awayGoals = reversed ? result.homeGoals : result.awayGoals;
     const penaltyWinner = result.penaltyWinner ?? null;
 
-    if (
+    const sameResult =
       local.home_goals === homeGoals &&
       local.away_goals === awayGoals &&
       (local.penalty_winner ?? null) === penaltyWinner &&
       local.status === result.status &&
-      String(local.provider_match_id ?? "") === String(result.providerMatchId ?? "")
-    ) {
+      String(local.provider_match_id ?? "") === String(result.providerMatchId ?? "");
+
+    if (sameResult && result.status === "playing") {
+      const { error: heartbeatError } = await db
+        .from("matches")
+        .update({ result_updated_at: new Date().toISOString() })
+        .eq("id", local.id);
+      if (heartbeatError) throw heartbeatError;
+      updated += 1;
+      continue;
+    }
+
+    if (sameResult) {
       continue;
     }
 
@@ -80,7 +91,8 @@ export async function syncResultsFromProvider() {
         penalty_winner: penaltyWinner,
         locked: true,
         status: result.status,
-        provider_match_id: result.providerMatchId
+        provider_match_id: result.providerMatchId,
+        result_updated_at: new Date().toISOString()
       })
       .eq("id", local.id);
 
@@ -105,7 +117,8 @@ export async function syncResultsFromProvider() {
         home_goals: 0,
         away_goals: 0,
         locked: true,
-        status: "playing"
+        status: "playing",
+        result_updated_at: new Date().toISOString()
       })
       .eq("id", match.id);
 

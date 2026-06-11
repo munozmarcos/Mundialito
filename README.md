@@ -134,9 +134,13 @@ MERCADOPAGO_ACCESS_TOKEN=
 
 RESULTS_PROVIDER=football-data
 FOOTBALL_DATA_API_KEY=
+LIVE_RESULTS_PROVIDER=api-football
+API_FOOTBALL_KEY=
 ```
 
 No exponer `SUPABASE_SERVICE_ROLE_KEY`, `MERCADOPAGO_ACCESS_TOKEN`, `ULTRAMSG_TOKEN` ni `CRON_SECRET` en frontend.
+
+`RESULTS_PROVIDER` puede seguir en `football-data` para fixtures. Si `LIVE_RESULTS_PROVIDER=api-football`, los resultados en vivo se leen desde API-FOOTBALL/API-Sports sin cambiar el importador de partidos.
 
 ## Desarrollo local
 

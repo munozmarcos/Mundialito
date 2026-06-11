@@ -14,7 +14,10 @@ export function MatchCard({ match }: { match: Match }) {
     <article className="rounded-lg border border-line bg-white p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-xs font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</span>
-        <StatusPill status={status} label={blocked ? "Bloqueado" : undefined} />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {status === "playing" && match.result_updated_at && <span className="text-[11px] italic text-ink/45">Actualizado - {formatArgentinaDateTime(match.result_updated_at)}</span>}
+          <StatusPill status={status} label={blocked ? "Bloqueado" : undefined} />
+        </div>
       </div>
 
       <div className="grid gap-2">

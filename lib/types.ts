@@ -36,6 +36,7 @@ export type Match = {
   home_goals?: number | null;
   away_goals?: number | null;
   penalty_winner?: string | null;
+  result_updated_at?: string | null;
 };
 
 export type Prediction = {

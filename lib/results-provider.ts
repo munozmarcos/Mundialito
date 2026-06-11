@@ -151,6 +151,33 @@ type FootballDataMatch = {
   };
 };
 
+type ApiFootballFixture = {
+  fixture?: {
+    id?: number;
+    date?: string;
+    status?: {
+      short?: string | null;
+      elapsed?: number | null;
+    };
+  };
+  league?: {
+    round?: string | null;
+  };
+  teams?: {
+    home?: { name?: string | null; code?: string | null };
+    away?: { name?: string | null; code?: string | null };
+  };
+  goals?: {
+    home?: number | null;
+    away?: number | null;
+  };
+  score?: {
+    fulltime?: { home?: number | null; away?: number | null };
+    extratime?: { home?: number | null; away?: number | null };
+    penalty?: { home?: number | null; away?: number | null };
+  };
+};
+
 function mapFootballDataStage(stage?: string): ProviderFixture["stage"] {
   const clean = (stage ?? "").toUpperCase();
   if (clean.includes("LAST_32")) return "R32";
@@ -222,8 +249,71 @@ export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
   return results;
 }
 
+function apiFootballHeaders() {
+  const token = process.env.API_FOOTBALL_KEY;
+  if (!token) throw new Error("Missing API_FOOTBALL_KEY");
+  return { "x-apisports-key": token };
+}
+
+function apiFootballStatus(short?: string | null): ProviderResult["status"] | null {
+  const clean = (short ?? "").toUpperCase();
+  if (["1H", "HT", "2H", "ET", "BT", "P", "SUSP", "INT", "LIVE"].includes(clean)) return "playing";
+  if (["FT", "AET", "PEN"].includes(clean)) return "closed";
+  return null;
+}
+
+function apiFootballGoals(match: ApiFootballFixture, status: ProviderResult["status"]) {
+  if (status === "closed") {
+    const extra = match.score?.extratime;
+    const full = match.score?.fulltime;
+    if (extra?.home != null && extra.away != null) return { home: extra.home, away: extra.away };
+    if (full?.home != null && full.away != null) return { home: full.home, away: full.away };
+  }
+  if (match.goals?.home != null && match.goals.away != null) return { home: match.goals.home, away: match.goals.away };
+  return null;
+}
+
+function apiFootballPenaltyWinner(match: ApiFootballFixture, homeTeam: string, awayTeam: string) {
+  const penalty = match.score?.penalty;
+  if (penalty?.home == null || penalty.away == null || penalty.home === penalty.away) return null;
+  return penalty.home > penalty.away ? homeTeam : awayTeam;
+}
+
+export async function fetchApiFootballResults(): Promise<ProviderResult[]> {
+  const url = new URL("https://v3.football.api-sports.io/fixtures");
+  url.searchParams.set("live", "all");
+
+  const res = await fetch(url, { headers: apiFootballHeaders(), cache: "no-store" });
+  if (!res.ok) throw new Error(`api-football live results failed: ${res.status}`);
+  const data = (await res.json()) as { response?: ApiFootballFixture[] };
+
+  const results: ProviderResult[] = [];
+  for (const match of data.response ?? []) {
+    const status = apiFootballStatus(match.fixture?.status?.short);
+    if (!status) continue;
+    const homeTeam = match.teams?.home?.name;
+    const awayTeam = match.teams?.away?.name;
+    if (!homeTeam || !awayTeam) continue;
+    const goals = apiFootballGoals(match, status);
+    if (!goals) continue;
+
+    results.push({
+      providerMatchId: String(match.fixture?.id ?? `${homeTeam}-${awayTeam}-${match.fixture?.date ?? ""}`),
+      homeTeam,
+      awayTeam,
+      homeGoals: goals.home,
+      awayGoals: goals.away,
+      penaltyWinner: apiFootballPenaltyWinner(match, homeTeam, awayTeam),
+      status,
+      playedAt: match.fixture?.date ?? null
+    });
+  }
+  return results;
+}
+
 export async function fetchProviderResults() {
-  const provider = process.env.RESULTS_PROVIDER ?? "football-data";
+  const provider = process.env.LIVE_RESULTS_PROVIDER ?? process.env.RESULTS_PROVIDER ?? "football-data";
+  if (provider === "api-football") return fetchApiFootballResults();
   if (provider === "football-data") return fetchFootballDataResults();
   if (provider === "worldcupapi") return fetchWorldCupApiResults();
   if (provider === "mock") return [];

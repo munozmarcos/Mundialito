@@ -671,35 +671,41 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
             <p className="mt-1 text-sm font-semibold text-ink/60">
               Control rapido de pronosticos cargados y podio anticipado.
             </p>
-            <div className="mt-4 grid gap-3 md:grid-cols-[minmax(220px,340px)_180px_180px_auto] md:items-center">
+            <div className="mt-4 grid gap-3 md:grid-cols-[minmax(220px,340px)_230px_230px_auto] md:items-center">
               <input
                 className="field min-h-10 px-3 text-center"
                 placeholder="Buscar participante"
                 value={participantFilter}
                 onChange={(event) => setParticipantFilter(event.target.value)}
               />
-              <select
-                className="field min-h-10 px-3 text-center font-black"
-                value={loadStatusFilter}
-                onChange={(event) => setLoadStatusFilter(event.target.value)}
-                title="Filtro de pronosticos"
-              >
+              <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
+                <span className="text-sm font-black text-ink/70">Pronósticos</span>
+                <select
+                  className="field min-h-10 px-3 text-center font-black"
+                  value={loadStatusFilter}
+                  onChange={(event) => setLoadStatusFilter(event.target.value)}
+                  title="Filtro de pronosticos"
+                >
                 <option value="all">Pronósticos</option>
-                <option value="none">Pron. ninguno</option>
-                <option value="pending">Pron. pendientes</option>
-                <option value="complete">Pron. completo</option>
-              </select>
-              <select
-                className="field min-h-10 px-3 text-center font-black"
-                value={podiumLoadStatusFilter}
-                onChange={(event) => setPodiumLoadStatusFilter(event.target.value)}
-                title="Filtro de podio anticipado"
-              >
+                <option value="none">Ninguno</option>
+                <option value="pending">Pendientes</option>
+                <option value="complete">Completos</option>
+                </select>
+              </label>
+              <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
+                <span className="text-sm font-black text-ink/70">Podio</span>
+                <select
+                  className="field min-h-10 px-3 text-center font-black"
+                  value={podiumLoadStatusFilter}
+                  onChange={(event) => setPodiumLoadStatusFilter(event.target.value)}
+                  title="Filtro de podio anticipado"
+                >
                 <option value="all">Podio</option>
-                <option value="none">Podio ninguno</option>
-                <option value="pending">Podio pendiente</option>
-                <option value="complete">Podio completo</option>
-              </select>
+                <option value="none">Ninguno</option>
+                <option value="pending">Pendientes</option>
+                <option value="complete">Completos</option>
+                </select>
+              </label>
               <button
                 className="btn secondary min-h-10 px-4"
                 disabled={!participantFilter && loadStatusFilter === "all" && podiumLoadStatusFilter === "all"}
