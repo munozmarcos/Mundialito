@@ -45,7 +45,9 @@ export async function syncResultsFromProvider() {
   if (error) throw error;
 
   let updated = 0;
+  let liveInitialized = 0;
   const unmatched: ProviderResult[] = [];
+  const matchedLocalIds = new Set<string>();
 
   for (const result of providerResults) {
     const local = findLocalMatch(matches ?? [], result);
@@ -53,6 +55,7 @@ export async function syncResultsFromProvider() {
       unmatched.push(result);
       continue;
     }
+    matchedLocalIds.add(local.id);
 
     const reversed = teamsMatch(local.home_team, result.awayTeam) && teamsMatch(local.away_team, result.homeTeam);
     const homeGoals = reversed ? result.awayGoals : result.homeGoals;
@@ -86,12 +89,39 @@ export async function syncResultsFromProvider() {
     updated += 1;
   }
 
+  const now = Date.now();
+  for (const match of matches ?? []) {
+    if (matchedLocalIds.has(match.id)) continue;
+    if (match.status === "locked" || match.status === "scheduled") continue;
+    if (match.home_goals != null || match.away_goals != null) continue;
+
+    const kickoff = new Date(match.kickoff_at).getTime();
+    const inLiveWindow = now >= kickoff && now <= kickoff + 150 * 60 * 1000;
+    if (!inLiveWindow) continue;
+
+    const { error: updateError } = await db
+      .from("matches")
+      .update({
+        home_goals: 0,
+        away_goals: 0,
+        locked: true,
+        status: "playing"
+      })
+      .eq("id", match.id);
+
+    if (updateError) throw updateError;
+    await recalculateMatch(match.id);
+    updated += 1;
+    liveInitialized += 1;
+  }
+
   if (updated > 0) await recalculateAllPodiumPoints(db);
 
   return {
     mode: "real",
     fetched: providerResults.length,
     updated,
+    liveInitialized,
     unmatched: unmatched.map((item) => `${item.homeTeam} vs ${item.awayTeam}`)
   };
 }

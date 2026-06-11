@@ -11,7 +11,7 @@ import { displayNameForTeam } from "@/lib/flags";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { dateKey, matchFitsBasicFilters } from "@/lib/match-filters";
-import { matchStatus } from "@/lib/scoring";
+import { isPredictionLocked, matchStatus } from "@/lib/scoring";
 import { teamOptionsFromMatches, type TeamOption } from "@/lib/team-options";
 import type { Match, MatchStage, Prediction } from "@/lib/types";
 import { Calculator, Check, CircleDot, ClipboardPaste, GitBranch, ListChecks, Lock, LogIn, Medal, Save, Table2, Target, Trophy, X } from "lucide-react";
@@ -323,7 +323,8 @@ function PredictionCard({
   const safeDisplay = lockedDisplay(match, display);
   const unavailable = isMatchUnavailable(match, safeDisplay);
   const unpaidLocked = loggedIn && !paid;
-  const locked = status === "locked" || status === "closed" || unavailable || unpaidLocked;
+  const timeLocked = isPredictionLocked(match.kickoff_at, match.locked);
+  const locked = status === "locked" || status === "closed" || status === "playing" || timeLocked || unavailable || unpaidLocked;
   const [homeGoals, setHomeGoals] = useState<number | "">(prediction?.home_goals ?? "");
   const [awayGoals, setAwayGoals] = useState<number | "">(prediction?.away_goals ?? "");
   const [message, setMessage] = useState("");
@@ -676,7 +677,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
     const safeDisplay = lockedDisplay(match, display);
     if (isMatchUnavailable(match, safeDisplay)) return false;
     const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
-    return status === "open" || status === "closing_soon";
+    return (status === "open" || status === "closing_soon") && !isPredictionLocked(match.kickoff_at, match.locked);
   }
 
   async function applyBulk() {

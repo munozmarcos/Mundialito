@@ -39,12 +39,26 @@ function upcoming(matches: Awaited<ReturnType<typeof getMatches>>, limit: number
   const until = addArgentinaDays(today, 2);
   return matches
     .filter((match) => {
-      const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
+      const status = homeMatchStatus(match);
       const isOpenOrLive = status === "open" || status === "closing_soon" || status === "playing";
       return isBetweenDateKeys(match.kickoff_at, today, until) && isOpenOrLive && (new Date(match.kickoff_at).getTime() >= now || status === "playing");
     })
     .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime())
     .slice(0, limit);
+}
+
+function homeMatchStatus(match: Awaited<ReturnType<typeof getMatches>>[number]) {
+  const hasResult = match.home_goals != null && match.away_goals != null;
+  const status = matchStatus(match.kickoff_at, match.locked, hasResult, new Date(), match.status);
+  const kickoff = new Date(match.kickoff_at).getTime();
+  const now = Date.now();
+
+  if (!hasResult && (match.status === "closed" || match.locked)) {
+    if (now >= kickoff) return "playing";
+    return "closing_soon";
+  }
+
+  return status;
 }
 
 function finalized(matches: Awaited<ReturnType<typeof getMatches>>, limit: number) {
@@ -142,7 +156,7 @@ export default async function Home() {
                     </div>
                     <div className="grid justify-items-start gap-2 sm:justify-items-end">
                       <StatusPill
-                        status={isMatchBlockedUntilOfficial(match) ? "locked" : matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status)}
+                        status={isMatchBlockedUntilOfficial(match) ? "locked" : homeMatchStatus(match)}
                         label={isMatchBlockedUntilOfficial(match) ? "Bloqueado" : undefined}
                       />
                       <div className="grid grid-cols-[52px_52px] gap-2">

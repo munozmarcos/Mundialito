@@ -1,3 +1,4 @@
+import { getLatestNotifications } from "@/lib/notifications";
 import { requireAdmin, supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -12,15 +13,8 @@ export async function GET(req: Request) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const db = supabaseAdmin();
-  const { data, error } = await db
-    .from("news_items")
-    .select("id,title,body,published,created_at")
-    .order("created_at", { ascending: false })
-    .limit(30);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ news: data ?? [] });
+  const news = await getLatestNotifications(100);
+  return NextResponse.json({ news });
 }
 
 export async function POST(req: Request) {
@@ -36,16 +30,20 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ news: data });
+  return NextResponse.json({ news: data ? { ...data, id: `admin:${data.id}`, type: "admin" } : data });
 }
 
 export async function DELETE(req: Request) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id } = z.object({ id: z.string().uuid() }).parse(await req.json());
+  const { id } = z.object({ id: z.string().min(2) }).parse(await req.json());
   const db = supabaseAdmin();
-  const { error } = await db.from("news_items").delete().eq("id", id);
+  const manualId = id.startsWith("admin:") ? id.slice("admin:".length) : null;
+  const action = manualId
+    ? db.from("news_items").delete().eq("id", manualId)
+    : db.from("hidden_automatic_notifications").upsert({ id });
+  const { error } = await action;
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ ok: true });

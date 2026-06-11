@@ -77,13 +77,19 @@ export function isPredictionLocked(kickoffAt: string | Date, locked: boolean, no
 
 export function matchStatus(kickoffAt: string | Date, locked: boolean, hasResult: boolean, now = new Date(), dbStatus?: string | null) {
   if (dbStatus === "locked" || dbStatus === "scheduled") return "locked";
+  if (dbStatus === "playing") return "playing";
   const kickoff = new Date(kickoffAt).getTime();
   const nowMs = now.getTime();
-  if ((dbStatus === "closed" || dbStatus === "final") && !hasResult && nowMs >= kickoff && nowMs <= kickoff + 150 * 60 * 1000) return "playing";
+  if ((dbStatus === "closed" || dbStatus === "final") && !hasResult) {
+    if (nowMs < kickoff) return "closing_soon";
+    if (nowMs <= kickoff + 150 * 60 * 1000) return "playing";
+    return "closed";
+  }
   if (dbStatus === "closed" || dbStatus === "final") return "closed";
+  if (!hasResult && nowMs >= kickoff && nowMs <= kickoff + 150 * 60 * 1000) return "playing";
   if (hasResult) return "closed";
-  if (isPredictionLocked(kickoffAt, locked, now)) return "closed";
+  if (isPredictionLocked(kickoffAt, locked, now)) return "closing_soon";
   const msToKickoff = kickoff - nowMs;
-  if (msToKickoff <= 4 * 60 * 60 * 1000) return "closing_soon";
+  if (msToKickoff <= 60 * 60 * 1000) return "closing_soon";
   return "open";
 }

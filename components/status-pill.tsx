@@ -6,7 +6,7 @@ const labels: Record<PillStatus, string> = {
   open: "Abierto",
   locked: "Bloqueado",
   closed: "Cerrado",
-  closing_soon: "Cierra pronto",
+  closing_soon: "Pronto",
   playing: "Vivo",
   payment_pending: "Pago pendiente",
 };

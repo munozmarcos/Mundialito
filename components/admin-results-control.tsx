@@ -1,6 +1,7 @@
 "use client";
 
 import { CountryFilterPicker } from "@/components/country-filter-picker";
+import { DateFilter } from "@/components/date-filter";
 import { TeamLabel } from "@/components/team-label";
 import { PointsPill } from "@/components/points-pill";
 import { StatusPill } from "@/components/status-pill";
@@ -9,6 +10,7 @@ import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import type { PodiumStatus } from "@/lib/podium";
 import { scorePrediction } from "@/lib/scoring";
+import { matchFitsBasicFilters, normalizeFilter } from "@/lib/match-filters";
 import { teamOptionsFromMatches, type TeamOption } from "@/lib/team-options";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
 import { Calculator, GitBranch, ListChecks, Medal, Save, Table2, Trash2, Trophy } from "lucide-react";
@@ -37,7 +39,7 @@ type Props = {
 type ScoreDraft = Record<string, { home: number | ""; away: number | ""; penaltyWinner?: string | null }>;
 type PredictionDraft = Record<string, { home: number | ""; away: number | ""; penaltyWinner?: string | null }>;
 type PodiumDraft = Record<string, { championTeam: string; runnerUpTeam: string; thirdPlaceTeam: string }>;
-type AdminResultsTab = "podio" | "cargas" | "grupos" | "tablas" | "llaves";
+type AdminResultsTab = "podio" | "cargas" | "todos" | "grupos" | "tablas" | "llaves";
 
 const stageLabels: Record<MatchStage, string> = {
   GROUP: "Grupos",
@@ -142,6 +144,11 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
   const [activeGroup, setActiveGroup] = useState("");
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [selectedMatchId, setSelectedMatchId] = useState(initialMatches[0]?.id ?? "");
+  const [teamFilter, setTeamFilter] = useState("");
+  const [dateFilter, setDateFilter] = useState("");
+  const [participantFilter, setParticipantFilter] = useState("");
+  const [loadStatusFilter, setLoadStatusFilter] = useState("all");
+  const [podiumLoadStatusFilter, setPodiumLoadStatusFilter] = useState("all");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -153,11 +160,14 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
   const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
   const availableKnockoutStages = knockoutOrder.filter((stage) => byStage[stage]?.length);
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
-  const tabMatches =
-    activeTab === "llaves"
+  const baseTabMatches =
+    activeTab === "todos"
+      ? matches
+      : activeTab === "llaves"
       ? selectedKnockoutStage ? byStage[selectedKnockoutStage] ?? [] : []
       : selectedGroup ? byGroup[selectedGroup] ?? [] : groupMatches;
-  const selectedMatch = tabMatches.find((match) => match.id === selectedMatchId) ?? tabMatches[0] ?? matches[0];
+  const tabMatches = baseTabMatches.filter((match) => matchFitsBasicFilters(match, teamFilter, dateFilter));
+  const selectedMatch = tabMatches.find((match) => match.id === selectedMatchId) ?? tabMatches[0] ?? baseTabMatches[0] ?? matches[0];
   const predictionMap = useMemo(() => {
     return predictions.reduce<Record<string, AdminPrediction>>((acc, prediction) => {
       acc[predictionKey(prediction.user_id, prediction.match_id)] = prediction;
@@ -203,6 +213,24 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
       };
     });
   }, [availablePredictionMatches, drafts, podiumDrafts, profiles]);
+  const filteredLoadStats = useMemo(() => {
+    const participant = normalizeFilter(participantFilter);
+    const matchesLoadStatus = (loaded: number, total: number, filter: string) =>
+      filter === "none"
+        ? loaded === 0
+        : filter === "pending"
+          ? loaded < total
+          : filter === "complete"
+            ? total > 0 && loaded === total
+            : true;
+
+    return loadStats.filter((item) => {
+      const participantOk = !participant || normalizeFilter(item.profile.display_name).includes(participant);
+      const predictionsOk = matchesLoadStatus(item.loadedPredictions, item.availablePredictions, loadStatusFilter);
+      const podiumOk = matchesLoadStatus(item.loadedPodium, 3, podiumLoadStatusFilter);
+      return participantOk && predictionsOk && podiumOk;
+    });
+  }, [loadStats, loadStatusFilter, participantFilter, podiumLoadStatusFilter]);
 
   function updateLocalMatch(matchId: string, patch: Partial<Match>) {
     setMatches((current) => current.map((match) => (match.id === matchId ? { ...match, ...patch } : match)));
@@ -534,8 +562,9 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
     <div className="grid gap-4">
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
-          ["podio", "Podio Anticipado", Medal],
           ["cargas", "Cargas", ListChecks],
+          ["podio", "Podio Anticipado", Medal],
+          ["todos", "Todos", Trophy],
           ["grupos", "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llaves", "Llaves", GitBranch]
@@ -551,6 +580,24 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
           </button>
         ))}
       </section>
+
+      {(activeTab === "todos" || activeTab === "grupos" || activeTab === "llaves") && (
+        <section className="panel grid gap-3 p-3 sm:grid-cols-[minmax(220px,360px)_160px_auto] sm:items-center">
+          <CountryFilterPicker className="min-w-0" options={teamOptions} value={teamFilter} onChange={setTeamFilter} />
+          <DateFilter value={dateFilter} onChange={setDateFilter} />
+          <button
+            className="btn secondary min-h-10 px-4"
+            disabled={!teamFilter && !dateFilter}
+            onClick={() => {
+              setTeamFilter("");
+              setDateFilter("");
+            }}
+            type="button"
+          >
+            Limpiar
+          </button>
+        </section>
+      )}
 
       {activeTab === "podio" && (
         <section className="grid gap-4">
@@ -624,9 +671,56 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
             <p className="mt-1 text-sm font-semibold text-ink/60">
               Control rapido de pronosticos cargados y podio anticipado.
             </p>
+            <div className="mt-4 grid gap-3 md:grid-cols-[minmax(220px,340px)_180px_180px_auto] md:items-center">
+              <input
+                className="field min-h-10 px-3 text-center"
+                placeholder="Buscar participante"
+                value={participantFilter}
+                onChange={(event) => setParticipantFilter(event.target.value)}
+              />
+              <select
+                className="field min-h-10 px-3 text-center font-black"
+                value={loadStatusFilter}
+                onChange={(event) => setLoadStatusFilter(event.target.value)}
+                title="Filtro de pronosticos"
+              >
+                <option value="all">Pronósticos</option>
+                <option value="none">Pron. ninguno</option>
+                <option value="pending">Pron. pendientes</option>
+                <option value="complete">Pron. completo</option>
+              </select>
+              <select
+                className="field min-h-10 px-3 text-center font-black"
+                value={podiumLoadStatusFilter}
+                onChange={(event) => setPodiumLoadStatusFilter(event.target.value)}
+                title="Filtro de podio anticipado"
+              >
+                <option value="all">Podio</option>
+                <option value="none">Podio ninguno</option>
+                <option value="pending">Podio pendiente</option>
+                <option value="complete">Podio completo</option>
+              </select>
+              <button
+                className="btn secondary min-h-10 px-4"
+                disabled={!participantFilter && loadStatusFilter === "all" && podiumLoadStatusFilter === "all"}
+                onClick={() => {
+                  setParticipantFilter("");
+                  setLoadStatusFilter("all");
+                  setPodiumLoadStatusFilter("all");
+                }}
+                type="button"
+              >
+                Limpiar
+              </button>
+            </div>
           </div>
           <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-            {loadStats.map((item) => (
+            {!filteredLoadStats.length && (
+              <p className="rounded-lg border border-line bg-field p-4 text-center text-sm font-bold text-ink/60 sm:col-span-2 xl:col-span-3">
+                No hay participantes para esos filtros.
+              </p>
+            )}
+            {filteredLoadStats.map((item) => (
               <article className="rounded-lg border border-line bg-field p-4" key={item.profile.id}>
                 <h3 className="mb-4 text-center text-xl font-black">{item.profile.display_name}</h3>
                 <div className="grid grid-cols-2 gap-3">
@@ -706,12 +800,19 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
       ) : activeTab !== "podio" && activeTab !== "cargas" ? (
     <section className="grid gap-4">
       <div className="grid gap-3">
-        <h2 className="text-xl font-black">{activeTab === "llaves" ? (selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves") : `Grupo ${selectedGroup}`}</h2>
-        <div className="match-card-grid">
-          {tabMatches.map((match) => matchButton(match))}
-        </div>
+        <h2 className="text-xl font-black">
+          {activeTab === "todos" ? "Todos" : activeTab === "llaves" ? (selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves") : `Grupo ${selectedGroup}`}
+        </h2>
+        {tabMatches.length ? (
+          <div className="match-card-grid">
+            {tabMatches.map((match) => matchButton(match))}
+          </div>
+        ) : (
+          <p className="panel p-4 text-center text-sm font-bold text-ink/60">No hay partidos para esos filtros.</p>
+        )}
       </div>
 
+      {tabMatches.length ? (
       <section className="grid gap-4 content-start">
         {message && <p className="panel p-3 text-sm font-bold text-ink/70">{message}</p>}
 
@@ -815,6 +916,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
           </div>
         </article>
       </section>
+      ) : null}
     </section>
       ) : null}
     </div>

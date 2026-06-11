@@ -1,6 +1,5 @@
 import { demoMatches, demoRanking } from "@/lib/demo-data";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
-import { isPredictionLocked } from "@/lib/scoring";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 
 export type RankingRow = {
@@ -203,9 +202,8 @@ export async function getRankingDetails(): Promise<RankingDetails> {
     if (matchesError) throw matchesError;
 
     const availableMatches = (matches ?? []).filter((match) => {
-      if (match.status === "locked" || match.status === "scheduled" || match.status === "closed" || match.status === "final") return false;
+      if (match.status === "locked" || match.status === "scheduled") return false;
       if (isMatchBlockedUntilOfficial({ stage: match.stage ?? "GROUP", status: match.status, home_team: match.home_team, away_team: match.away_team })) return false;
-      if (isPredictionLocked(match.kickoff_at, Boolean(match.locked))) return false;
       return true;
     });
     const availableIds = new Set(availableMatches.map((match) => match.id));
