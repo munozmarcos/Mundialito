@@ -11,13 +11,18 @@ const Body = z.object({
   penaltyWinner: z.string().nullable().optional()
 });
 
+function isMissingUserUpdatedAt(error: { message?: string; code?: string } | null) {
+  return Boolean(error?.message?.includes("user_updated_at") || error?.code === "PGRST204");
+}
+
 export async function PUT(req: Request) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = Body.parse(await req.json());
   const db = supabaseAdmin();
-  const { data, error } = await db
+  const savedAt = new Date().toISOString();
+  const saveRes = await db
     .from("predictions")
     .upsert(
       {
@@ -25,12 +30,34 @@ export async function PUT(req: Request) {
         match_id: body.matchId,
         home_goals: body.homeGoals,
         away_goals: body.awayGoals,
-        penalty_winner: body.penaltyWinner ?? null
+        penalty_winner: body.penaltyWinner ?? null,
+        user_updated_at: savedAt
       },
       { onConflict: "user_id,match_id" }
     )
     .select()
     .single();
+  let data: unknown = saveRes.data;
+  let error = saveRes.error;
+
+  if (isMissingUserUpdatedAt(error)) {
+    const legacy = await db
+      .from("predictions")
+      .upsert(
+        {
+          user_id: body.userId,
+          match_id: body.matchId,
+          home_goals: body.homeGoals,
+          away_goals: body.awayGoals,
+          penalty_winner: body.penaltyWinner ?? null
+        },
+        { onConflict: "user_id,match_id" }
+      )
+      .select()
+      .single();
+    data = legacy.data;
+    error = legacy.error;
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   await recalculateMatch(body.matchId);

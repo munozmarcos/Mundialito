@@ -24,6 +24,7 @@ export type RankingPredictionDetail = {
   away_goals: number;
   penalty_winner?: string | null;
   updated_at?: string | null;
+  user_updated_at?: string | null;
   matches?: {
     id: string;
     home_team: string;

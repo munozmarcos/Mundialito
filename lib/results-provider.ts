@@ -161,6 +161,9 @@ type ApiFootballFixture = {
     };
   };
   league?: {
+    id?: number;
+    season?: number;
+    name?: string | null;
     round?: string | null;
   };
   teams?: {
@@ -279,9 +282,26 @@ function apiFootballPenaltyWinner(match: ApiFootballFixture, homeTeam: string, a
   return penalty.home > penalty.away ? homeTeam : awayTeam;
 }
 
+function isApiFootballWorldCupFixture(match: ApiFootballFixture) {
+  const configuredLeagueId = process.env.API_FOOTBALL_WORLD_CUP_LEAGUE_ID;
+  const configuredSeason = process.env.API_FOOTBALL_SEASON ?? "2026";
+  const leagueId = match.league?.id == null ? null : String(match.league.id);
+  const season = match.league?.season == null ? null : String(match.league.season);
+  const leagueName = normalizeName(match.league?.name ?? "");
+
+  if (configuredLeagueId && leagueId !== configuredLeagueId) return false;
+  if (season && season !== configuredSeason) return false;
+  if (configuredLeagueId) return true;
+  return leagueName.includes("world cup");
+}
+
 export async function fetchApiFootballResults(): Promise<ProviderResult[]> {
   const url = new URL("https://v3.football.api-sports.io/fixtures");
   url.searchParams.set("live", "all");
+  if (process.env.API_FOOTBALL_WORLD_CUP_LEAGUE_ID) {
+    url.searchParams.set("league", process.env.API_FOOTBALL_WORLD_CUP_LEAGUE_ID);
+    url.searchParams.set("season", process.env.API_FOOTBALL_SEASON ?? "2026");
+  }
 
   const res = await fetch(url, { headers: apiFootballHeaders(), cache: "no-store" });
   if (!res.ok) throw new Error(`api-football live results failed: ${res.status}`);
@@ -289,6 +309,7 @@ export async function fetchApiFootballResults(): Promise<ProviderResult[]> {
 
   const results: ProviderResult[] = [];
   for (const match of data.response ?? []) {
+    if (!isApiFootballWorldCupFixture(match)) continue;
     const status = apiFootballStatus(match.fixture?.status?.short);
     if (!status) continue;
     const homeTeam = match.teams?.home?.name;

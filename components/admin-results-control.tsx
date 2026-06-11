@@ -671,15 +671,15 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
             <p className="mt-1 text-sm font-semibold text-ink/60">
               Control rapido de pronosticos cargados y podio anticipado.
             </p>
-            <div className="mt-4 grid gap-3 md:grid-cols-[minmax(220px,340px)_230px_230px_auto] md:items-center">
+            <div className="mt-4 grid gap-3 md:grid-cols-[minmax(220px,340px)_180px_180px_auto] md:items-end">
               <input
                 className="field min-h-10 px-3 text-center"
                 placeholder="Buscar participante"
                 value={participantFilter}
                 onChange={(event) => setParticipantFilter(event.target.value)}
               />
-              <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
-                <span className="text-sm font-black text-ink/70">Pronósticos</span>
+              <label className="grid gap-1">
+                <span className="px-1 text-xs font-black uppercase tracking-[0.12em] text-ink/55">Pronósticos</span>
                 <select
                   className="field min-h-10 px-3 text-center font-black"
                   value={loadStatusFilter}
@@ -692,8 +692,8 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
                 <option value="complete">Completos</option>
                 </select>
               </label>
-              <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
-                <span className="text-sm font-black text-ink/70">Podio</span>
+              <label className="grid gap-1">
+                <span className="px-1 text-xs font-black uppercase tracking-[0.12em] text-ink/55">Podio</span>
                 <select
                   className="field min-h-10 px-3 text-center font-black"
                   value={podiumLoadStatusFilter}
@@ -707,7 +707,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
                 </select>
               </label>
               <button
-                className="btn secondary min-h-10 px-4"
+                className="btn secondary min-h-10 px-3"
                 disabled={!participantFilter && loadStatusFilter === "all" && podiumLoadStatusFilter === "all"}
                 onClick={() => {
                   setParticipantFilter("");

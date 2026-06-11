@@ -47,6 +47,7 @@ create table if not exists predictions (
   exact_hit boolean not null default false,
   score_details text[] not null default '{}',
   created_at timestamptz not null default now(),
+  user_updated_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, match_id)
 );

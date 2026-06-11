@@ -49,6 +49,7 @@ export type Prediction = {
   points: number;
   trend_hit: boolean;
   exact_hit: boolean;
+  user_updated_at?: string | null;
 };
 
 export type PodiumPrediction = {

@@ -18,7 +18,7 @@ import { Calculator, Check, CircleDot, ClipboardPaste, GitBranch, ListChecks, Lo
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
-type PredictionWithUpdated = Prediction & { updated_at?: string | null };
+type PredictionWithUpdated = Prediction & { updated_at?: string | null; user_updated_at?: string | null };
 type PodiumDraft = {
   champion_team?: string | null;
   runner_up_team?: string | null;
@@ -392,7 +392,7 @@ function PredictionCard({
           <p className="mt-2 text-xs font-bold text-ink/60">{formatKickoff(match.kickoff_at)}</p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          {prediction?.updated_at && <span className="self-center text-[11px] italic text-ink/45">Actualizado - {formatKickoff(prediction.updated_at)}</span>}
+          {(prediction?.user_updated_at ?? prediction?.updated_at) && <span className="self-center text-[11px] italic text-ink/45">Actualizado - {formatKickoff(prediction.user_updated_at ?? prediction.updated_at!)}</span>}
           <StatusPill status={unavailable ? "locked" : status} label={unavailable ? "Bloqueado" : undefined} />
         </div>
       </div>

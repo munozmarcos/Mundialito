@@ -3,8 +3,20 @@ import { recalculateAllPodiumPoints } from "@/lib/podium";
 import { fetchProviderResults, teamsMatch, type ProviderResult } from "@/lib/results-provider";
 import { supabaseAdmin, supabaseAdminConfigured } from "@/lib/supabase";
 
+function resultTimeMatches(match: any, result: ProviderResult) {
+  if (!result.playedAt) return true;
+  const matchTime = new Date(match.kickoff_at).getTime();
+  const resultTime = new Date(result.playedAt).getTime();
+  if (!Number.isFinite(matchTime) || !Number.isFinite(resultTime)) return true;
+  return Math.abs(matchTime - resultTime) <= 8 * 60 * 60 * 1000;
+}
+
 function findLocalMatch(matches: any[], result: ProviderResult) {
+  const providerMatch = matches.find((match) => String(match.provider_match_id ?? "") === String(result.providerMatchId));
+  if (providerMatch) return providerMatch;
+
   return matches.find((match) => {
+    if (!resultTimeMatches(match, result)) return false;
     const direct = teamsMatch(match.home_team, result.homeTeam) && teamsMatch(match.away_team, result.awayTeam);
     const reverse = teamsMatch(match.home_team, result.awayTeam) && teamsMatch(match.away_team, result.homeTeam);
     return direct || reverse;
@@ -66,8 +78,7 @@ export async function syncResultsFromProvider() {
       local.home_goals === homeGoals &&
       local.away_goals === awayGoals &&
       (local.penalty_winner ?? null) === penaltyWinner &&
-      local.status === result.status &&
-      String(local.provider_match_id ?? "") === String(result.providerMatchId ?? "");
+      local.status === result.status;
 
     if (sameResult && result.status === "playing") {
       const { error: heartbeatError } = await db
@@ -91,7 +102,6 @@ export async function syncResultsFromProvider() {
         penalty_winner: penaltyWinner,
         locked: true,
         status: result.status,
-        provider_match_id: result.providerMatchId,
         result_updated_at: new Date().toISOString()
       })
       .eq("id", local.id);

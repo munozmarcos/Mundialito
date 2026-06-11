@@ -11,15 +11,30 @@ const PredictionBody = z.object({
   penaltyWinner: z.string().nullable().optional()
 });
 
+const predictionSelect = "id,user_id,match_id,home_goals,away_goals,penalty_winner,points,trend_hit,exact_hit,updated_at,user_updated_at";
+const legacyPredictionSelect = "id,user_id,match_id,home_goals,away_goals,penalty_winner,points,trend_hit,exact_hit,updated_at";
+
+function isMissingUserUpdatedAt(error: { message?: string; code?: string } | null) {
+  return Boolean(error?.message?.includes("user_updated_at") || error?.code === "PGRST204");
+}
+
 export async function GET(req: Request) {
   const user = await getUserFromRequest(req);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const db = supabaseAdmin();
-  const { data, error } = await db
+  const predictionRes = await db
     .from("predictions")
-    .select("id,user_id,match_id,home_goals,away_goals,penalty_winner,points,trend_hit,exact_hit,updated_at")
+    .select(predictionSelect)
     .eq("user_id", user.id);
+  let data: unknown = predictionRes.data;
+  let error = predictionRes.error;
+
+  if (isMissingUserUpdatedAt(error)) {
+    const legacy = await db.from("predictions").select(legacyPredictionSelect).eq("user_id", user.id);
+    data = legacy.data;
+    error = legacy.error;
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ predictions: data ?? [] });
@@ -48,7 +63,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "El partido ya esta cerrado" }, { status: 409 });
   }
 
-  const { data, error } = await db
+  const savedAt = new Date().toISOString();
+  const saveRes = await db
     .from("predictions")
     .upsert(
       {
@@ -56,12 +72,34 @@ export async function POST(req: Request) {
         match_id: body.matchId,
         home_goals: body.homeGoals,
         away_goals: body.awayGoals,
-        penalty_winner: body.penaltyWinner ?? null
+        penalty_winner: body.penaltyWinner ?? null,
+        user_updated_at: savedAt
       },
       { onConflict: "user_id,match_id" }
     )
     .select()
     .single();
+  let data: unknown = saveRes.data;
+  let error = saveRes.error;
+
+  if (isMissingUserUpdatedAt(error)) {
+    const legacy = await db
+      .from("predictions")
+      .upsert(
+        {
+          user_id: user.id,
+          match_id: body.matchId,
+          home_goals: body.homeGoals,
+          away_goals: body.awayGoals,
+          penalty_winner: body.penaltyWinner ?? null
+        },
+        { onConflict: "user_id,match_id" }
+      )
+      .select()
+      .single();
+    data = legacy.data;
+    error = legacy.error;
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ prediction: data });
