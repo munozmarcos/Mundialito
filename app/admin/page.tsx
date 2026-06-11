@@ -13,10 +13,10 @@ const pages = [
 
 const jobs = [
   { path: "/api/jobs/sync-fixtures", icon: RefreshCw, title: "Actualizar partidos", text: "Trae fixture y cruces oficiales cuando cambian sedes, horarios, equipos o llaves.", cron: "Horario: todos los días 03:00" },
-  { path: "/api/jobs/sync-results", icon: Trophy, title: "Actualizar resultados", text: "Trae marcadores reales, guarda resultados y recalcula puntos.", cron: "Horario: cada 5 minutos" },
-  { path: "/api/jobs/send-reminders", icon: ListChecks, title: "Recordatorios 4h", text: "Envía WhatsApp a quienes no cargaron pronóstico.", cron: "Horario: cada 15 minutos" },
-  { path: "/api/jobs/lock-matches", icon: LockKeyhole, title: "Cerrar 15m", text: "Cierra partidos que empiezan en 15 minutos, incluyendo podio anticipado 15 minutos antes del primer 16vos.", cron: "Horario: cada 5 minutos" },
-  { path: "/api/jobs/notify-kickoff", icon: MessageCircle, title: "Avisar inicio", text: "Notifica por WhatsApp los partidos que están por empezar.", cron: "Horario: cada 5 minutos" },
+  { path: "/api/jobs/sync-results", icon: Trophy, title: "Actualizar resultados", text: "Trae marcadores reales, guarda resultados y recalcula puntos.", cron: "Horario: cada 1 minuto" },
+  { path: "/api/jobs/send-reminders", icon: ListChecks, title: "Recordatorios 4h", text: "Avisa por WhatsApp 4h antes del primer partido del dia y lista pendientes de hoy mas 2 dias.", cron: "Horario: cada 15 minutos" },
+  { path: "/api/jobs/lock-matches", icon: LockKeyhole, title: "Cerrar 15m", text: "Cierra partidos que empiezan en 15 minutos, incluyendo podio anticipado 15 minutos antes del primer 16vos.", cron: "Horario: cada 1 minuto" },
+  { path: "/api/jobs/notify-kickoff", icon: MessageCircle, title: "Avisar inicio", text: "Notifica por WhatsApp los partidos que están por empezar.", cron: "Horario: cada 1 minuto" },
   { path: "/api/jobs/send-daily-ranking", icon: MessageCircle, title: "Envío Ranking", text: "Manda el ranking actual a todos los miembros registrados.", cron: "Horario: todos los días 23:00" }
 ] as const;
 

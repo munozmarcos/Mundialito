@@ -25,3 +25,12 @@ export function formatArgentinaDate(value: string | Date) {
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
   return `${get("day")}/${get("month")} - ${get("hour")}:${get("minute")}`;
 }
+
+export function argentinaDateKey(value: string | Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: ARGENTINA_TIME_ZONE
+  }).format(new Date(value));
+}

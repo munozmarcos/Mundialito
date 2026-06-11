@@ -5,7 +5,7 @@ export type ProviderResult = {
   homeGoals: number;
   awayGoals: number;
   penaltyWinner?: string | null;
-  status: "closed";
+  status: "playing" | "closed";
   playedAt?: string | null;
 };
 
@@ -196,13 +196,14 @@ export async function fetchFootballDataFixtures(): Promise<ProviderFixture[]> {
 }
 
 export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
-  const url = "https://api.football-data.org/v4/competitions/WC/matches?season=2026&status=FINISHED";
+  const url = "https://api.football-data.org/v4/competitions/WC/matches?season=2026";
   const res = await fetch(url, { headers: footballDataHeaders(), cache: "no-store" });
   if (!res.ok) throw new Error(`football-data results failed: ${res.status}`);
   const data = (await res.json()) as { matches?: FootballDataMatch[] };
 
   const results: ProviderResult[] = [];
   for (const match of data.matches ?? []) {
+    if (!["IN_PLAY", "PAUSED", "FINISHED"].includes(match.status)) continue;
     const homeTeam = match.homeTeam?.name;
     const awayTeam = match.awayTeam?.name;
     const score = match.score?.fullTime ?? match.score?.regularTime;
@@ -214,7 +215,7 @@ export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
       homeGoals: score.home,
       awayGoals: score.away,
       penaltyWinner: null,
-      status: "closed",
+      status: match.status === "FINISHED" ? "closed" : "playing",
       playedAt: match.utcDate
     });
   }

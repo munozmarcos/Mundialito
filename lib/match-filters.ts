@@ -1,4 +1,5 @@
 import { displayNameForTeam } from "@/lib/flags";
+import { argentinaDateKey } from "@/lib/dates";
 import type { Match } from "@/lib/types";
 
 export function normalizeFilter(value: string) {
@@ -10,7 +11,7 @@ export function normalizeFilter(value: string) {
 }
 
 export function dateKey(value: string) {
-  return value.slice(0, 10);
+  return argentinaDateKey(value);
 }
 
 function teamSearchValues(name: string, code?: string | null) {

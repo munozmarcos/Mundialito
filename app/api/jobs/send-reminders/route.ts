@@ -38,6 +38,25 @@ function assertCron(req: Request) {
   return authOk || isAutomatic(req);
 }
 
+function argentinaDateKey(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+}
+
+function argentinaDayStart(date: Date) {
+  return new Date(`${argentinaDateKey(date)}T00:00:00-03:00`);
+}
+
+function addDays(date: Date, days: number) {
+  const copy = new Date(date);
+  copy.setUTCDate(copy.getUTCDate() + days);
+  return copy;
+}
+
 function flagEmoji(team: string, explicit?: string | null) {
   return flagEmojiForTeam(team, explicit);
 }
@@ -69,27 +88,41 @@ function reminderMessage(
   matches: ReminderMatch[],
   appUrl: string,
   manual: boolean,
-  stats: { loaded: number; available: number; pending: number }
+  stats: { loaded: number; available: number; pending: number },
+  todayMatches: ReminderMatch[] = []
 ) {
+  const todayBlock = manual || !todayMatches.length
+    ? []
+    : [
+        "*Partidos de hoy*",
+        "",
+        ...todayMatches.flatMap((match) => [
+          `*${matchLabel(match)}*`,
+          `Hora: ${formatArgentinaDateTime(match.kickoff_at)} - ${stageLabel(match)}`,
+          ""
+        ])
+      ];
+
   return [
     manual ? "⚽ *Pendientes Mundialito*" : "⚽ *Mundialito - pendientes 4h*",
     "",
-    `👋 ${user.display_name}, te falta cargar ${matches.length === 1 ? "este pronóstico" : "estos pronósticos"}:`,
+    ...todayBlock,
+    `${user.display_name}, estos son tus pronosticos pendientes a cargar:`,
     "",
-    `Cargados: *${stats.loaded} / ${stats.available}* pronósticos disponibles.`,
+    `Cargados: *${stats.loaded} / ${stats.available}* pronosticos disponibles.`,
     `Pendientes a cargar: *${stats.pending}*.`,
     "",
-    "Estos son los pendientes a cargar más cercanos:",
+    "Pendientes mas cercanos:",
     "",
     ...matches.flatMap((match) => [
       `*${matchLabel(match)}*`,
-      `🕒 ${formatArgentinaDateTime(match.kickoff_at)} · ${stageLabel(match)}`,
+      `Hora: ${formatArgentinaDateTime(match.kickoff_at)} - ${stageLabel(match)}`,
       ""
     ]),
     "Cargalos desde la app:",
     appUrl ? `${appUrl}/mi-prode` : "/mi-prode",
     "",
-    "También podés responder *$pendientes* para ver lo que te falta cuando quieras."
+    "Tambien podes responder *$pendientes* para ver lo que te falta cuando quieras."
   ].join("\n").trim();
 }
 
@@ -100,23 +133,58 @@ export async function POST(req: Request) {
   const url = new URL(req.url);
   const manual = url.searchParams.get("manual") === "1";
   const now = url.searchParams.get("now") ? new Date(url.searchParams.get("now")!) : new Date();
-  const nowIso = now.toISOString();
-  const fourHoursFromNow = new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString();
+  const todayStart = argentinaDayStart(now);
+  const tomorrowStart = addDays(todayStart, 1);
+  const threeDayEnd = addDays(todayStart, 3);
 
   let matchQuery = db
     .from("matches")
     .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,stage,group_name,home_goals,locked,status")
     .is("home_goals", null)
-    .gte("kickoff_at", nowIso)
+    .gte("kickoff_at", manual ? now.toISOString() : todayStart.toISOString())
     .order("kickoff_at", { ascending: true });
 
-  if (!manual) matchQuery = matchQuery.lte("kickoff_at", fourHoursFromNow);
+  if (!manual) matchQuery = matchQuery.lt("kickoff_at", threeDayEnd.toISOString());
 
   const { data: matchRows, error: matchError } = await matchQuery;
-
   if (matchError) return NextResponse.json({ error: matchError.message }, { status: 400 });
 
-  const matches = ((matchRows ?? []) as ReminderMatch[]).filter(isReminderPredictionCandidate);
+  const rawMatches = (matchRows ?? []) as ReminderMatch[];
+  const todayMatches = rawMatches.filter((match) => {
+    const kickoff = new Date(match.kickoff_at).getTime();
+    return kickoff >= todayStart.getTime() && kickoff < tomorrowStart.getTime();
+  });
+
+  if (!manual) {
+    const firstToday = todayMatches[0];
+    const msUntilFirstToday = firstToday ? new Date(firstToday.kickoff_at).getTime() - now.getTime() : null;
+
+    if (!firstToday || msUntilFirstToday == null || msUntilFirstToday > 4 * 60 * 60 * 1000 || msUntilFirstToday <= 0) {
+      const result = {
+        manual,
+        sent: 0,
+        users: 0,
+        matches: 0,
+        reminders: 0,
+        skipped: true,
+        reason: firstToday ? "outside-first-match-4h-window" : "no-matches-today",
+        failures: [] as string[]
+      };
+      if (isAutomatic(req)) {
+        await recordJobRun({
+          jobPath: "/api/jobs/send-reminders",
+          triggerType: "automatic",
+          ok: true,
+          statusCode: 200,
+          summary: summarizeJob("Recordatorios 4h", { ok: true, data: result }),
+          payload: result
+        });
+      }
+      return NextResponse.json(result);
+    }
+  }
+
+  const matches = rawMatches.filter(isReminderPredictionCandidate);
   const matchIds = matches.map((match) => match.id);
 
   if (!matchIds.length) {
@@ -147,10 +215,10 @@ export async function POST(req: Request) {
     manual
       ? Promise.resolve({ data: [], error: null })
       : db
-        .from("notification_logs")
-        .select("dedupe_key")
-        .eq("kind", "whatsapp-reminder-4h")
-        .in("match_id", matchIds)
+          .from("notification_logs")
+          .select("dedupe_key")
+          .eq("kind", "whatsapp-reminder-4h")
+          .in("match_id", matchIds)
   ]);
 
   if (usersError) return NextResponse.json({ error: usersError.message }, { status: 400 });
@@ -177,7 +245,7 @@ export async function POST(req: Request) {
     if (!pending.length) continue;
 
     try {
-      await sendWhatsApp(user.phone, reminderMessage(user, pending, appUrl, manual, stats));
+      await sendWhatsApp(user.phone, reminderMessage(user, pending, appUrl, manual, stats, todayMatches));
       sent += 1;
       reminders += pending.length;
 

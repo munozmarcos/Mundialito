@@ -11,7 +11,7 @@ import type { PodiumStatus } from "@/lib/podium";
 import { scorePrediction } from "@/lib/scoring";
 import { teamOptionsFromMatches, type TeamOption } from "@/lib/team-options";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
-import { Calculator, GitBranch, Medal, Save, Table2, Trash2, Trophy } from "lucide-react";
+import { Calculator, GitBranch, ListChecks, Medal, Save, Table2, Trash2, Trophy } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
 type AdminPrediction = Prediction & { profiles?: Pick<Profile, "display_name"> | null };
@@ -37,6 +37,7 @@ type Props = {
 type ScoreDraft = Record<string, { home: number | ""; away: number | ""; penaltyWinner?: string | null }>;
 type PredictionDraft = Record<string, { home: number | ""; away: number | ""; penaltyWinner?: string | null }>;
 type PodiumDraft = Record<string, { championTeam: string; runnerUpTeam: string; thirdPlaceTeam: string }>;
+type AdminResultsTab = "podio" | "cargas" | "grupos" | "tablas" | "llaves";
 
 const stageLabels: Record<MatchStage, string> = {
   GROUP: "Grupos",
@@ -137,7 +138,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
   const [podiumRows, setPodiumRows] = useState<AdminPodium[]>(podiums);
   const [podiumDrafts, setPodiumDrafts] = useState<PodiumDraft>(() => initialPodiumDrafts(podiums));
   const [podiumStatus, setPodiumStatus] = useState<PodiumStatus>(initialPodiumStatus);
-  const [activeTab, setActiveTab] = useState<"podio" | "grupos" | "tablas" | "llaves">("grupos");
+  const [activeTab, setActiveTab] = useState<AdminResultsTab>("grupos");
   const [activeGroup, setActiveGroup] = useState("");
   const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [selectedMatchId, setSelectedMatchId] = useState(initialMatches[0]?.id ?? "");
@@ -180,6 +181,28 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
     }
     return [...options.values()].sort((a, b) => displayNameForTeam(a.name).localeCompare(displayNameForTeam(b.name), "es"));
   }, [matches, podiumRows]);
+  const availablePredictionMatches = useMemo(() => {
+    return matches.filter((match) => {
+      const status = match.status as string | null | undefined;
+      return status !== "locked" && status !== "scheduled" && !isMatchBlockedUntilOfficial(match);
+    });
+  }, [matches]);
+  const loadStats = useMemo(() => {
+    return profiles.map((profile) => {
+      const loadedPredictions = availablePredictionMatches.filter((match) => {
+        const draft = drafts[predictionKey(profile.id, match.id)];
+        return draft?.home !== "" && draft?.away !== "" && draft?.home != null && draft?.away != null;
+      }).length;
+      const podium = podiumDrafts[profile.id];
+      const loadedPodium = [podium?.championTeam, podium?.runnerUpTeam, podium?.thirdPlaceTeam].filter(Boolean).length;
+      return {
+        profile,
+        loadedPredictions,
+        availablePredictions: availablePredictionMatches.length,
+        loadedPodium
+      };
+    });
+  }, [availablePredictionMatches, drafts, podiumDrafts, profiles]);
 
   function updateLocalMatch(matchId: string, patch: Partial<Match>) {
     setMatches((current) => current.map((match) => (match.id === matchId ? { ...match, ...patch } : match)));
@@ -512,6 +535,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
       <section className="panel flex flex-wrap gap-2 p-2">
         {[
           ["podio", "Podio Anticipado", Medal],
+          ["cargas", "Cargas", ListChecks],
           ["grupos", "Grupos", Calculator],
           ["tablas", "Tablas", Table2],
           ["llaves", "Llaves", GitBranch]
@@ -519,7 +543,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
           <button
             className={`btn ${activeTab === key ? "" : "secondary"}`}
             key={key as string}
-            onClick={() => setActiveTab(key as "podio" | "grupos" | "tablas" | "llaves")}
+            onClick={() => setActiveTab(key as AdminResultsTab)}
             type="button"
           >
             <Icon className="h-4 w-4" />
@@ -590,6 +614,41 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
         </section>
       )}
 
+      {activeTab === "cargas" && (
+        <section className="panel overflow-hidden">
+          <div className="border-b border-line p-4">
+            <h2 className="flex items-center gap-2 text-xl font-black">
+              <ListChecks className="h-5 w-5 text-grass" />
+              Cargas por participante
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-ink/60">
+              Control rapido de pronosticos cargados y podio anticipado.
+            </p>
+          </div>
+          <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+            {loadStats.map((item) => (
+              <article className="rounded-lg border border-line bg-field p-4" key={item.profile.id}>
+                <h3 className="mb-4 text-center text-xl font-black">{item.profile.display_name}</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-grass/35 bg-grass/10 p-3 text-center">
+                    <ListChecks className="mx-auto mb-2 h-6 w-6 text-grass" />
+                    <strong className="block text-2xl font-black text-grass">
+                      {item.loadedPredictions} / {item.availablePredictions}
+                    </strong>
+                    <span className="text-[11px] font-black uppercase tracking-[0.12em] text-ink/55">Cargados</span>
+                  </div>
+                  <div className="rounded-lg border border-gold/35 bg-gold/10 p-3 text-center">
+                    <Medal className="mx-auto mb-2 h-6 w-6 text-gold" />
+                    <strong className="block text-2xl font-black text-gold">{item.loadedPodium} / 3</strong>
+                    <span className="text-[11px] font-black uppercase tracking-[0.12em] text-ink/55">Podio</span>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
       {activeTab === "grupos" && (
         <section className="panel overflow-x-auto p-2">
           <div className="flex w-max flex-nowrap gap-2">
@@ -644,7 +703,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
             </article>
           ))}
         </section>
-      ) : activeTab !== "podio" ? (
+      ) : activeTab !== "podio" && activeTab !== "cargas" ? (
     <section className="grid gap-4">
       <div className="grid gap-3">
         <h2 className="text-xl font-black">{activeTab === "llaves" ? (selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves") : `Grupo ${selectedGroup}`}</h2>

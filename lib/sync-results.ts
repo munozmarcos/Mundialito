@@ -41,7 +41,7 @@ export async function syncResultsFromProvider() {
     };
   }
 
-  const { data: matches, error } = await db.from("matches").select("*").neq("status", "closed");
+  const { data: matches, error } = await db.from("matches").select("*");
   if (error) throw error;
 
   let updated = 0;
@@ -57,15 +57,26 @@ export async function syncResultsFromProvider() {
     const reversed = teamsMatch(local.home_team, result.awayTeam) && teamsMatch(local.away_team, result.homeTeam);
     const homeGoals = reversed ? result.awayGoals : result.homeGoals;
     const awayGoals = reversed ? result.homeGoals : result.awayGoals;
+    const penaltyWinner = result.penaltyWinner ?? null;
+
+    if (
+      local.home_goals === homeGoals &&
+      local.away_goals === awayGoals &&
+      (local.penalty_winner ?? null) === penaltyWinner &&
+      local.status === result.status &&
+      String(local.provider_match_id ?? "") === String(result.providerMatchId ?? "")
+    ) {
+      continue;
+    }
 
     const { error: updateError } = await db
       .from("matches")
       .update({
         home_goals: homeGoals,
         away_goals: awayGoals,
-        penalty_winner: result.penaltyWinner,
+        penalty_winner: penaltyWinner,
         locked: true,
-        status: "closed",
+        status: result.status,
         provider_match_id: result.providerMatchId
       })
       .eq("id", local.id);
