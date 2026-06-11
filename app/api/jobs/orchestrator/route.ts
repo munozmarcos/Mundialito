@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { recordJobRun } from "@/lib/job-runs";
 
 const always = [
   "/api/jobs/lock-matches",
@@ -43,11 +44,24 @@ export async function POST(req: Request) {
     results.push(await runJob(req, path));
   }
 
-  return NextResponse.json({
+  const payload = {
     ok: results.every((result) => result.ok),
     ran: results.length,
     results
-  });
+  };
+
+  if (req.headers.get("x-vercel-cron") === "1") {
+    await recordJobRun({
+      jobPath: "/api/jobs/orchestrator",
+      triggerType: "automatic",
+      ok: payload.ok,
+      statusCode: payload.ok ? 200 : 207,
+      summary: `Orquestador: ejecutado · ${payload.ran} jobs disparados`,
+      payload
+    });
+  }
+
+  return NextResponse.json(payload);
 }
 
 export async function GET(req: Request) {

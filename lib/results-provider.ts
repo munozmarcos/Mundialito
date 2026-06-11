@@ -2,11 +2,12 @@ export type ProviderResult = {
   providerMatchId: string;
   homeTeam: string;
   awayTeam: string;
-  homeGoals: number;
-  awayGoals: number;
+  homeGoals: number | null;
+  awayGoals: number | null;
   penaltyWinner?: string | null;
   status: "playing" | "closed";
   playedAt?: string | null;
+  statusOnly?: boolean;
 };
 
 export type ProviderFixture = {
@@ -237,7 +238,22 @@ export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
     const homeTeam = match.homeTeam?.name;
     const awayTeam = match.awayTeam?.name;
     const score = match.score?.fullTime ?? match.score?.regularTime;
-    if (!homeTeam || !awayTeam || score?.home == null || score.away == null) continue;
+    if (!homeTeam || !awayTeam) continue;
+    if (score?.home == null || score.away == null) {
+      if (match.status !== "FINISHED") continue;
+      results.push({
+        providerMatchId: String(match.id),
+        homeTeam,
+        awayTeam,
+        homeGoals: null,
+        awayGoals: null,
+        penaltyWinner: null,
+        status: "closed",
+        playedAt: match.utcDate,
+        statusOnly: true
+      });
+      continue;
+    }
     results.push({
       providerMatchId: String(match.id),
       homeTeam,
@@ -350,7 +366,10 @@ export async function fetchApiFootballResults(): Promise<ProviderResult[]> {
       resultsByFixture.set(result.providerMatchId, result);
     }
   }
-  return [...resultsByFixture.values()];
+  const liveResults = [...resultsByFixture.values()];
+  const statusResults = await fetchFootballDataResults().catch(() => []);
+  const liveIds = new Set(liveResults.map((item) => item.providerMatchId));
+  return [...liveResults, ...statusResults.filter((item) => !liveIds.has(item.providerMatchId))];
 }
 
 export async function fetchProviderResults() {

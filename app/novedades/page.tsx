@@ -1,3 +1,4 @@
+import { NotificationBody } from "@/components/notification-body";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { getLatestNotifications } from "@/lib/notifications";
 import { Newspaper, Trophy } from "lucide-react";
@@ -20,7 +21,7 @@ export default async function NovedadesPage() {
           Noticias del Mundialito
         </h1>
         <p className="mt-2 text-ink/70">
-          Avisos del admin, puntos sumados, partidos por cerrar, partidos finalizados y nuevos participantes.
+          Avisos del admin, puntos sumados, partidos por cerrar, partidos cerrados y nuevos participantes.
         </p>
       </section>
 
@@ -40,7 +41,7 @@ export default async function NovedadesPage() {
                   {formatArgentinaDateTime(item.created_at)}
                 </time>
               </div>
-              <p className="mt-4 whitespace-pre-wrap text-base font-semibold leading-7 text-ink/78">{item.body}</p>
+              <NotificationBody item={item} />
             </article>
           ))
         )}

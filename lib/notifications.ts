@@ -8,6 +8,15 @@ export type LatestNotification = {
   body: string;
   created_at: string;
   type: "admin" | "points" | "closing" | "closed" | "participant";
+  point_players?: { name: string; points: number }[];
+  match?: {
+    home_team: string;
+    away_team: string;
+    home_country_code?: string | null;
+    away_country_code?: string | null;
+    home_goals?: number | null;
+    away_goals?: number | null;
+  };
 };
 
 type MatchNoticeRow = {
@@ -105,17 +114,17 @@ async function getPointMatchNotifications(limit: number): Promise<LatestNotifica
 
   return [...groups.entries()]
     .map(([matchId, group]) => {
-      const score = ` (${group.match.home_goals}-${group.match.away_goals})`;
       const players = [...group.players.values()]
         .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name, "es"))
-        .map((player) => `${player.name} +${player.points}`)
-        .join(", ");
+        .map((player) => ({ name: player.name, points: player.points }));
       return {
         id: `points-match:${matchId}:${group.match.home_goals ?? "x"}-${group.match.away_goals ?? "x"}`,
         title: "Puntos sumados",
-        body: `${matchLabel(group.match)}${score}: ${players}.`,
+        body: "",
         created_at: group.updatedAt,
-        type: "points" as const
+        type: "points" as const,
+        point_players: players,
+        match: group.match
       };
     })
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -145,9 +154,10 @@ async function getClosingMatchNotifications(limit: number): Promise<LatestNotifi
   return ((data ?? []) as MatchNoticeRow[]).map((match) => ({
     id: `closing:${match.id}`,
     title: "Partido por cerrar",
-    body: `${matchLabel(match)} cierra la carga de pronosticos en menos de 15 minutos.`,
+    body: "Cierra la carga de pronosticos en menos de 15 minutos.",
     created_at: match.kickoff_at,
-    type: "closing" as const
+    type: "closing" as const,
+    match
   }));
 }
 
@@ -170,20 +180,17 @@ async function getClosedMatchNotifications(limit: number): Promise<LatestNotific
   return ((data ?? []) as MatchNoticeRow[]).map((match) => {
     const hasResult = match.home_goals != null && match.away_goals != null;
     const isLive = match.status === "playing";
-    const score =
-      !hasResult
-        ? ""
-        : ` Resultado: ${match.home_goals}-${match.away_goals}.`;
     return {
       id: `closed:${match.id}:${match.home_goals ?? "x"}-${match.away_goals ?? "x"}`,
-      title: isLive ? "Partido en vivo" : hasResult ? "Partido finalizado" : "Pronosticos cerrados",
+      title: isLive ? "Partido en vivo" : hasResult ? "Partido cerrado" : "Pronosticos cerrados",
       body: isLive
-        ? `${matchLabel(match)} esta en vivo.${score}`
+        ? "Esta en vivo."
         : hasResult
-        ? `${matchLabel(match)} ya finalizo.${score}`
-        : `${matchLabel(match)} ya cerro la carga de pronosticos.`,
+        ? "Ya cerro."
+        : "Ya cerro la carga de pronosticos.",
       created_at: match.kickoff_at,
-      type: "closed" as const
+      type: "closed" as const,
+      match
     };
   });
 }
@@ -212,9 +219,9 @@ async function getParticipantNotifications(limit: number): Promise<LatestNotific
   }));
 }
 
-export async function getLatestNotifications(limit = 10): Promise<LatestNotification[]> {
+export async function getLatestNotifications(limit = 10, options?: { includeExpiredManual?: boolean }): Promise<LatestNotification[]> {
   const [manualNews, pointMatches, closingMatches, closedMatches, participants, hiddenIds] = await Promise.all([
-    getNewsItems(limit),
+    getNewsItems(limit, { includeExpired: options?.includeExpiredManual }),
     getPointMatchNotifications(limit),
     getClosingMatchNotifications(limit),
     getClosedMatchNotifications(limit),

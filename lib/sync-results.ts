@@ -70,9 +70,15 @@ export async function syncResultsFromProvider() {
     matchedLocalIds.add(local.id);
 
     const reversed = teamsMatch(local.home_team, result.awayTeam) && teamsMatch(local.away_team, result.homeTeam);
-    const homeGoals = reversed ? result.awayGoals : result.homeGoals;
-    const awayGoals = reversed ? result.homeGoals : result.awayGoals;
+    const providerHomeGoals = reversed ? result.awayGoals : result.homeGoals;
+    const providerAwayGoals = reversed ? result.homeGoals : result.awayGoals;
+    const homeGoals = providerHomeGoals ?? local.home_goals;
+    const awayGoals = providerAwayGoals ?? local.away_goals;
     const penaltyWinner = result.penaltyWinner ?? null;
+
+    if ((homeGoals == null || awayGoals == null) && result.statusOnly) {
+      continue;
+    }
 
     const sameResult =
       local.home_goals === homeGoals &&

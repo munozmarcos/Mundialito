@@ -88,8 +88,8 @@ export function matchStatus(kickoffAt: string | Date, locked: boolean, hasResult
   if (dbStatus === "closed" || dbStatus === "final") return "closed";
   if (!hasResult && nowMs >= kickoff && nowMs <= kickoff + 150 * 60 * 1000) return "playing";
   if (hasResult) return "closed";
-  if (isPredictionLocked(kickoffAt, locked, now)) return "closing_soon";
   const msToKickoff = kickoff - nowMs;
-  if (msToKickoff <= 60 * 60 * 1000) return "closing_soon";
+  if (msToKickoff > 0 && msToKickoff <= 4 * 60 * 60 * 1000) return "closing_soon";
+  if (isPredictionLocked(kickoffAt, locked, now)) return "closing_soon";
   return "open";
 }

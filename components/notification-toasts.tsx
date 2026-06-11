@@ -3,6 +3,7 @@
 import { Bell, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { NotificationBody } from "@/components/notification-body";
 
 type NotificationItem = {
   id: string;
@@ -10,6 +11,15 @@ type NotificationItem = {
   body: string;
   created_at: string;
   type: "admin" | "points" | "closing" | "closed" | "participant";
+  point_players?: { name: string; points: number }[];
+  match?: {
+    home_team: string;
+    away_team: string;
+    home_country_code?: string | null;
+    away_country_code?: string | null;
+    home_goals?: number | null;
+    away_goals?: number | null;
+  };
 };
 
 const storageKey = "mundialito-last-notification";
@@ -72,7 +82,9 @@ export function NotificationToasts() {
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-black">{toast.title}</p>
-        <p className="mt-1 line-clamp-2 text-xs font-semibold text-ink/72">{toast.body}</p>
+        <div className="line-clamp-3">
+          <NotificationBody item={toast} compact />
+        </div>
         <div className="mt-3 flex items-center gap-2">
           <Link className="btn min-h-8 px-3 text-xs" href="/novedades" onClick={() => setToast(null)}>
             Ver novedades

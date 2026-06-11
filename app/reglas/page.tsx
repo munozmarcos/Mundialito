@@ -209,7 +209,7 @@ export default function RulesPage() {
           <StatusExample
             status="closed"
             title="Cerrado"
-            text="Cierra 15 minutos antes y queda finalizado al cargar resultado."
+            text="Cierra 15 minutos antes y queda cerrado al cargar resultado."
           />
         </div>
       </section>

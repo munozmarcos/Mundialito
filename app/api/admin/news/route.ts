@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   const admin = await requireAdmin(req);
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const news = await getLatestNotifications(100);
+  const news = await getLatestNotifications(100, { includeExpiredManual: true });
   return NextResponse.json({ news });
 }
 
@@ -26,6 +26,25 @@ export async function POST(req: Request) {
   const { data, error } = await db
     .from("news_items")
     .insert(body)
+    .select("id,title,body,published,created_at")
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ news: data ? { ...data, id: `admin:${data.id}`, type: "admin" } : data });
+}
+
+export async function PATCH(req: Request) {
+  const admin = await requireAdmin(req);
+  if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id, ...body } = NewsBody.extend({ id: z.string().min(2) }).parse(await req.json());
+  if (!id.startsWith("admin:")) return NextResponse.json({ error: "Solo se pueden editar novedades manuales." }, { status: 400 });
+
+  const db = supabaseAdmin();
+  const { data, error } = await db
+    .from("news_items")
+    .update(body)
+    .eq("id", id.slice("admin:".length))
     .select("id,title,body,published,created_at")
     .single();
 

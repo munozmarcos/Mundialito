@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/empty-state";
 import { HomePrimaryAction } from "@/components/home-primary-action";
+import { NotificationBody } from "@/components/notification-body";
 import { RankingDescription } from "@/components/ranking-description";
 import { ShareLinkButton } from "@/components/share-link-button";
 import { StatusPill } from "@/components/status-pill";
@@ -165,12 +166,8 @@ export default async function Home() {
                       />
                       </div>
                       <div className="grid grid-cols-[52px_52px] gap-2">
-                        <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black" aria-label={`Goles ${match.home_team}`}>
-                          {match.home_goals ?? ""}
-                        </div>
-                        <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black" aria-label={`Goles ${match.away_team}`}>
-                          {match.away_goals ?? ""}
-                        </div>
+                        <input className="field h-10 min-h-10 px-2 text-center text-sm font-black" disabled readOnly value={match.home_goals ?? ""} aria-label={`Goles ${match.home_team}`} />
+                        <input className="field h-10 min-h-10 px-2 text-center text-sm font-black" disabled readOnly value={match.away_goals ?? ""} aria-label={`Goles ${match.away_team}`} />
                       </div>
                     </div>
                   </article>
@@ -181,10 +178,10 @@ export default async function Home() {
 
           <section className="panel overflow-hidden">
             <div className="flex items-center justify-between border-b border-line p-4">
-              <h2 className="text-xl font-black">Partidos finalizados</h2>
+              <h2 className="text-xl font-black">Partidos cerrados</h2>
             </div>
             {!finishedMatches.length ? (
-              <EmptyState title="Sin finalizados recientes" text="Cuando terminen partidos de hoy o ayer, aparecen aca." />
+              <EmptyState title="Sin cerrados recientes" text="Cuando cierren partidos de hoy o ayer, aparecen aca." />
             ) : (
               <div className="grid">
                 {finishedMatches.map((match) => (
@@ -199,14 +196,10 @@ export default async function Home() {
                       <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : match.stage, match.stadium].filter(Boolean).join(" - ")}</p>
                     </div>
                     <div className="grid justify-items-start gap-2 sm:justify-items-end">
-                      <StatusPill status="closed" label="Finalizado" />
+                      <StatusPill status="closed" label="Cerrado" />
                       <div className="grid grid-cols-[52px_52px] gap-2">
-                        <div className="grid h-10 place-items-center rounded-lg border border-grass/35 bg-grass/10 text-sm font-black text-grass" aria-label={`Goles ${match.home_team}`}>
-                          {match.home_goals}
-                        </div>
-                        <div className="grid h-10 place-items-center rounded-lg border border-grass/35 bg-grass/10 text-sm font-black text-grass" aria-label={`Goles ${match.away_team}`}>
-                          {match.away_goals}
-                        </div>
+                        <input className="field h-10 min-h-10 px-2 text-center text-sm font-black" disabled readOnly value={match.home_goals ?? ""} aria-label={`Goles ${match.home_team}`} />
+                        <input className="field h-10 min-h-10 px-2 text-center text-sm font-black" disabled readOnly value={match.away_goals ?? ""} aria-label={`Goles ${match.away_team}`} />
                       </div>
                     </div>
                   </article>
@@ -298,7 +291,7 @@ export default async function Home() {
                       {formatArgentinaDateTime(item.created_at)}
                     </time>
                   </div>
-                  <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-ink/70">{item.body}</p>
+                  <NotificationBody item={item} compact />
                 </div>
               ))
             )}

@@ -2,7 +2,7 @@
 
 import { AdminBackButton } from "@/components/admin-back-button";
 import { formatArgentinaDateTime } from "@/lib/dates";
-import { Newspaper, Save, Trash2 } from "lucide-react";
+import { Newspaper, Pencil, Save, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type NewsItem = {
@@ -19,6 +19,9 @@ export default function AdminNewsPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editBody, setEditBody] = useState("");
 
   async function loadNews() {
     const res = await fetch("/api/admin/news", { cache: "no-store" });
@@ -70,6 +73,33 @@ export default function AdminNewsPage() {
     setMessage("Novedad eliminada.");
   }
 
+  function startEdit(item: NewsItem) {
+    setEditingId(item.id);
+    setEditTitle(item.title);
+    setEditBody(item.body);
+    setMessage("");
+  }
+
+  async function saveEdit() {
+    if (!editingId) return;
+    setSaving(true);
+    setMessage("");
+    const res = await fetch("/api/admin/news", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: editingId, title: editTitle, body: editBody, published: true })
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) {
+      setMessage(data.error ?? "No se pudo editar la novedad.");
+      return;
+    }
+    setNews((current) => current.map((item) => (item.id === editingId ? data.news : item)));
+    setEditingId(null);
+    setMessage("Novedad actualizada.");
+  }
+
   return (
     <div className="grid gap-6">
       <section className="panel p-6">
@@ -115,22 +145,53 @@ export default function AdminNewsPage() {
         {!news.length ? (
           <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay novedades.</p>
         ) : (
-          news.map((item) => (
+          news.map((item) => {
+            const canEdit = item.id.startsWith("admin:");
+            const isEditing = editingId === item.id;
+            return (
             <div className="grid gap-3 border-b border-line p-4 last:border-0 sm:grid-cols-[1fr_auto] sm:items-start" key={item.id}>
               <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-black">{item.title}</h3>
-                  <time className="text-xs font-black text-ink/45" dateTime={item.created_at}>
-                    {formatArgentinaDateTime(item.created_at)}
-                  </time>
-                </div>
-                <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-ink/70">{item.body}</p>
+                {isEditing ? (
+                  <div className="grid max-w-3xl gap-3">
+                    <input className="field text-left" value={editTitle} onChange={(event) => setEditTitle(event.target.value)} />
+                    <textarea className="field dark-scrollbar max-h-[160px] min-h-[110px] resize-y py-3 text-left text-base leading-6" rows={4} value={editBody} onChange={(event) => setEditBody(event.target.value)} />
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-black">{item.title}</h3>
+                      <time className="text-xs font-black text-ink/45" dateTime={item.created_at}>
+                        {formatArgentinaDateTime(item.created_at)}
+                      </time>
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-ink/70">{item.body}</p>
+                  </>
+                )}
               </div>
-              <button className="btn secondary min-h-9 px-3" onClick={() => deleteNews(item.id)} type="button">
-                <Trash2 className="h-4 w-4" />
-              </button>
+              <div className="flex gap-2">
+                {isEditing ? (
+                  <>
+                    <button className="btn min-h-9 px-3" disabled={saving || editTitle.trim().length < 2 || editBody.trim().length < 2} onClick={saveEdit} type="button">
+                      <Save className="h-4 w-4" />
+                    </button>
+                    <button className="btn secondary min-h-9 px-3" onClick={() => setEditingId(null)} type="button">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </>
+                ) : (
+                  canEdit && (
+                    <button className="btn secondary min-h-9 px-3" onClick={() => startEdit(item)} type="button">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  )
+                )}
+                <button className="btn secondary min-h-9 px-3" onClick={() => deleteNews(item.id)} type="button">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          ))
+          );
+          })
         )}
       </section>
     </div>

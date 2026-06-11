@@ -319,17 +319,20 @@ export async function getParticipantPayments(): Promise<ParticipantPaymentRow[]>
   }
 }
 
-export async function getNewsItems(limit = 5): Promise<NewsItem[]> {
+export async function getNewsItems(limit = 5, options?: { includeExpired?: boolean }): Promise<NewsItem[]> {
   if (!supabaseConfigured()) return [];
 
   try {
     const db = supabaseAdmin();
-    const { data, error } = await db
+    let query = db
       .from("news_items")
       .select("id,title,body,published,created_at")
       .eq("published", true)
-      .order("created_at", { ascending: false })
-      .limit(limit);
+      .order("created_at", { ascending: false });
+    if (!options?.includeExpired) {
+      query = query.gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+    }
+    const { data, error } = await query.limit(limit);
     if (error) throw error;
     return (data ?? []) as NewsItem[];
   } catch (error) {
