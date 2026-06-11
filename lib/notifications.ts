@@ -119,7 +119,7 @@ async function getPointMatchNotifications(limit: number): Promise<LatestNotifica
         .map((player) => ({ name: player.name, points: player.points }));
       return {
         id: `points-match:${matchId}:${group.match.home_goals ?? "x"}-${group.match.away_goals ?? "x"}`,
-        title: "Puntos sumados",
+        title: "Puntos obtenidos",
         body: "",
         created_at: group.updatedAt,
         type: "points" as const,

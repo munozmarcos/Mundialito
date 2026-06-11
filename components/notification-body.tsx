@@ -35,7 +35,7 @@ export function NotificationBody({ item, compact = false }: { item: LatestNotifi
           {groupedPointPlayers(item.point_players).map(([points, names]) => (
             <span className="text-sm font-semibold text-ink/78" key={points}>
               <span className={`mr-2 rounded-full border px-2 py-1 text-xs font-black ${pointClass(points)}`}>{points} Pts</span>
-              <strong className="font-black text-ink">{names.join(", ")}</strong>
+              <span className="font-semibold text-ink/72">{names.join(", ")}</span>
             </span>
           ))}
         </div>

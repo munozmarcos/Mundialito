@@ -102,7 +102,7 @@ export default async function Home() {
   const currentUserPoints = currentUser ? ranking.find((row) => row.user_id === currentUser.id)?.total_points ?? 0 : 0;
   const freshNewsItems = newsItems.filter((item) => {
     const createdAt = new Date(item.created_at).getTime();
-    return Number.isFinite(createdAt) && Date.now() - createdAt <= 24 * 60 * 60 * 1000;
+    return item.type !== "closed" && Number.isFinite(createdAt) && Date.now() - createdAt <= 24 * 60 * 60 * 1000;
   });
 
   return (
@@ -166,8 +166,12 @@ export default async function Home() {
                       />
                       </div>
                       <div className="grid grid-cols-[52px_52px] gap-2">
-                        <input className="field h-10 min-h-10 px-2 text-center text-sm font-black" disabled readOnly value={match.home_goals ?? ""} aria-label={`Goles ${match.home_team}`} />
-                        <input className="field h-10 min-h-10 px-2 text-center text-sm font-black" disabled readOnly value={match.away_goals ?? ""} aria-label={`Goles ${match.away_team}`} />
+                        <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black text-ink" aria-label={`Goles ${match.home_team}`}>
+                          {match.home_goals ?? ""}
+                        </div>
+                        <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black text-ink" aria-label={`Goles ${match.away_team}`}>
+                          {match.away_goals ?? ""}
+                        </div>
                       </div>
                     </div>
                   </article>
@@ -198,8 +202,12 @@ export default async function Home() {
                     <div className="grid justify-items-start gap-2 sm:justify-items-end">
                       <StatusPill status="closed" label="Cerrado" />
                       <div className="grid grid-cols-[52px_52px] gap-2">
-                        <input className="field h-10 min-h-10 px-2 text-center text-sm font-black" disabled readOnly value={match.home_goals ?? ""} aria-label={`Goles ${match.home_team}`} />
-                        <input className="field h-10 min-h-10 px-2 text-center text-sm font-black" disabled readOnly value={match.away_goals ?? ""} aria-label={`Goles ${match.away_team}`} />
+                        <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black text-ink" aria-label={`Goles ${match.home_team}`}>
+                          {match.home_goals ?? ""}
+                        </div>
+                        <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black text-ink" aria-label={`Goles ${match.away_team}`}>
+                          {match.away_goals ?? ""}
+                        </div>
                       </div>
                     </div>
                   </article>
