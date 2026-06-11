@@ -7,7 +7,7 @@ const labels: Record<PillStatus, string> = {
   locked: "Bloqueado",
   closed: "Cerrado",
   closing_soon: "Cierra pronto",
-  playing: "Jugando",
+  playing: "Vivo",
   payment_pending: "Pago pendiente",
 };
 
@@ -16,7 +16,7 @@ const styles: Record<PillStatus, string> = {
   locked: "border-sky-500/25 bg-slate-800/80 text-sky-100",
   closed: "border-slate-500/30 bg-slate-900/70 text-slate-200",
   closing_soon: "border-gold/35 bg-yellow-950/70 text-gold",
-  playing: "border-blue-400/35 bg-blue-950/80 text-blue-100",
+  playing: "border-red-500/35 bg-red-500/15 text-red-200",
   payment_pending: "border-red-500/35 bg-red-500/15 text-red-200",
 };
 

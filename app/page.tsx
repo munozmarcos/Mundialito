@@ -6,7 +6,7 @@ import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { getAppUserFromServerCookies } from "@/lib/app-auth";
 import { getMatches, getPaymentSummary, getRanking } from "@/lib/data";
-import { formatArgentinaDateTime } from "@/lib/dates";
+import { argentinaDateKey, formatArgentinaDateTime } from "@/lib/dates";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { getLatestNotifications } from "@/lib/notifications";
 import { matchStatus } from "@/lib/scoring";
@@ -22,11 +22,40 @@ const features = [
   { icon: CreditCard, title: "Pagos", text: "Pago asociado al apodo." }
 ];
 
+function addArgentinaDays(dateKey: string, days: number) {
+  const date = new Date(`${dateKey}T00:00:00-03:00`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return argentinaDateKey(date);
+}
+
+function isBetweenDateKeys(value: string, from: string, to: string) {
+  const key = argentinaDateKey(value);
+  return key >= from && key <= to;
+}
+
 function upcoming(matches: Awaited<ReturnType<typeof getMatches>>, limit: number) {
   const now = Date.now();
+  const today = argentinaDateKey(new Date());
+  const until = addArgentinaDays(today, 2);
   return matches
-    .filter((match) => new Date(match.kickoff_at).getTime() >= now && match.home_goals == null)
+    .filter((match) => {
+      const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
+      const isOpenOrLive = status === "open" || status === "closing_soon" || status === "playing";
+      return isBetweenDateKeys(match.kickoff_at, today, until) && isOpenOrLive && (new Date(match.kickoff_at).getTime() >= now || status === "playing");
+    })
     .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime())
+    .slice(0, limit);
+}
+
+function finalized(matches: Awaited<ReturnType<typeof getMatches>>, limit: number) {
+  const today = argentinaDateKey(new Date());
+  const yesterday = addArgentinaDays(today, -1);
+  return matches
+    .filter((match) => {
+      const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
+      return isBetweenDateKeys(match.kickoff_at, yesterday, today) && status === "closed" && match.home_goals != null && match.away_goals != null;
+    })
+    .sort((a, b) => new Date(b.kickoff_at).getTime() - new Date(a.kickoff_at).getTime())
     .slice(0, limit);
 }
 
@@ -54,6 +83,7 @@ export default async function Home() {
     getAppUserFromServerCookies()
   ]);
   const matches = upcoming(allMatches, 6);
+  const finishedMatches = finalized(allMatches, 6);
   const currentUserPoints = currentUser ? ranking.find((row) => row.user_id === currentUser.id)?.total_points ?? 0 : 0;
   const freshNewsItems = newsItems.filter((item) => {
     const createdAt = new Date(item.created_at).getTime();
@@ -121,6 +151,42 @@ export default async function Home() {
                         </div>
                         <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black" aria-label={`Goles ${match.away_team}`}>
                           {match.away_goals ?? ""}
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="panel overflow-hidden">
+            <div className="flex items-center justify-between border-b border-line p-4">
+              <h2 className="text-xl font-black">Partidos finalizados</h2>
+            </div>
+            {!finishedMatches.length ? (
+              <EmptyState title="Sin finalizados recientes" text="Cuando terminen partidos de hoy o ayer, aparecen aca." />
+            ) : (
+              <div className="grid">
+                {finishedMatches.map((match) => (
+                  <article className="grid gap-3 border-b border-line p-4 last:border-0 sm:grid-cols-[1fr_auto] sm:items-center" key={match.id}>
+                    <div>
+                      <div className="text-sm font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</div>
+                      <h3 className="flex flex-wrap items-center gap-2 text-xl font-black">
+                        <TeamLabel name={match.home_team} code={match.home_country_code} />
+                        <span className="text-ink/40">vs</span>
+                        <TeamLabel name={match.away_team} code={match.away_country_code} />
+                      </h3>
+                      <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : match.stage, match.stadium].filter(Boolean).join(" - ")}</p>
+                    </div>
+                    <div className="grid justify-items-start gap-2 sm:justify-items-end">
+                      <StatusPill status="closed" label="Finalizado" />
+                      <div className="grid grid-cols-[52px_52px] gap-2">
+                        <div className="grid h-10 place-items-center rounded-lg border border-grass/35 bg-grass/10 text-sm font-black text-grass" aria-label={`Goles ${match.home_team}`}>
+                          {match.home_goals}
+                        </div>
+                        <div className="grid h-10 place-items-center rounded-lg border border-grass/35 bg-grass/10 text-sm font-black text-grass" aria-label={`Goles ${match.away_team}`}>
+                          {match.away_goals}
                         </div>
                       </div>
                     </div>
