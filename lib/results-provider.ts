@@ -295,41 +295,62 @@ function isApiFootballWorldCupFixture(match: ApiFootballFixture) {
   return leagueName.includes("world cup");
 }
 
-export async function fetchApiFootballResults(): Promise<ProviderResult[]> {
+function normalizeApiFootballFixture(match: ApiFootballFixture): ProviderResult | null {
+  if (!isApiFootballWorldCupFixture(match)) return null;
+  const status = apiFootballStatus(match.fixture?.status?.short);
+  if (!status) return null;
+  const homeTeam = match.teams?.home?.name;
+  const awayTeam = match.teams?.away?.name;
+  if (!homeTeam || !awayTeam) return null;
+  const goals = apiFootballGoals(match, status);
+  if (!goals) return null;
+
+  return {
+    providerMatchId: String(match.fixture?.id ?? `${homeTeam}-${awayTeam}-${match.fixture?.date ?? ""}`),
+    homeTeam,
+    awayTeam,
+    homeGoals: goals.home,
+    awayGoals: goals.away,
+    penaltyWinner: apiFootballPenaltyWinner(match, homeTeam, awayTeam),
+    status,
+    playedAt: match.fixture?.date ?? null
+  };
+}
+
+async function fetchApiFootballFixturePage(params: Record<string, string>) {
   const url = new URL("https://v3.football.api-sports.io/fixtures");
-  url.searchParams.set("live", "all");
-  if (process.env.API_FOOTBALL_WORLD_CUP_LEAGUE_ID) {
-    url.searchParams.set("league", process.env.API_FOOTBALL_WORLD_CUP_LEAGUE_ID);
-    url.searchParams.set("season", process.env.API_FOOTBALL_SEASON ?? "2026");
-  }
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
 
   const res = await fetch(url, { headers: apiFootballHeaders(), cache: "no-store" });
-  if (!res.ok) throw new Error(`api-football live results failed: ${res.status}`);
+  if (!res.ok) throw new Error(`api-football results failed: ${res.status}`);
   const data = (await res.json()) as { response?: ApiFootballFixture[] };
+  return data.response ?? [];
+}
 
-  const results: ProviderResult[] = [];
-  for (const match of data.response ?? []) {
-    if (!isApiFootballWorldCupFixture(match)) continue;
-    const status = apiFootballStatus(match.fixture?.status?.short);
-    if (!status) continue;
-    const homeTeam = match.teams?.home?.name;
-    const awayTeam = match.teams?.away?.name;
-    if (!homeTeam || !awayTeam) continue;
-    const goals = apiFootballGoals(match, status);
-    if (!goals) continue;
-
-    results.push({
-      providerMatchId: String(match.fixture?.id ?? `${homeTeam}-${awayTeam}-${match.fixture?.date ?? ""}`),
-      homeTeam,
-      awayTeam,
-      homeGoals: goals.home,
-      awayGoals: goals.away,
-      penaltyWinner: apiFootballPenaltyWinner(match, homeTeam, awayTeam),
-      status,
-      playedAt: match.fixture?.date ?? null
-    });
+function todayApiFootballDates(now = new Date()) {
+  const dates = [now.toISOString().slice(0, 10)];
+  if (now.getUTCHours() < 4) {
+    dates.push(new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
   }
-  return results;
+  return dates;
+}
+
+export async function fetchApiFootballResults(): Promise<ProviderResult[]> {
+  const pages = await Promise.all([
+    fetchApiFootballFixturePage({ live: "all" }),
+    ...todayApiFootballDates().map((date) => fetchApiFootballFixturePage({ date }))
+  ]);
+
+  const resultsByFixture = new Map<string, ProviderResult>();
+  for (const match of pages.flat()) {
+    const result = normalizeApiFootballFixture(match);
+    if (!result) continue;
+    const existing = resultsByFixture.get(result.providerMatchId);
+    if (!existing || (existing.status === "playing" && result.status === "closed")) {
+      resultsByFixture.set(result.providerMatchId, result);
+    }
+  }
+  return [...resultsByFixture.values()];
 }
 
 export async function fetchProviderResults() {
