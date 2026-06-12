@@ -1,0 +1,23 @@
+name: Mundialito fixture sync
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: mundialito-fixture-sync
+  cancel-in-progress: false
+
+jobs:
+  sync-fixtures:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Sync official fixture
+        run: |
+          curl --fail-with-body --request POST \
+            --header "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --header "x-vercel-cron: 1" \
+            --header "Content-Type: application/json" \
+            https://mundialito-mu.vercel.app/api/jobs/sync-fixtures

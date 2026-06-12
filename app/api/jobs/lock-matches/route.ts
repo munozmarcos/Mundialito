@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
-import { flagEmojiForTeam } from "@/lib/flags";
+import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { getPodiumLockState } from "@/lib/podium";
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
   const failures: string[] = [];
   for (const match of matchesToLock ?? []) {
     const users = await usersMissingPrediction(db, match.id);
-    const matchLabel = `${flagEmoji(match.home_team, match.home_country_code)} ${match.home_team} vs ${flagEmoji(match.away_team, match.away_country_code)} ${match.away_team}`;
+    const matchLabel = `${flagEmoji(match.home_team, match.home_country_code)} ${displayNameForTeam(match.home_team)} vs ${flagEmoji(match.away_team, match.away_country_code)} ${displayNameForTeam(match.away_team)}`;
     for (const user of users) {
       if (!user.phone) continue;
 
@@ -82,13 +82,13 @@ export async function POST(req: Request) {
         await sendWhatsApp(
           user.phone,
           [
-            "?? Mundialito - partido cerrado",
+            "⏰ *Mundialito - pronósticos cerrados*",
             "",
             `*${matchLabel}*`,
             "",
-            `?? Empieza: ${formatArgentinaDateTime(match.kickoff_at)}`,
-            "? Ya no se pueden cargar ni modificar predicciones.",
-            "?? Si no cargaste, quedo vacia para este partido."
+            `⚽ Arranca: *${formatArgentinaDateTime(match.kickoff_at)}*`,
+            "🔒 La carga para este partido ya quedó cerrada.",
+            "Si no cargaste, queda vacío para este partido."
           ].join("\n")
         );
         sent += 1;

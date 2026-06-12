@@ -37,7 +37,10 @@ export async function POST(req: Request) {
   const hour = now.getUTCHours();
   const due = new Set<string>(always);
 
-  if (hour === 6 && minute < 5) due.add("/api/jobs/sync-fixtures");
+  // 03:00 Argentina = 06:00 UTC. The wide window absorbs GitHub schedule delays.
+  if (hour === 6 && minute < 30) due.add("/api/jobs/sync-fixtures");
+  // 23:00 Argentina = 02:00 UTC. Ranking is deduped per user/day by notification_logs.
+  if (hour === 2) due.add("/api/jobs/send-daily-ranking");
 
   const results = [];
   for (const path of due) {
@@ -56,7 +59,7 @@ export async function POST(req: Request) {
       triggerType: "automatic",
       ok: payload.ok,
       statusCode: payload.ok ? 200 : 207,
-      summary: `Orquestador: ejecutado · ${payload.ran} jobs disparados`,
+      summary: `Orquestador: ejecutado - ${payload.ran} jobs disparados`,
       payload
     });
   }

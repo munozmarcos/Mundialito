@@ -54,9 +54,7 @@ export async function POST(req: Request) {
     "🏆 *Ranking diario Mundialito*",
     `📅 ${today}`,
     "",
-    ranking.length
-      ? ranking.map((row, index) => rankingLine(row, index)).join("\n")
-      : "Todavía no hay puntos cargados.",
+    ranking.length ? ranking.map((row, index) => rankingLine(row, index)).join("\n") : "Todavia no hay puntos cargados.",
     "",
     "Responde *$ranking* para ver la tabla completa cuando quieras."
   ].join("\n");
