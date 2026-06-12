@@ -146,23 +146,49 @@ export async function getRanking(): Promise<RankingRow[]> {
 
   try {
     const db = supabaseAdmin();
-    const [{ data, error }, { data: podiumRows, error: podiumError }] = await Promise.all([
-      db.rpc("ranking"),
+    const [
+      { data: profiles, error: profilesError },
+      { data: predictions, error: predictionsError },
+      { data: podiumRows, error: podiumError }
+    ] = await Promise.all([
+      db.from("profiles").select("id,display_name"),
+      db
+        .from("predictions")
+        .select("user_id,points,exact_hit,trend_hit,home_goals,away_goals")
+        .not("home_goals", "is", null)
+        .not("away_goals", "is", null),
       db.from("podium_predictions").select("user_id,champion_points,runner_up_points,third_place_points,points")
     ]);
-    if (error) throw error;
+    if (profilesError) throw profilesError;
+    if (predictionsError) throw predictionsError;
     if (podiumError) throw podiumError;
+
+    const matchPointsByUser = new Map<string, { points: number; exacts: number; trends: number }>();
+    for (const prediction of predictions ?? []) {
+      const current = matchPointsByUser.get(prediction.user_id) ?? { points: 0, exacts: 0, trends: 0 };
+      current.points += prediction.points ?? 0;
+      if (prediction.exact_hit) current.exacts += 1;
+      else if (prediction.trend_hit) current.trends += 1;
+      matchPointsByUser.set(prediction.user_id, current);
+    }
+
     const podiumByUser = new Map((podiumRows ?? []).map((row) => [row.user_id, row]));
-    return ((data ?? []) as RankingRow[])
-      .map((row) => {
-        const podium = podiumByUser.get(row.user_id);
+    return (profiles ?? [])
+      .map((profile) => {
+        const matchPoints = matchPointsByUser.get(profile.id) ?? { points: 0, exacts: 0, trends: 0 };
+        const podium = podiumByUser.get(profile.id);
+        const podiumPoints = podium?.points ?? 0;
         return {
-          ...row,
-          podium_points: podium?.points ?? row.podium_points ?? 0,
+          user_id: profile.id,
+          display_name: profile.display_name,
+          total_points: matchPoints.points + podiumPoints,
+          exact_hits: matchPoints.exacts,
+          trend_hits: matchPoints.trends,
+          podium_points: podiumPoints,
           podium_champion_points: podium?.champion_points ?? 0,
           podium_runner_up_points: podium?.runner_up_points ?? 0,
           podium_third_place_points: podium?.third_place_points ?? 0
-        };
+        } satisfies RankingRow;
       })
       .sort((a, b) => b.total_points - a.total_points || b.exact_hits - a.exact_hits || b.trend_hits - a.trend_hits || a.display_name.localeCompare(b.display_name));
   } catch (error) {
@@ -186,13 +212,15 @@ export async function getRankingDetails(): Promise<RankingDetails> {
       db
         .from("predictions")
         .select("id,user_id,points,exact_hit,trend_hit,home_goals,away_goals,penalty_winner,updated_at,matches(id,home_team,away_team,home_country_code,away_country_code,kickoff_at,stage,group_name,home_goals,away_goals,penalty_winner)")
+        .not("home_goals", "is", null)
+        .not("away_goals", "is", null)
         .gt("points", 0)
         .order("updated_at", { ascending: false }),
       db
         .from("podium_predictions")
         .select("user_id,champion_team,runner_up_team,third_place_team,champion_points,runner_up_points,third_place_points,points,updated_at")
         .gt("points", 0),
-      db.from("predictions").select("user_id,match_id"),
+      db.from("predictions").select("user_id,match_id,home_goals,away_goals").not("home_goals", "is", null).not("away_goals", "is", null),
       db.from("podium_predictions").select("user_id,champion_team,runner_up_team,third_place_team"),
       db.from("matches").select("id,home_team,away_team,kickoff_at,stage,status,locked")
     ]);
@@ -242,6 +270,8 @@ export async function getRecentActivity(limit = 6): Promise<ActivityRow[]> {
     const { data, error } = await db
       .from("predictions")
       .select("id,points,exact_hit,trend_hit,updated_at,profiles(display_name),matches(home_team,away_team,home_goals,away_goals)")
+      .not("home_goals", "is", null)
+      .not("away_goals", "is", null)
       .gt("points", 0)
       .order("updated_at", { ascending: false })
       .limit(limit);

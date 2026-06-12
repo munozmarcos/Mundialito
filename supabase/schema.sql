@@ -148,13 +148,19 @@ drop function if exists ranking();
 create function ranking()
 returns table(user_id uuid, display_name text, total_points bigint, exact_hits bigint, trend_hits bigint, podium_points bigint)
 language sql stable as $$
-  with match_points as (
+  with valid_predictions as (
+    select *
+    from predictions
+    where home_goals is not null
+      and away_goals is not null
+  ),
+  match_points as (
     select
       pr.user_id,
       coalesce(sum(pr.points), 0)::bigint as points,
       coalesce(sum(case when pr.exact_hit then 1 else 0 end), 0)::bigint as exact_hits,
       coalesce(sum(case when pr.trend_hit and not pr.exact_hit then 1 else 0 end), 0)::bigint as trend_hits
-    from predictions pr
+    from valid_predictions pr
     group by pr.user_id
   ),
   podium_points as (

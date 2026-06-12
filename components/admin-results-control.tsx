@@ -197,6 +197,7 @@ function flagEmoji(team: string) {
 export function AdminResultsControl({ initialMatches, profiles, predictions, podiums, initialPodiumStatus }: Props) {
   const [matches, setMatches] = useState(initialMatches);
   const [scores, setScores] = useState<ScoreDraft>(() => initialScores(initialMatches));
+  const [predictionRows, setPredictionRows] = useState<AdminPrediction[]>(predictions);
   const [drafts, setDrafts] = useState<PredictionDraft>(() => initialPredictionDrafts(predictions));
   const [podiumRows, setPodiumRows] = useState<AdminPodium[]>(podiums);
   const [podiumDrafts, setPodiumDrafts] = useState<PodiumDraft>(() => initialPodiumDrafts(podiums));
@@ -230,11 +231,11 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
   const tabMatches = baseTabMatches.filter((match) => matchFitsBasicFilters(match, teamFilter, dateFilter));
   const selectedMatch = tabMatches.find((match) => match.id === selectedMatchId) ?? tabMatches[0] ?? baseTabMatches[0] ?? matches[0];
   const predictionMap = useMemo(() => {
-    return predictions.reduce<Record<string, AdminPrediction>>((acc, prediction) => {
+    return predictionRows.reduce<Record<string, AdminPrediction>>((acc, prediction) => {
       acc[predictionKey(prediction.user_id, prediction.match_id)] = prediction;
       return acc;
     }, {});
-  }, [predictions]);
+  }, [predictionRows]);
   const podiumMap = useMemo(() => {
     return podiumRows.reduce<Record<string, AdminPodium>>((acc, podium) => {
       acc[podium.user_id] = podium;
@@ -366,7 +367,21 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
     setSaving(true);
     setMessage("");
     try {
-      await request("/api/admin/predictions", "PUT", { userId, matchId, homeGoals: draft.home, awayGoals: draft.away, penaltyWinner: draft.penaltyWinner ?? null });
+      const data = await request("/api/admin/predictions", "PUT", { userId, matchId, homeGoals: draft.home, awayGoals: draft.away, penaltyWinner: draft.penaltyWinner ?? null });
+      if (data.prediction) {
+        setPredictionRows((current) => {
+          const key = predictionKey(userId, matchId);
+          return [...current.filter((prediction) => predictionKey(prediction.user_id, prediction.match_id) !== key), data.prediction];
+        });
+        setDrafts((current) => ({
+          ...current,
+          [predictionKey(userId, matchId)]: {
+            home: data.prediction.home_goals,
+            away: data.prediction.away_goals,
+            penaltyWinner: data.prediction.penalty_winner ?? null
+          }
+        }));
+      }
       setMessage("Apuesta guardada y puntos recalculados.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo guardar.");
@@ -380,6 +395,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
     setMessage("");
     try {
       await request("/api/admin/predictions", "DELETE", { userId, matchId });
+      setPredictionRows((current) => current.filter((prediction) => predictionKey(prediction.user_id, prediction.match_id) !== predictionKey(userId, matchId)));
       setDrafts((current) => ({ ...current, [predictionKey(userId, matchId)]: { home: "", away: "", penaltyWinner: null } }));
       setMessage("Apuesta eliminada.");
     } catch (error) {

@@ -61,7 +61,13 @@ export async function PUT(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   await recalculateMatch(body.matchId);
-  return NextResponse.json({ prediction: data });
+  const { data: refreshed } = await db
+    .from("predictions")
+    .select("*")
+    .eq("user_id", body.userId)
+    .eq("match_id", body.matchId)
+    .single();
+  return NextResponse.json({ prediction: refreshed ?? data });
 }
 
 export async function DELETE(req: Request) {

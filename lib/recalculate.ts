@@ -14,6 +14,19 @@ export async function recalculateMatch(matchId: string) {
   if (predictionsError) throw predictionsError;
 
   for (const prediction of predictions ?? []) {
+    if (prediction.home_goals == null || prediction.away_goals == null) {
+      await db
+        .from("predictions")
+        .update({
+          points: 0,
+          trend_hit: false,
+          exact_hit: false,
+          score_details: ["missing-score"]
+        })
+        .eq("id", prediction.id);
+      continue;
+    }
+
     const result = scorePrediction({
       stage: match.stage,
       predictedHomeGoals: prediction.home_goals,

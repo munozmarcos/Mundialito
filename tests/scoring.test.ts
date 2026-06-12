@@ -63,6 +63,21 @@ describe("group scoring from the Qatar 2022 rules Excel", () => {
 
     expect(result.points).toBe(0);
   });
+
+  it("never scores an incomplete prediction as an exact 0-0", () => {
+    const result = scorePrediction({
+      stage: "GROUP",
+      predictedHomeGoals: null,
+      predictedAwayGoals: null,
+      actualHomeGoals: 0,
+      actualAwayGoals: 0
+    });
+
+    expect(result.points).toBe(0);
+    expect(result.exactHit).toBe(false);
+    expect(result.trendHit).toBe(false);
+    expect(result.details).toContain("missing-score");
+  });
 });
 
 describe("locking", () => {
