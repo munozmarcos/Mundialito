@@ -858,8 +858,8 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
               </div>
               <div className="grid gap-2 text-sm">
                 {rows.map((row, index) => (
-                  <div className="grid grid-cols-[28px_1fr_42px_42px_42px] items-center gap-2 rounded-lg border border-line bg-field p-2" key={`${group}-${row.team}`}>
-                    <span className="font-black text-gold">{index + 1}</span>
+                  <div className="grid grid-cols-[32px_1fr_42px_42px_42px] items-center gap-2 rounded-lg border border-line bg-field p-2" key={`${group}-${row.team}`}>
+                    <span className={`grid h-7 w-7 place-items-center rounded-full text-xs font-black ${index < 2 ? "bg-mint text-grass" : index === 2 ? "bg-amber-50 text-gold" : "bg-field text-ink/45"}`}>{index + 1}</span>
                     <TeamLabel name={row.team} code={row.code} />
                     <strong className="text-center">{row.points}</strong>
                     <span className="text-center text-ink/60">{row.played}</span>

@@ -3,6 +3,7 @@ import { flagEmojiForTeam } from "@/lib/flags";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
+import { sendWebPushToAll } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 
 function isAutomatic(req: Request) {
@@ -43,8 +44,20 @@ export async function POST(req: Request) {
   if (usersError) return NextResponse.json({ error: usersError.message }, { status: 400 });
 
   let sent = 0;
+  let pushSent = 0;
+  let pushFailed = 0;
   const failures: string[] = [];
   for (const match of matches ?? []) {
+    const push = await sendWebPushToAll({
+      dedupeKey: `match-kickoff:${match.id}`,
+      title: "Arranca el partido",
+      body: `${flagEmoji(match.home_team, match.home_country_code)} ${match.home_team} vs ${flagEmoji(match.away_team, match.away_country_code)} ${match.away_team}`,
+      url: "/partidos",
+      tag: `match-kickoff:${match.id}`
+    });
+    pushSent += push.sent;
+    pushFailed += push.failed;
+
     for (const user of users ?? []) {
       const dedupeKey = `${match.id}:${user.id}:kickoff`;
       const { error: logError } = await db.from("notification_logs").insert({
@@ -75,7 +88,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const result = { sent, matches: matches?.length ?? 0, failures };
+  const result = { sent, pushNotifications: pushSent, pushFailures: pushFailed, matches: matches?.length ?? 0, failures };
   if (isAutomatic(req)) {
     await recordJobRun({
       jobPath: "/api/jobs/notify-kickoff",

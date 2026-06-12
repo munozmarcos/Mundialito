@@ -1,4 +1,4 @@
-﻿import { getMatches, getRanking } from "@/lib/data";
+import { getMatches, getRanking, type RankingRow } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
@@ -384,8 +384,9 @@ async function answerPodio(text: string, from?: string) {
   ].join("\n");
 }
 
-function rankingLine(row: { display_name: string; total_points: number }, index: number) {
+function rankingLine(row: Pick<RankingRow, "user_id" | "display_name" | "total_points">, index: number, highlightedUserId?: string | null) {
   const prefix = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`;
+  if (highlightedUserId && row.user_id === highlightedUserId) return `*${prefix} ${row.display_name} - ${row.total_points} pts*`;
   return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
 }
 
@@ -693,10 +694,11 @@ export async function answerWhatsAppCommand(text: string, from?: string) {
   if (clean.includes("ranking") || clean.includes("tabla")) {
     const ranking = await getRanking();
     if (!ranking.length) return "🏆 *Ranking Mundialito*\nTodavía no hay participantes en el ranking.";
+    const profile = await findProfileByPhone(from);
     return [
       "🏆 *Ranking Mundialito*",
       "",
-      ...ranking.map((row, index) => rankingLine(row, index))
+      ...ranking.map((row, index) => rankingLine(row, index, profile?.id))
     ].join("\n");
   }
 

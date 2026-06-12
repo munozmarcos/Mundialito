@@ -1,10 +1,7 @@
 "use client";
 
-import { Bell, X } from "lucide-react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { NotificationBody } from "@/components/notification-body";
 
 type NotificationItem = {
   id: string;
@@ -34,11 +31,58 @@ function isNewer(item: NotificationItem, previous: string | null) {
   return notificationKey(item) > previous;
 }
 
+function systemNotificationBody(item: NotificationItem) {
+  if (item.point_players?.length) {
+    const groups = new Map<number, string[]>();
+    for (const player of item.point_players) groups.set(player.points, [...(groups.get(player.points) ?? []), player.name]);
+    return [...groups.entries()]
+      .sort(([left], [right]) => right - left)
+      .map(([points, names]) => `${points} Pts ${names.join(", ")}`)
+      .join(" · ");
+  }
+
+  if (item.match) {
+    const score = item.match.home_goals != null && item.match.away_goals != null ? ` ${item.match.home_goals}-${item.match.away_goals}` : " vs";
+    return `${item.match.home_team}${score} ${item.match.away_team}${item.body ? ` · ${item.body}` : ""}`;
+  }
+
+  return item.body || "Nueva novedad del Mundialito.";
+}
+
+async function registerNotificationWorker() {
+  if (!("serviceWorker" in navigator)) return null;
+  try {
+    const registration = await navigator.serviceWorker.register("/notification-sw.js");
+    return registration;
+  } catch {
+    return null;
+  }
+}
+
+async function showSystemNotification(item: NotificationItem) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const registration = await registerNotificationWorker();
+  const options: NotificationOptions = {
+    body: systemNotificationBody(item),
+    icon: "/favicon.png",
+    badge: "/favicon.png",
+    tag: item.id,
+    data: { url: "/novedades" }
+  };
+
+  if (registration?.showNotification) {
+    await registration.showNotification(item.title, options);
+    return;
+  }
+
+  new Notification(item.title, options);
+}
+
 export function NotificationToasts() {
   const initialized = useRef(false);
   const pathname = usePathname();
   const router = useRouter();
-  const [toast, setToast] = useState<NotificationItem | null>(null);
+  const [, setLastSystemNotification] = useState<NotificationItem | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -61,7 +105,8 @@ export function NotificationToasts() {
 
         if (isNewer(latest, seen)) {
           window.localStorage.setItem(storageKey, latestKey);
-          setToast(latest);
+          setLastSystemNotification(latest);
+          void showSystemNotification(latest);
         }
       } catch {
         // Notification polling is best-effort.
@@ -104,30 +149,5 @@ export function NotificationToasts() {
     };
   }, [pathname, router]);
 
-  if (!toast) return null;
-
-  return (
-    <div className="notification-toast" role="status" aria-live="polite">
-      <div className="notification-toast-icon">
-        <Bell className="h-5 w-5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-black">{toast.title}</p>
-        <div className="line-clamp-3">
-          <NotificationBody item={toast} compact />
-        </div>
-        <div className="mt-3 flex items-center gap-2">
-          <Link className="btn min-h-8 px-3 text-xs" href="/novedades" onClick={() => setToast(null)}>
-            Ver novedades
-          </Link>
-          <button className="btn secondary min-h-8 px-3 text-xs" onClick={() => setToast(null)} type="button">
-            Cerrar
-          </button>
-        </div>
-      </div>
-      <button aria-label="Cerrar notificacion" className="notification-toast-close" onClick={() => setToast(null)} type="button">
-        <X className="h-4 w-4" />
-      </button>
-    </div>
-  );
+  return null;
 }

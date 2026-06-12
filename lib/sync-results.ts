@@ -4,6 +4,7 @@ import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { fetchProviderResultsDetailed, teamsMatch, type ProviderResult } from "@/lib/results-provider";
 import { supabaseAdmin, supabaseAdminConfigured } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
+import { sendWebPushToAll } from "@/lib/web-push";
 
 function resultTimeMatches(match: any, result: ProviderResult) {
   if (!result.playedAt) return true;
@@ -72,6 +73,14 @@ async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: an
     .in("role", ["participant", "admin"]);
   if (usersError) throw usersError;
 
+  const push = await sendWebPushToAll({
+    dedupeKey: `result-final:${match.id}:${match.home_goals}-${match.away_goals}`,
+    title: "Resultado final",
+    body: `${homeFlag} ${homeName} ${match.home_goals}-${match.away_goals} ${awayName} ${awayFlag}`,
+    url: "/ranking",
+    tag: `result-final:${match.id}`
+  });
+
   let sent = 0;
   const failures: string[] = [];
   for (const user of users ?? []) {
@@ -92,7 +101,7 @@ async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: an
     }
   }
 
-  return { sent, failures };
+  return { sent, pushSent: push.sent, pushFailed: push.failed, failures };
 }
 export async function syncResultsFromProvider(options: { allowLiveProvider?: boolean } = {}) {
   if (!supabaseAdminConfigured()) {
@@ -203,6 +212,7 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
         status: "closed"
       });
       resultNotifications += notification.sent;
+      resultNotifications += notification.pushSent ?? 0;
       notificationFailures.push(...notification.failures);
     }
     updated += 1;

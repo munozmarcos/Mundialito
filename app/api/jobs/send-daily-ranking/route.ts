@@ -54,8 +54,9 @@ async function findCompletedMatchDay(db: ReturnType<typeof supabaseAdmin>, now =
   return null;
 }
 
-function rankingLine(row: { display_name: string; total_points: number }, index: number) {
+function rankingLine(row: { user_id: string; display_name: string; total_points: number }, index: number, highlightedUserId?: string | null) {
   const prefix = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`;
+  if (highlightedUserId && row.user_id === highlightedUserId) return `*${prefix} ${row.display_name} - ${row.total_points} pts*`;
   return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
 }
 
@@ -111,14 +112,6 @@ export async function POST(req: Request) {
   }
 
   const ranking = await getRanking();
-  const body = [
-    "🏆 *Ranking diario Mundialito*",
-    `📅 ${today}`,
-    "",
-    ranking.length ? ranking.map((row, index) => rankingLine(row, index)).join("\n") : "Todavia no hay puntos cargados.",
-    "",
-    "Responde *$ranking* para ver la tabla completa cuando quieras."
-  ].join("\n");
 
   let sent = 0;
   const failures: string[] = [];
@@ -134,6 +127,16 @@ export async function POST(req: Request) {
       });
       if (logError) continue;
     }
+
+    
+    const body = [
+      "🏆 *Ranking diario Mundialito*",
+      `📅 ${today}`,
+      "",
+      ranking.length ? ranking.map((row, index) => rankingLine(row, index, user.id)).join("\n") : "Todavia no hay puntos cargados.",
+      "",
+      "Responde *$ranking* para ver la tabla completa cuando quieras."
+    ].join("\n");
 
     try {
       await sendWhatsApp(user.phone, body);

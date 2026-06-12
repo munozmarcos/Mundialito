@@ -1,5 +1,6 @@
 import { getLatestNotifications } from "@/lib/notifications";
 import { requireAdmin, supabaseAdmin } from "@/lib/supabase";
+import { sendWebPushToAll } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -30,6 +31,15 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (data?.published) {
+    await sendWebPushToAll({
+      dedupeKey: `admin-news:${data.id}`,
+      title: data.title,
+      body: data.body,
+      url: "/novedades",
+      tag: `admin-news:${data.id}`
+    });
+  }
   return NextResponse.json({ news: data ? { ...data, id: `admin:${data.id}`, type: "admin" } : data });
 }
 

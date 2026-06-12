@@ -1,6 +1,7 @@
 import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
+import { sendWebPushToAll } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -43,6 +44,14 @@ async function notifyMatch(matchId: string) {
     .in("role", ["participant", "admin"]);
   if (usersError) throw usersError;
 
+  const push = await sendWebPushToAll({
+    dedupeKey: `result-final:${match.id}:${match.home_goals}-${match.away_goals}`,
+    title: "Resultado final",
+    body: `${homeFlag} ${homeName} ${match.home_goals}-${match.away_goals} ${awayName} ${awayFlag}`,
+    url: "/ranking",
+    tag: `result-final:${match.id}`
+  });
+
   let sent = 0;
   const failures: string[] = [];
   for (const user of users ?? []) {
@@ -63,7 +72,7 @@ async function notifyMatch(matchId: string) {
     }
   }
 
-  return { sent, failures };
+  return { sent, pushNotifications: push.sent, pushFailures: push.failed, failures };
 }
 export async function POST(req: Request) {
   if (!assertCron(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

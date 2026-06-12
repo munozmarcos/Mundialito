@@ -1,6 +1,7 @@
 import "@/app/globals.css";
 import { MainNav } from "@/components/main-nav";
 import { NotificationToasts } from "@/components/notification-toasts";
+import { PushNotificationButton } from "@/components/push-notification-button";
 import { SessionNav } from "@/components/session-nav";
 import { SoundToggle } from "@/components/sound-toggle";
 import { MundialitoMark, TournamentRibbon } from "@/components/world-cup-brand";
@@ -10,6 +11,7 @@ import type { ReactNode } from "react";
 export const metadata = {
   title: "Mundialito",
   description: "Prode del Mundial 2026 con ranking, alertas y chat IA",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon.png",
     apple: "/favicon.png"
@@ -32,6 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               </Link>
             </div>
             <div className="header-actions flex items-center justify-end gap-2">
+              <PushNotificationButton />
               <SoundToggle />
               <SessionNav />
             </div>

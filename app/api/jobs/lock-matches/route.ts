@@ -4,6 +4,7 @@ import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { getPodiumLockState } from "@/lib/podium";
+import { sendWebPushToAll } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 
 function assertCron(req: Request) {
@@ -62,10 +63,21 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   let sent = 0;
+  let pushSent = 0;
+  let pushFailed = 0;
   const failures: string[] = [];
   for (const match of matchesToLock ?? []) {
     const users = await usersMissingPrediction(db, match.id);
     const matchLabel = `${flagEmoji(match.home_team, match.home_country_code)} ${displayNameForTeam(match.home_team)} vs ${flagEmoji(match.away_team, match.away_country_code)} ${displayNameForTeam(match.away_team)}`;
+    const push = await sendWebPushToAll({
+      dedupeKey: `match-lock:${match.id}`,
+      title: "Pronósticos cerrados",
+      body: matchLabel,
+      url: "/mi-prode",
+      tag: `match-lock:${match.id}`
+    });
+    pushSent += push.sent;
+    pushFailed += push.failed;
     for (const user of users) {
       if (!user.phone) continue;
 
@@ -99,7 +111,7 @@ export async function POST(req: Request) {
   }
 
   const podiumState = await getPodiumLockState(db);
-  const result = { locked: data?.length ?? 0, notifications: sent, podiumLocked: podiumState.locked, podiumReason: podiumState.reason, failures };
+  const result = { locked: data?.length ?? 0, notifications: sent, pushNotifications: pushSent, pushFailures: pushFailed, podiumLocked: podiumState.locked, podiumReason: podiumState.reason, failures };
   if (req.headers.get("x-vercel-cron") === "1") {
     await recordJobRun({
       jobPath: "/api/jobs/lock-matches",
