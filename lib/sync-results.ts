@@ -67,6 +67,24 @@ async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: an
 
   return { sent: 0, pushSent: push.sent, pushFailed: push.failed, failures: [] as string[] };
 }
+
+async function notifyLiveStart(match: any) {
+  const homeName = displayNameForTeam(match.home_team);
+  const awayName = displayNameForTeam(match.away_team);
+  const homeFlag = flagEmojiForTeam(match.home_team, match.home_country_code);
+  const awayFlag = flagEmojiForTeam(match.away_team, match.away_country_code);
+
+  const push = await sendWebPushToAll({
+    dedupeKey: `match-kickoff:${match.id}`,
+    title: "Partido en vivo",
+    body: `${homeFlag} ${homeName} vs ${awayName} ${awayFlag}`,
+    url: "/partidos",
+    tag: `match-kickoff:${match.id}`
+  });
+
+  return { pushSent: push.sent, pushFailed: push.failed };
+}
+
 export async function syncResultsFromProvider(options: { allowLiveProvider?: boolean } = {}) {
   if (!supabaseAdminConfigured()) {
     return {
@@ -109,6 +127,7 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
 
   let updated = 0;
   let liveInitialized = 0;
+  let kickoffNotifications = 0;
   let resultNotifications = 0;
   const unmatched: ProviderResult[] = [];
   const notificationFailures: string[] = [];
@@ -145,6 +164,9 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
         .update({ result_updated_at: new Date().toISOString() })
         .eq("id", local.id);
       if (heartbeatError) throw heartbeatError;
+      const notification = await notifyLiveStart(local);
+      kickoffNotifications += notification.pushSent;
+      if (notification.pushFailed) notificationFailures.push(`${local.home_team} vs ${local.away_team}: ${notification.pushFailed} push fallidos`);
       updated += 1;
       continue;
     }
@@ -167,6 +189,16 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
 
     if (updateError) throw updateError;
     await recalculateMatch(local.id);
+    if (result.status === "playing" && local.status !== "playing") {
+      const notification = await notifyLiveStart({
+        ...local,
+        home_goals: homeGoals,
+        away_goals: awayGoals,
+        status: "playing"
+      });
+      kickoffNotifications += notification.pushSent;
+      if (notification.pushFailed) notificationFailures.push(`${local.home_team} vs ${local.away_team}: ${notification.pushFailed} push fallidos`);
+    }
     if (result.status === "closed") {
       const notification = await notifyFinalResult(db, {
         ...local,
@@ -205,6 +237,14 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
 
     if (updateError) throw updateError;
     await recalculateMatch(match.id);
+    const notification = await notifyLiveStart({
+      ...match,
+      home_goals: 0,
+      away_goals: 0,
+      status: "playing"
+    });
+    kickoffNotifications += notification.pushSent;
+    if (notification.pushFailed) notificationFailures.push(`${match.home_team} vs ${match.away_team}: ${notification.pushFailed} push fallidos`);
     updated += 1;
     liveInitialized += 1;
   }
@@ -218,6 +258,7 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
     fetched: providerResults.length,
     updated,
     liveInitialized,
+    kickoffNotifications,
     resultNotifications,
     notificationFailures,
     unmatched: unmatched.map((item) => `${item.homeTeam} vs ${item.awayTeam}`)

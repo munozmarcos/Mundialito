@@ -22,14 +22,15 @@ export async function POST(req: Request) {
   const db = supabaseAdmin();
   const url = new URL(req.url);
   const now = url.searchParams.get("now") ? new Date(url.searchParams.get("now")!) : new Date();
+  const notifyFrom = new Date(now.getTime() - 20 * 60 * 1000).toISOString();
   const lockBefore = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
 
-  const { data: matchesToLock, error: readError } = await db
+  const { data: matchesToNotify, error: readError } = await db
     .from("matches")
     .select("*")
+    .gte("kickoff_at", notifyFrom)
     .lte("kickoff_at", lockBefore)
-    .eq("locked", false)
-    .is("home_goals", null);
+    .not("status", "in", "(locked,scheduled,closed)");
 
   if (readError) return NextResponse.json({ error: readError.message }, { status: 400 });
 
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
 
   let pushSent = 0;
   let pushFailed = 0;
-  for (const match of matchesToLock ?? []) {
+  for (const match of matchesToNotify ?? []) {
     const push = await sendWebPushToAll({
       dedupeKey: `match-lock:${match.id}`,
       title: "Pronosticos cerrados",
