@@ -5,6 +5,7 @@ import { DateFilter } from "@/components/date-filter";
 import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
+import { liveMinuteLabel } from "@/lib/live-minute";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { matchFitsBasicFilters } from "@/lib/match-filters";
@@ -248,13 +249,20 @@ function MatchCard({ match, display }: { match: Match; display?: DisplayMatch })
           <p className="mt-2 text-xs font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {status === "playing" && match.result_updated_at && (
-            <span className="text-[11px] italic text-ink/45">Actualizado - {formatArgentinaDateTime(match.result_updated_at)}</span>
+          {status === "playing" && (
+            <span className="text-[11px] italic text-ink/45">
+              {match.result_updated_at ? `Actualizado ${formatArgentinaDateTime(match.result_updated_at)}` : "En vivo"}
+            </span>
           )}
           <StatusPill status={unavailable ? "locked" : status} label={unavailable ? "Bloqueado" : undefined} />
         </div>
       </div>
       <div className="grid gap-2">
+        {status === "playing" && (
+          <div className="flex justify-end">
+            <span className="rounded-full border border-red-400/40 bg-red-500/12 px-2 py-1 text-xs font-black text-red-300">{liveMinuteLabel(match.kickoff_at)}</span>
+          </div>
+        )}
         <div className="grid grid-cols-[1fr_68px] items-center gap-3 rounded-md border border-line bg-field p-2">
           <TeamOrLock team={home} />
           <input className="field text-center font-black" disabled value={match.home_goals ?? ""} aria-label={`Goles ${home.name}`} readOnly />

@@ -20,8 +20,38 @@ function argentinaDate(now = new Date()) {
   }).format(now);
 }
 
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
 function inWorldCupWindow(date: string) {
   return date >= "2026-06-11" && date <= "2026-07-19";
+}
+
+function kickoffDate(match: { kickoff_at: string }) {
+  return argentinaDate(new Date(match.kickoff_at));
+}
+
+async function findCompletedMatchDay(db: ReturnType<typeof supabaseAdmin>, now = new Date()) {
+  const candidates = [argentinaDate(addDays(now, -1)), argentinaDate(now)];
+  const { data, error } = await db
+    .from("matches")
+    .select("id,kickoff_at,status")
+    .gte("kickoff_at", "2026-06-11T00:00:00.000Z")
+    .lte("kickoff_at", "2026-07-20T12:00:00.000Z");
+
+  if (error) throw error;
+
+  for (const date of candidates) {
+    if (!inWorldCupWindow(date)) continue;
+    const matches = (data ?? []).filter((match) => kickoffDate(match) === date);
+    if (!matches.length) continue;
+    if (matches.every((match) => match.status === "closed")) return date;
+  }
+
+  return null;
 }
 
 function rankingLine(row: { display_name: string; total_points: number }, index: number) {
@@ -29,26 +59,57 @@ function rankingLine(row: { display_name: string; total_points: number }, index:
   return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
 }
 
+async function recordAutomaticSkip(reason: string, extra: Record<string, unknown> = {}) {
+  const skipped = { skipped: true, reason, ...extra };
+  await recordJobRun({
+    jobPath: "/api/jobs/send-daily-ranking",
+    triggerType: "automatic",
+    ok: true,
+    statusCode: 200,
+    summary: summarizeJob("Enviar ranking por WhatsApp", { ok: true, data: skipped }),
+    payload: skipped
+  });
+  return skipped;
+}
+
 export async function POST(req: Request) {
   if (!assertCron(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const db = supabaseAdmin();
   const url = new URL(req.url);
   const manual = url.searchParams.get("manual") === "1";
-  const today = url.searchParams.get("date") ?? argentinaDate();
-  if (!manual && !inWorldCupWindow(today)) {
-    const skipped = { skipped: true, reason: "outside-world-cup-window", date: today };
-    await recordJobRun({
-      jobPath: "/api/jobs/send-daily-ranking",
-      triggerType: "automatic",
-      ok: true,
-      statusCode: 200,
-      summary: summarizeJob("Enviar ranking por WhatsApp", { ok: true, data: skipped }),
-      payload: skipped
-    });
+  const requestedDate = url.searchParams.get("date");
+  const today = requestedDate ?? (manual ? argentinaDate() : await findCompletedMatchDay(db));
+
+  if (!today) {
+    const skipped = await recordAutomaticSkip("match-day-not-complete");
     return NextResponse.json(skipped);
   }
 
-  const db = supabaseAdmin();
+  if (!manual && !inWorldCupWindow(today)) {
+    const skipped = await recordAutomaticSkip("outside-world-cup-window", { date: today });
+    return NextResponse.json(skipped);
+  }
+
+  const { data: users, error } = await db
+    .from("profiles")
+    .select("id,display_name,phone,role")
+    .not("phone", "is", null)
+    .in("role", ["participant", "admin"]);
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  if (!manual && users?.length) {
+    const { count } = await db
+      .from("notification_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("kind", "whatsapp-daily-ranking")
+      .like("dedupe_key", `%:daily-ranking:${today}`);
+    if ((count ?? 0) >= users.length) {
+      const skipped = await recordAutomaticSkip("already-sent", { date: today, users: users.length });
+      return NextResponse.json(skipped);
+    }
+  }
+
   const ranking = await getRanking();
   const body = [
     "🏆 *Ranking diario Mundialito*",
@@ -58,13 +119,6 @@ export async function POST(req: Request) {
     "",
     "Responde *$ranking* para ver la tabla completa cuando quieras."
   ].join("\n");
-
-  const { data: users, error } = await db
-    .from("profiles")
-    .select("id,display_name,phone,role")
-    .not("phone", "is", null)
-    .in("role", ["participant", "admin"]);
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   let sent = 0;
   const failures: string[] = [];

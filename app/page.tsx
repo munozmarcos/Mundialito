@@ -8,6 +8,7 @@ import { TeamLabel } from "@/components/team-label";
 import { getAppUserFromServerCookies } from "@/lib/app-auth";
 import { getMatches, getPaymentSummary, getRanking } from "@/lib/data";
 import { argentinaDateKey, formatArgentinaDateTime } from "@/lib/dates";
+import { liveMinuteLabel } from "@/lib/live-minute";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { getLatestNotifications } from "@/lib/notifications";
 import { matchStatus } from "@/lib/scoring";
@@ -42,7 +43,7 @@ function upcoming(matches: Awaited<ReturnType<typeof getMatches>>, limit: number
     .filter((match) => {
       const status = homeMatchStatus(match);
       const isOpenOrLive = status === "open" || status === "closing_soon" || status === "playing";
-      return isBetweenDateKeys(match.kickoff_at, today, until) && isOpenOrLive && (new Date(match.kickoff_at).getTime() >= now || status === "playing");
+      return isOpenOrLive && (status === "playing" || (isBetweenDateKeys(match.kickoff_at, today, until) && new Date(match.kickoff_at).getTime() >= now));
     })
     .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime())
     .slice(0, limit);
@@ -158,13 +159,21 @@ export default async function Home() {
                     <div className="grid justify-items-start gap-2 sm:justify-items-end">
                       <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
                         {homeMatchStatus(match) === "playing" && match.result_updated_at && (
-                          <span className="text-[11px] italic text-ink/45">Actualizado - {formatArgentinaDateTime(match.result_updated_at)}</span>
+                          <span className="text-[11px] italic text-ink/45">
+                            Actualizado {formatArgentinaDateTime(match.result_updated_at)}
+                          </span>
                         )}
                       <StatusPill
                         status={isMatchBlockedUntilOfficial(match) ? "locked" : homeMatchStatus(match)}
                         label={isMatchBlockedUntilOfficial(match) ? "Bloqueado" : undefined}
                       />
                       </div>
+                      <div className="flex items-center gap-2">
+                        {homeMatchStatus(match) === "playing" && (
+                          <span className="rounded-full border border-red-400/40 bg-red-500/12 px-2 py-1 text-xs font-black text-red-300">
+                            {liveMinuteLabel(match.kickoff_at)}
+                          </span>
+                        )}
                       <div className="grid grid-cols-[52px_52px] gap-2">
                         <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black text-ink" aria-label={`Goles ${match.home_team}`}>
                           {match.home_goals ?? ""}
@@ -172,6 +181,7 @@ export default async function Home() {
                         <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black text-ink" aria-label={`Goles ${match.away_team}`}>
                           {match.away_goals ?? ""}
                         </div>
+                      </div>
                       </div>
                     </div>
                   </article>

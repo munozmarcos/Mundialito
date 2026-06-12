@@ -1,6 +1,7 @@
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
+import { liveMinuteLabel } from "@/lib/live-minute";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { matchStatus } from "@/lib/scoring";
 import type { Match } from "@/lib/types";
@@ -15,7 +16,11 @@ export function MatchCard({ match }: { match: Match }) {
       <div className="mb-3 flex items-center justify-between gap-3">
         <span className="text-xs font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</span>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {status === "playing" && match.result_updated_at && <span className="text-[11px] italic text-ink/45">Actualizado - {formatArgentinaDateTime(match.result_updated_at)}</span>}
+          {status === "playing" && (
+            <span className="text-[11px] italic text-ink/45">
+              {match.result_updated_at ? `Actualizado ${formatArgentinaDateTime(match.result_updated_at)}` : "En vivo"}
+            </span>
+          )}
           <StatusPill status={status} label={blocked ? "Bloqueado" : undefined} />
         </div>
       </div>
@@ -23,7 +28,10 @@ export function MatchCard({ match }: { match: Match }) {
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-3">
           <TeamLabel name={match.home_team} code={match.home_country_code} />
-          <span className="min-w-8 text-right font-black">{match.home_goals ?? "-"}</span>
+          <div className="flex items-center gap-2">
+            {status === "playing" && <span className="rounded-full border border-red-400/40 bg-red-500/12 px-2 py-1 text-xs font-black text-red-300">{liveMinuteLabel(match.kickoff_at)}</span>}
+            <span className="min-w-8 text-right font-black">{match.home_goals ?? "-"}</span>
+          </div>
         </div>
         <div className="flex items-center justify-between gap-3">
           <TeamLabel name={match.away_team} code={match.away_country_code} />

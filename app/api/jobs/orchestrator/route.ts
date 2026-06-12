@@ -5,7 +5,8 @@ const always = [
   "/api/jobs/lock-matches",
   "/api/jobs/notify-kickoff",
   "/api/jobs/sync-results",
-  "/api/jobs/send-reminders"
+  "/api/jobs/send-reminders",
+  "/api/jobs/send-daily-ranking"
 ];
 
 function assertCron(req: Request) {
@@ -39,9 +40,6 @@ export async function POST(req: Request) {
 
   // 03:00 Argentina = 06:00 UTC. The wide window absorbs GitHub schedule delays.
   if (hour === 6 && minute < 30) due.add("/api/jobs/sync-fixtures");
-  // 23:00 Argentina = 02:00 UTC. Ranking is deduped per user/day by notification_logs.
-  if (hour === 2) due.add("/api/jobs/send-daily-ranking");
-
   const results = [];
   for (const path of due) {
     results.push(await runJob(req, path));

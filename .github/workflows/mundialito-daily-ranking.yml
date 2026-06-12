@@ -1,8 +1,6 @@
 name: Mundialito daily ranking
 
 on:
-  schedule:
-    - cron: "0,15 2 * * *"
   workflow_dispatch:
 
 concurrency:
