@@ -686,7 +686,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
                   onChange={(event) => setLoadStatusFilter(event.target.value)}
                   title="Filtro de pronosticos"
                 >
-                  <option value="all">Seleccion</option>
+                  <option className="text-ink/35" value="all" disabled>Seleccion</option>
                   <option value="none">Ninguno</option>
                   <option value="pending">Pendientes</option>
                   <option value="complete">Completos</option>
@@ -700,7 +700,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
                   onChange={(event) => setPodiumLoadStatusFilter(event.target.value)}
                   title="Filtro de podio anticipado"
                 >
-                  <option value="all">Seleccion</option>
+                  <option className="text-ink/35" value="all" disabled>Seleccion</option>
                   <option value="none">Ninguno</option>
                   <option value="pending">Pendientes</option>
                   <option value="complete">Completos</option>

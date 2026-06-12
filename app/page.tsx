@@ -182,10 +182,10 @@ export default async function Home() {
 
           <section className="panel overflow-hidden">
             <div className="flex items-center justify-between border-b border-line p-4">
-              <h2 className="text-xl font-black">Partidos cerrados</h2>
+              <h2 className="text-xl font-black">Partidos finalizados</h2>
             </div>
             {!finishedMatches.length ? (
-              <EmptyState title="Sin cerrados recientes" text="Cuando cierren partidos de hoy o ayer, aparecen aca." />
+              <EmptyState title="Sin finalizados recientes" text="Cuando terminen partidos de hoy o ayer, aparecen aca." />
             ) : (
               <div className="grid">
                 {finishedMatches.map((match) => (
