@@ -76,8 +76,8 @@ function predictionKey(userId: string, matchId: string) {
 function initialPredictionDrafts(predictions: AdminPrediction[]) {
   return predictions.reduce<PredictionDraft>((acc, prediction) => {
     acc[predictionKey(prediction.user_id, prediction.match_id)] = {
-      home: prediction.home_goals,
-      away: prediction.away_goals,
+      home: prediction.home_goals ?? "",
+      away: prediction.away_goals ?? "",
       penaltyWinner: prediction.penalty_winner ?? null
     };
     return acc;

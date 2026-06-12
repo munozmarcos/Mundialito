@@ -1,6 +1,8 @@
 import { demoMatches, demoRanking } from "@/lib/demo-data";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
+import { fetchAllSupabaseRows } from "@/lib/supabase-pagination";
+import { unstable_noStore as noStore } from "next/cache";
 
 export type RankingRow = {
   user_id: string;
@@ -142,29 +144,32 @@ export async function getUpcomingMatches(limit = 8) {
 }
 
 export async function getRanking(): Promise<RankingRow[]> {
+  noStore();
   if (!supabaseConfigured()) return demoRanking;
 
   try {
     const db = supabaseAdmin();
     const [
       { data: profiles, error: profilesError },
-      { data: predictions, error: predictionsError },
+      predictions,
       { data: podiumRows, error: podiumError }
     ] = await Promise.all([
       db.from("profiles").select("id,display_name"),
-      db
-        .from("predictions")
-        .select("user_id,points,exact_hit,trend_hit,home_goals,away_goals,matches(home_goals,away_goals)")
-        .not("home_goals", "is", null)
-        .not("away_goals", "is", null),
+      fetchAllSupabaseRows<any>((from, to) =>
+        db
+          .from("predictions")
+          .select("user_id,points,exact_hit,trend_hit,home_goals,away_goals,matches(home_goals,away_goals)")
+          .not("home_goals", "is", null)
+          .not("away_goals", "is", null)
+          .range(from, to)
+      ),
       db.from("podium_predictions").select("user_id,champion_points,runner_up_points,third_place_points,points")
     ]);
     if (profilesError) throw profilesError;
-    if (predictionsError) throw predictionsError;
     if (podiumError) throw podiumError;
 
     const matchPointsByUser = new Map<string, { points: number; exacts: number; trends: number }>();
-    for (const prediction of predictions ?? []) {
+    for (const prediction of predictions) {
       const match = Array.isArray(prediction.matches) ? prediction.matches[0] : prediction.matches;
       if (!match || match.home_goals == null || match.away_goals == null) continue;
       const current = matchPointsByUser.get(prediction.user_id) ?? { points: 0, exacts: 0, trends: 0 };
@@ -200,37 +205,41 @@ export async function getRanking(): Promise<RankingRow[]> {
 }
 
 export async function getRankingDetails(): Promise<RankingDetails> {
+  noStore();
   if (!supabaseConfigured()) return { predictions: [], podium: [], summaries: [] };
 
   try {
     const db = supabaseAdmin();
     const [
-      { data: predictions, error: predictionError },
+      predictions,
       { data: podium, error: podiumError },
-      { data: allPredictions, error: allPredictionsError },
+      allPredictions,
       { data: allPodiums, error: allPodiumsError },
       { data: matches, error: matchesError },
       { data: profiles, error: profilesError }
     ] = await Promise.all([
-      db
-        .from("predictions")
-        .select("id,user_id,points,exact_hit,trend_hit,home_goals,away_goals,penalty_winner,updated_at,matches(id,home_team,away_team,home_country_code,away_country_code,kickoff_at,stage,group_name,home_goals,away_goals,penalty_winner)")
-        .not("home_goals", "is", null)
-        .not("away_goals", "is", null)
-        .gt("points", 0)
-        .order("updated_at", { ascending: false }),
+      fetchAllSupabaseRows<any>((from, to) =>
+        db
+          .from("predictions")
+          .select("id,user_id,points,exact_hit,trend_hit,home_goals,away_goals,penalty_winner,updated_at,matches(id,home_team,away_team,home_country_code,away_country_code,kickoff_at,stage,group_name,home_goals,away_goals,penalty_winner)")
+          .not("home_goals", "is", null)
+          .not("away_goals", "is", null)
+          .gt("points", 0)
+          .order("updated_at", { ascending: false })
+          .range(from, to)
+      ),
       db
         .from("podium_predictions")
         .select("user_id,champion_team,runner_up_team,third_place_team,champion_points,runner_up_points,third_place_points,points,updated_at")
         .gt("points", 0),
-      db.from("predictions").select("user_id,match_id,home_goals,away_goals").not("home_goals", "is", null).not("away_goals", "is", null),
+      fetchAllSupabaseRows<any>((from, to) =>
+        db.from("predictions").select("user_id,match_id,home_goals,away_goals").not("home_goals", "is", null).not("away_goals", "is", null).range(from, to)
+      ),
       db.from("podium_predictions").select("user_id,champion_team,runner_up_team,third_place_team"),
       db.from("matches").select("id,home_team,away_team,kickoff_at,stage,status,locked"),
       db.from("profiles").select("id")
     ]);
-    if (predictionError) throw predictionError;
     if (podiumError) throw podiumError;
-    if (allPredictionsError) throw allPredictionsError;
     if (allPodiumsError) throw allPodiumsError;
     if (matchesError) throw matchesError;
     if (profilesError) throw profilesError;
@@ -245,7 +254,7 @@ export async function getRankingDetails(): Promise<RankingDetails> {
     for (const profile of profiles ?? []) {
       summaryMap.set(profile.id, { user_id: profile.id, loaded_predictions: 0, available_predictions: availableIds.size, podium_loaded: 0 });
     }
-    for (const prediction of allPredictions ?? []) {
+    for (const prediction of allPredictions) {
       const userId = prediction.user_id;
       if (!summaryMap.has(userId)) {
         summaryMap.set(userId, { user_id: userId, loaded_predictions: 0, available_predictions: availableIds.size, podium_loaded: 0 });
@@ -259,7 +268,7 @@ export async function getRankingDetails(): Promise<RankingDetails> {
       }
       summaryMap.get(userId)!.podium_loaded = [item.champion_team, item.runner_up_team, item.third_place_team].filter(Boolean).length;
     }
-    const validDetails = (predictions ?? []).filter((prediction: any) => {
+    const validDetails = predictions.filter((prediction: any) => {
       const match = Array.isArray(prediction.matches) ? prediction.matches[0] : prediction.matches;
       return match?.home_goals != null && match?.away_goals != null;
     });

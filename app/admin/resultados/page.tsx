@@ -4,11 +4,14 @@ import { AdminResultsControl } from "@/components/admin-results-control";
 import { getMatches } from "@/lib/data";
 import { getPodiumLockState, type PodiumStatus } from "@/lib/podium";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
+import { fetchAllSupabaseRows } from "@/lib/supabase-pagination";
 import type { Prediction, Profile } from "@/lib/types";
+import { unstable_noStore as noStore } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
 export default async function ResultsAdminPage() {
+  noStore();
   const matches = await getMatches();
   let profiles: Profile[] = [];
   let predictions: (Prediction & { profiles?: Pick<Profile, "display_name"> | null })[] = [];
@@ -26,13 +29,15 @@ export default async function ResultsAdminPage() {
 
   if (supabaseConfigured()) {
     const db = supabaseAdmin();
-    const [profileRes, predictionRes, podiumRes] = await Promise.all([
+    const [profileRes, predictionRows, podiumRes] = await Promise.all([
       db.from("profiles").select("id,auth_email,display_name,role,phone,paid").order("display_name"),
-      db.from("predictions").select("*, profiles(display_name)"),
+      fetchAllSupabaseRows<Prediction & { profiles?: Pick<Profile, "display_name"> | null }>((from, to) =>
+        db.from("predictions").select("*, profiles(display_name)").range(from, to)
+      ),
       db.from("podium_predictions").select("user_id,champion_team,runner_up_team,third_place_team,champion_points,runner_up_points,third_place_points,points")
     ]);
     profiles = (profileRes.data ?? []) as Profile[];
-    predictions = (predictionRes.data ?? []) as (Prediction & { profiles?: Pick<Profile, "display_name"> | null })[];
+    predictions = predictionRows;
     podiums = podiumRes.data ?? [];
     try {
       podiumStatus = (await getPodiumLockState(db)).status;
