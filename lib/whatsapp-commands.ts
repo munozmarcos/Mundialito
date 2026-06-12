@@ -421,13 +421,15 @@ async function savePredictionFromWhatsApp(text: string, from?: string) {
   if (!match) return `⚽ *Mundialito*\nNo encontré partido abierto para ${prediction.homeTeam} vs ${prediction.awayTeam}.`;
   if (isPredictionLocked(match.kickoff_at, match.locked)) return `⚽ *Mundialito*\nEse partido ya está cerrado: ${displayNameForTeam(match.home_team)} vs ${displayNameForTeam(match.away_team)}.`;
 
+  const savedAt = new Date().toISOString();
   const { error } = await db.from("predictions").upsert(
     {
       user_id: profile.id,
       match_id: match.id,
       home_goals: prediction.homeGoals,
       away_goals: prediction.awayGoals,
-      penalty_winner: null
+      penalty_winner: null,
+      user_updated_at: savedAt
     },
     { onConflict: "user_id,match_id" }
   );
@@ -476,7 +478,9 @@ async function saveBulkPredictionsFromWhatsApp(text: string, from?: string) {
     home_goals: number;
     away_goals: number;
     penalty_winner: null;
+    user_updated_at: string;
   }> = [];
+  const savedAt = new Date().toISOString();
 
   for (const rawLine of payload.split(/\r?\n/)) {
     const line = rawLine.trim();
@@ -504,7 +508,8 @@ async function saveBulkPredictionsFromWhatsApp(text: string, from?: string) {
       match_id: match.id,
       home_goals: parsed.homeGoals,
       away_goals: parsed.awayGoals,
-      penalty_winner: null
+      penalty_winner: null,
+      user_updated_at: savedAt
     });
   }
 
