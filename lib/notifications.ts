@@ -1,6 +1,7 @@
 import { getNewsItems } from "@/lib/data";
 import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
+import { fetchAllSupabaseRows } from "@/lib/supabase-pagination";
 
 export type LatestNotification = {
   id: string;
@@ -87,20 +88,23 @@ async function getPointMatchNotifications(limit: number): Promise<LatestNotifica
   if (!supabaseConfigured()) return [];
 
   const db = supabaseAdmin();
-  const { data, error } = await db
-    .from("predictions")
-    .select("id,user_id,points,updated_at,profiles(display_name),matches(id,home_team,away_team,home_country_code,away_country_code,home_goals,away_goals,status)")
-    .gt("points", 0)
-    .order("updated_at", { ascending: false })
-    .limit(limit * 40);
-
-  if (error) {
+  let data: PointActivityRow[];
+  try {
+    data = await fetchAllSupabaseRows<PointActivityRow>((from, to) =>
+      db
+        .from("predictions")
+        .select("id,user_id,points,updated_at,profiles(display_name),matches(id,home_team,away_team,home_country_code,away_country_code,home_goals,away_goals,status)")
+        .gt("points", 0)
+        .order("updated_at", { ascending: false })
+        .range(from, to)
+    );
+  } catch (error) {
     console.warn("[notifications:points]", error);
     return [];
   }
 
   const groups = new Map<string, { match: PointMatchRow; updatedAt: string; players: Map<string, { name: string; points: number }> }>();
-  for (const item of (data ?? []) as unknown as PointActivityRow[]) {
+  for (const item of data) {
     const match = firstRelation(item.matches);
     if (!match?.id) continue;
     if (match.status !== "closed" && match.status !== "final") continue;

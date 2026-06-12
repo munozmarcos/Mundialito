@@ -218,6 +218,10 @@ export function RankingContent({ ranking, details }: Props) {
     () => normalizedRanking.filter((row) => !normalizedQuery || normalize(row.display_name).includes(normalizedQuery)),
     [normalizedQuery, normalizedRanking]
   );
+  const rankByUser = useMemo(
+    () => new Map(normalizedRanking.map((row, index) => [row.user_id, index + 1])),
+    [normalizedRanking]
+  );
 
   useEffect(() => {
     if (!selectedRow) return;
@@ -246,9 +250,11 @@ export function RankingContent({ ranking, details }: Props) {
             <EmptyState title="Ranking vacío" text="No hay participantes para ese filtro." />
           </div>
         ) : (
-          filteredRanking.map((row, index) => (
-            <div className={`grid gap-3 border-b p-4 last:border-0 sm:grid-cols-[48px_1fr_auto] sm:items-center ${podiumClass(index)}`} key={row.user_id}>
-              <div className={`text-xl font-black sm:text-2xl ${index < 3 ? "" : "text-gold"}`}>#{index + 1}</div>
+          filteredRanking.map((row) => {
+            const realRank = rankByUser.get(row.user_id) ?? 0;
+            return (
+            <div className={`grid gap-3 border-b p-4 last:border-0 sm:grid-cols-[48px_1fr_auto] sm:items-center ${podiumClass(realRank - 1)}`} key={row.user_id}>
+              <div className={`text-xl font-black sm:text-2xl ${realRank <= 3 ? "" : "text-gold"}`}>#{realRank}</div>
               <div>
                 <h3 className="text-xl font-black sm:text-2xl">{row.display_name}</h3>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -270,7 +276,8 @@ export function RankingContent({ ranking, details }: Props) {
                 <span className="text-xs font-black uppercase text-ink/45">pts</span>
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </article>
 
