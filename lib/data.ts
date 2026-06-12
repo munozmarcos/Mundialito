@@ -209,7 +209,8 @@ export async function getRankingDetails(): Promise<RankingDetails> {
       { data: podium, error: podiumError },
       { data: allPredictions, error: allPredictionsError },
       { data: allPodiums, error: allPodiumsError },
-      { data: matches, error: matchesError }
+      { data: matches, error: matchesError },
+      { data: profiles, error: profilesError }
     ] = await Promise.all([
       db
         .from("predictions")
@@ -224,21 +225,26 @@ export async function getRankingDetails(): Promise<RankingDetails> {
         .gt("points", 0),
       db.from("predictions").select("user_id,match_id,home_goals,away_goals").not("home_goals", "is", null).not("away_goals", "is", null),
       db.from("podium_predictions").select("user_id,champion_team,runner_up_team,third_place_team"),
-      db.from("matches").select("id,home_team,away_team,kickoff_at,stage,status,locked")
+      db.from("matches").select("id,home_team,away_team,kickoff_at,stage,status,locked"),
+      db.from("profiles").select("id")
     ]);
     if (predictionError) throw predictionError;
     if (podiumError) throw podiumError;
     if (allPredictionsError) throw allPredictionsError;
     if (allPodiumsError) throw allPodiumsError;
     if (matchesError) throw matchesError;
+    if (profilesError) throw profilesError;
 
     const availableMatches = (matches ?? []).filter((match) => {
-      if (match.status === "locked" || match.status === "scheduled") return false;
+      if (match.status === "locked") return false;
       if (isMatchBlockedUntilOfficial({ stage: match.stage ?? "GROUP", status: match.status, home_team: match.home_team, away_team: match.away_team })) return false;
       return true;
     });
     const availableIds = new Set(availableMatches.map((match) => match.id));
     const summaryMap = new Map<string, RankingUserSummary>();
+    for (const profile of profiles ?? []) {
+      summaryMap.set(profile.id, { user_id: profile.id, loaded_predictions: 0, available_predictions: availableIds.size, podium_loaded: 0 });
+    }
     for (const prediction of allPredictions ?? []) {
       const userId = prediction.user_id;
       if (!summaryMap.has(userId)) {

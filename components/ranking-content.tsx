@@ -163,7 +163,36 @@ export function RankingContent({ ranking, details }: Props) {
   const [teamFilter, setTeamFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const normalizedQuery = normalize(query);
-  const selectedRow = ranking.find((row) => row.user_id === selectedUserId) ?? null;
+  const normalizedRanking = useMemo(() => {
+    const detailStats = new Map<string, { points: number; exacts: number; trends: number }>();
+    for (const detail of details.predictions) {
+      const current = detailStats.get(detail.user_id) ?? { points: 0, exacts: 0, trends: 0 };
+      current.points += detail.points ?? 0;
+      if (detail.exact_hit) current.exacts += 1;
+      else if (detail.trend_hit) current.trends += 1;
+      detailStats.set(detail.user_id, current);
+    }
+
+    const podiumStats = new Map(details.podium.map((item) => [item.user_id, item]));
+    return ranking
+      .map((row) => {
+        const detail = detailStats.get(row.user_id);
+        const podium = podiumStats.get(row.user_id);
+        if (!detail && !podium) return row;
+        return {
+          ...row,
+          total_points: (detail?.points ?? 0) + (podium?.points ?? 0),
+          exact_hits: detail?.exacts ?? 0,
+          trend_hits: detail?.trends ?? 0,
+          podium_points: podium?.points ?? 0,
+          podium_champion_points: podium?.champion_points ?? 0,
+          podium_runner_up_points: podium?.runner_up_points ?? 0,
+          podium_third_place_points: podium?.third_place_points ?? 0
+        };
+      })
+      .sort((a, b) => b.total_points - a.total_points || b.exact_hits - a.exact_hits || b.trend_hits - a.trend_hits || a.display_name.localeCompare(b.display_name));
+  }, [details.podium, details.predictions, ranking]);
+  const selectedRow = normalizedRanking.find((row) => row.user_id === selectedUserId) ?? null;
   const selectedSummary = selectedUserId ? details.summaries.find((summary) => summary.user_id === selectedUserId) : null;
   const fallbackAvailable = details.summaries.find((summary) => summary.available_predictions > 0)?.available_predictions ?? 0;
   const detailRows = useMemo(
@@ -186,8 +215,8 @@ export function RankingContent({ ranking, details }: Props) {
   });
   const detailsByStage = groupBy(filteredDetails, (detail) => asMatch(detail.matches)?.stage ?? "GROUP");
   const filteredRanking = useMemo(
-    () => ranking.filter((row) => !normalizedQuery || normalize(row.display_name).includes(normalizedQuery)),
-    [normalizedQuery, ranking]
+    () => normalizedRanking.filter((row) => !normalizedQuery || normalize(row.display_name).includes(normalizedQuery)),
+    [normalizedQuery, normalizedRanking]
   );
 
   useEffect(() => {
