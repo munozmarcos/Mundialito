@@ -46,7 +46,8 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   await recalculateMatch(body.matchId);
   await recalculateAllPodiumPoints(db);
-  return NextResponse.json({ ok: true });
+  const { data: refreshed } = await db.from("matches").select("*").eq("id", body.matchId).single();
+  return NextResponse.json({ ok: true, match: refreshed ?? null });
 }
 
 export async function PATCH(req: Request) {
@@ -67,9 +68,8 @@ export async function PATCH(req: Request) {
   const { error } = await db.from("matches").update(update).eq("id", body.matchId);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  if (body.action === "clear") {
-    await recalculateMatch(body.matchId);
-    await recalculateAllPodiumPoints(db);
-  }
-  return NextResponse.json({ ok: true });
+  await recalculateMatch(body.matchId);
+  await recalculateAllPodiumPoints(db);
+  const { data: refreshed } = await db.from("matches").select("*").eq("id", body.matchId).single();
+  return NextResponse.json({ ok: true, match: refreshed ?? null });
 }

@@ -149,10 +149,13 @@ create function ranking()
 returns table(user_id uuid, display_name text, total_points bigint, exact_hits bigint, trend_hits bigint, podium_points bigint)
 language sql stable as $$
   with valid_predictions as (
-    select *
-    from predictions
-    where home_goals is not null
-      and away_goals is not null
+    select pr.*
+    from predictions pr
+    join matches m on m.id = pr.match_id
+    where pr.home_goals is not null
+      and pr.away_goals is not null
+      and m.home_goals is not null
+      and m.away_goals is not null
   ),
   match_points as (
     select

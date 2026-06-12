@@ -322,8 +322,17 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
     setSaving(true);
     setMessage("");
     try {
-      await request("/api/results", "POST", { matchId: match.id, homeGoals: score.home, awayGoals: score.away, penaltyWinner: score.penaltyWinner ?? null });
-      updateLocalMatch(match.id, { home_goals: score.home, away_goals: score.away, penalty_winner: score.penaltyWinner ?? null, locked: true, status: "closed" });
+      const data = await request("/api/results", "POST", { matchId: match.id, homeGoals: score.home, awayGoals: score.away, penaltyWinner: score.penaltyWinner ?? null });
+      const savedMatch = data.match ?? { ...match, home_goals: score.home, away_goals: score.away, penalty_winner: score.penaltyWinner ?? null, locked: true, status: "closed" };
+      updateLocalMatch(match.id, savedMatch);
+      setScores((current) => ({
+        ...current,
+        [match.id]: {
+          home: savedMatch.home_goals ?? "",
+          away: savedMatch.away_goals ?? "",
+          penaltyWinner: savedMatch.penalty_winner ?? null
+        }
+      }));
       const notification = await request("/api/admin/run-job", "POST", { path: "/api/jobs/notify-results", matchId: match.id });
       setMessage(`Resultado guardado y puntos recalculados. WhatsApp enviados: ${notification.data?.sent ?? 0}.`);
     } catch (error) {
@@ -337,14 +346,15 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
     setSaving(true);
     setMessage("");
     try {
-      await request("/api/results", "PATCH", { matchId: match.id, action });
-      if (action === "lock") updateLocalMatch(match.id, { locked: true, status: "closed" });
-      if (action === "block") updateLocalMatch(match.id, { locked: true, status: "locked" });
-      if (action === "open") updateLocalMatch(match.id, { locked: false, status: "open" });
-      if (action === "clear") {
-        updateLocalMatch(match.id, { locked: false, status: "open", home_goals: null, away_goals: null, penalty_winner: null });
-        setScores((current) => ({ ...current, [match.id]: { home: "", away: "", penaltyWinner: null } }));
+      const data = await request("/api/results", "PATCH", { matchId: match.id, action });
+      if (data.match) updateLocalMatch(match.id, data.match);
+      else {
+        if (action === "lock") updateLocalMatch(match.id, { locked: true, status: "closed" });
+        if (action === "block") updateLocalMatch(match.id, { locked: true, status: "locked" });
+        if (action === "open") updateLocalMatch(match.id, { locked: false, status: "open" });
+        if (action === "clear") updateLocalMatch(match.id, { locked: false, status: "open", home_goals: null, away_goals: null, penalty_winner: null });
       }
+      if (action === "clear") setScores((current) => ({ ...current, [match.id]: { home: "", away: "", penaltyWinner: null } }));
       setMessage(action === "lock" ? "Partido cerrado." : action === "block" ? "Partido bloqueado." : action === "open" ? "Partido abierto." : "Resultado eliminado.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo actualizar.");

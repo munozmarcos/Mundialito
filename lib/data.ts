@@ -154,7 +154,7 @@ export async function getRanking(): Promise<RankingRow[]> {
       db.from("profiles").select("id,display_name"),
       db
         .from("predictions")
-        .select("user_id,points,exact_hit,trend_hit,home_goals,away_goals")
+        .select("user_id,points,exact_hit,trend_hit,home_goals,away_goals,matches(home_goals,away_goals)")
         .not("home_goals", "is", null)
         .not("away_goals", "is", null),
       db.from("podium_predictions").select("user_id,champion_points,runner_up_points,third_place_points,points")
@@ -165,6 +165,8 @@ export async function getRanking(): Promise<RankingRow[]> {
 
     const matchPointsByUser = new Map<string, { points: number; exacts: number; trends: number }>();
     for (const prediction of predictions ?? []) {
+      const match = Array.isArray(prediction.matches) ? prediction.matches[0] : prediction.matches;
+      if (!match || match.home_goals == null || match.away_goals == null) continue;
       const current = matchPointsByUser.get(prediction.user_id) ?? { points: 0, exacts: 0, trends: 0 };
       current.points += prediction.points ?? 0;
       if (prediction.exact_hit) current.exacts += 1;
@@ -251,8 +253,13 @@ export async function getRankingDetails(): Promise<RankingDetails> {
       }
       summaryMap.get(userId)!.podium_loaded = [item.champion_team, item.runner_up_team, item.third_place_team].filter(Boolean).length;
     }
+    const validDetails = (predictions ?? []).filter((prediction: any) => {
+      const match = Array.isArray(prediction.matches) ? prediction.matches[0] : prediction.matches;
+      return match?.home_goals != null && match?.away_goals != null;
+    });
+
     return {
-      predictions: (predictions ?? []) as unknown as RankingPredictionDetail[],
+      predictions: validDetails as unknown as RankingPredictionDetail[],
       podium: (podium ?? []) as RankingPodiumDetail[],
       summaries: [...summaryMap.values()]
     };
@@ -276,7 +283,10 @@ export async function getRecentActivity(limit = 6): Promise<ActivityRow[]> {
       .order("updated_at", { ascending: false })
       .limit(limit);
     if (error) throw error;
-    return (data ?? []) as unknown as ActivityRow[];
+    return (data ?? []).filter((item: any) => {
+      const match = Array.isArray(item.matches) ? item.matches[0] : item.matches;
+      return match?.home_goals != null && match?.away_goals != null;
+    }) as unknown as ActivityRow[];
   } catch (error) {
     console.warn("[activity:fallback]", error);
     return [];

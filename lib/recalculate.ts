@@ -14,14 +14,14 @@ export async function recalculateMatch(matchId: string) {
   if (predictionsError) throw predictionsError;
 
   for (const prediction of predictions ?? []) {
-    if (prediction.home_goals == null || prediction.away_goals == null) {
+    if (prediction.home_goals == null || prediction.away_goals == null || match.home_goals == null || match.away_goals == null) {
       await db
         .from("predictions")
         .update({
           points: 0,
           trend_hit: false,
           exact_hit: false,
-          score_details: ["missing-score"]
+          score_details: prediction.home_goals == null || prediction.away_goals == null ? ["missing-score"] : ["missing-result"]
         })
         .eq("id", prediction.id);
       continue;
