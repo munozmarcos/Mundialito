@@ -1,5 +1,6 @@
-import { answerWhatsAppCommand, isWhatsAppCommand } from "@/lib/whatsapp-commands";
+import { answerWhatsAppCommand, findProfileByPhone, isWhatsAppCommand } from "@/lib/whatsapp-commands";
 import { sendWhatsApp } from "@/lib/whatsapp";
+import { sendWebPushToUser } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 
 function allowed(req: Request) {
@@ -31,6 +32,17 @@ function firstPhoneLike(...values: unknown[]) {
   return firstText(...values);
 }
 
+function compactPushBody(answer: string) {
+  return answer
+    .replace(/\*/g, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(" · ")
+    .slice(0, 180);
+}
+
 export async function POST(req: Request) {
   if (!allowed(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -52,6 +64,17 @@ export async function POST(req: Request) {
   const answer = await answerWhatsAppCommand(textValue, String(participantPhone));
 
   console.log("[whatsapp:command]", { participantPhone, replyTo, text: textValue.slice(0, 40), isOutgoing });
-  if (replyTo) await sendWhatsApp(String(replyTo), answer);
+  if (replyTo) {
+    await sendWhatsApp(String(replyTo), answer);
+    const profile = await findProfileByPhone(String(participantPhone));
+    if (profile?.id) {
+      await sendWebPushToUser(profile.id, {
+        title: "Mundialito",
+        body: compactPushBody(answer),
+        url: "/mi-prode",
+        tag: `whatsapp-command:${profile.id}`
+      });
+    }
+  }
   return NextResponse.json({ answer, replied: Boolean(replyTo), outgoing: isOutgoing });
 }

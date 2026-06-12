@@ -2,6 +2,7 @@ import { hashLoginCode, internalEmailForPhone, normalizePhone, publicPhone, rand
 import { displayNameExists, normalizeDisplayName, validateDisplayName } from "@/lib/profiles";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
+import { sendWebPushToUser } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -89,9 +90,7 @@ export async function POST(req: Request) {
     });
     if (error) throw error;
 
-    await sendWhatsApp(
-      publicPhone(body.phone),
-      [
+    const message = [
         "🏆 *Mundialito*",
         "",
         `Hola ${profile.display_name}. Tu código para entrar es:`,
@@ -109,8 +108,15 @@ export async function POST(req: Request) {
               "Si pagás por alias o link directo sin iniciar sesión, avisale a Marcos para marcarlo manualmente."
             ]
           : [])
-      ].join("\n")
-    );
+      ].join("\n");
+
+    await sendWhatsApp(publicPhone(body.phone), message);
+    await sendWebPushToUser(profile.id, {
+      title: "Codigo Mundialito",
+      body: `Tu codigo para entrar es ${code}. Vence en 10 minutos.`,
+      url: "/login",
+      tag: `login-code:${profile.id}`
+    });
 
     return NextResponse.json({ ok: true, phone: publicPhone(body.phone), created });
   } catch (error) {

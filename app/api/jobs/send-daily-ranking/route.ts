@@ -2,6 +2,7 @@ import { getRanking } from "@/lib/data";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
+import { sendWebPushToUser } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 
 function assertCron(req: Request) {
@@ -20,10 +21,31 @@ function argentinaDate(now = new Date()) {
   }).format(now);
 }
 
+function argentinaDayRange(date: string) {
+  const start = new Date(`${date}T00:00:00-03:00`);
+  const end = addDays(start, 1);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
 function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setUTCDate(next.getUTCDate() + days);
   return next;
+}
+
+async function hasWhatsAppQuotaForRanking(db: ReturnType<typeof supabaseAdmin>, needed: number, date: string) {
+  const dailyLimit = Number(process.env.WHATSAPP_DAILY_LIMIT ?? 100);
+  const reserved = Number(process.env.WHATSAPP_DAILY_RESERVED ?? 20);
+  const { start, end } = argentinaDayRange(date);
+  const { count } = await db
+    .from("notification_logs")
+    .select("id", { count: "exact", head: true })
+    .like("kind", "whatsapp-%")
+    .gte("created_at", start)
+    .lt("created_at", end);
+  const used = count ?? 0;
+  const available = Math.max(0, dailyLimit - reserved - used);
+  return { ok: available >= needed, dailyLimit, reserved, used, available, needed };
 }
 
 function inWorldCupWindow(date: string) {
@@ -100,6 +122,12 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   if (!manual && users?.length) {
+    const quota = await hasWhatsAppQuotaForRanking(db, users.length, today);
+    if (!quota.ok) {
+      const skipped = await recordAutomaticSkip("whatsapp-quota-insufficient", { date: today, quota });
+      return NextResponse.json(skipped);
+    }
+
     const { count } = await db
       .from("notification_logs")
       .select("id", { count: "exact", head: true })
@@ -114,6 +142,8 @@ export async function POST(req: Request) {
   const ranking = await getRanking();
 
   let sent = 0;
+  let pushSent = 0;
+  let pushFailed = 0;
   const failures: string[] = [];
   for (const user of users ?? []) {
     if (!user.phone) continue;
@@ -140,13 +170,22 @@ export async function POST(req: Request) {
 
     try {
       await sendWhatsApp(user.phone, body);
+      const push = await sendWebPushToUser(user.id, {
+        dedupeKey: manual ? undefined : `${user.id}:daily-ranking-push:${today}`,
+        title: "Ranking Mundialito",
+        body: `Ranking del ${today}. Responde $ranking o toca para verlo en la app.`,
+        url: "/ranking",
+        tag: `daily-ranking:${today}:${user.id}`
+      });
+      pushSent += push.sent;
+      pushFailed += push.failed;
       sent += 1;
     } catch (err) {
       failures.push(`${user.display_name}: ${err instanceof Error ? err.message : "unknown"}`);
     }
   }
 
-  const result = { date: today, manual, sent, failures };
+  const result = { date: today, manual, sent, pushNotifications: pushSent, pushFailures: pushFailed, failures };
   if (!manual) {
     await recordJobRun({
       jobPath: "/api/jobs/send-daily-ranking",

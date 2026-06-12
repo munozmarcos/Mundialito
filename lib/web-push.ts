@@ -10,6 +10,7 @@ export type WebPushPayload = {
 
 type PushSubscriptionRow = {
   id: string;
+  user_id?: string | null;
   endpoint: string;
   p256dh: string;
   auth: string;
@@ -35,23 +36,19 @@ export function publicVapidKey() {
   return cleanEnvValue(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) || null;
 }
 
-export async function sendWebPushToAll(payload: WebPushPayload & { dedupeKey?: string }) {
-  if (!supabaseAdminConfigured() || !webPushConfigured() || !configureWebPush()) {
-    return { sent: 0, failed: 0, skipped: "not-configured" };
-  }
-
+async function reserveDedupeKey(dedupeKey?: string) {
+  if (!dedupeKey) return true;
   const db = supabaseAdmin();
-  if (payload.dedupeKey) {
-    const { error } = await db.from("web_push_logs").insert({ id: payload.dedupeKey });
-    if (error) return { sent: 0, failed: 0, skipped: "duplicate" };
-  }
+  const { error } = await db.from("web_push_logs").insert({ id: dedupeKey });
+  return !error;
+}
 
-  const { data, error } = await db.from("push_subscriptions").select("id,endpoint,p256dh,auth");
-  if (error) throw error;
-
+async function sendWebPushRows(rows: PushSubscriptionRow[], payload: WebPushPayload & { dedupeKey?: string }) {
+  const db = supabaseAdmin();
   let sent = 0;
   let failed = 0;
-  for (const row of (data ?? []) as PushSubscriptionRow[]) {
+
+  for (const row of rows) {
     const subscription: PushSubscription = {
       endpoint: row.endpoint,
       keys: {
@@ -79,4 +76,41 @@ export async function sendWebPushToAll(payload: WebPushPayload & { dedupeKey?: s
   }
 
   return { sent, failed };
+}
+
+function pushReady() {
+  return supabaseAdminConfigured() && webPushConfigured() && configureWebPush();
+}
+
+export async function sendWebPushToAll(payload: WebPushPayload & { dedupeKey?: string }) {
+  if (!pushReady()) return { sent: 0, failed: 0, skipped: "not-configured" };
+
+  const db = supabaseAdmin();
+  if (payload.dedupeKey) {
+    const reserved = await reserveDedupeKey(payload.dedupeKey);
+    if (!reserved) return { sent: 0, failed: 0, skipped: "duplicate" };
+  }
+
+  const { data, error } = await db.from("push_subscriptions").select("id,user_id,endpoint,p256dh,auth");
+  if (error) throw error;
+
+  return sendWebPushRows((data ?? []) as PushSubscriptionRow[], payload);
+}
+
+export async function sendWebPushToUser(userId: string, payload: WebPushPayload & { dedupeKey?: string }) {
+  if (!pushReady()) return { sent: 0, failed: 0, skipped: "not-configured" };
+
+  const db = supabaseAdmin();
+  if (payload.dedupeKey) {
+    const reserved = await reserveDedupeKey(`${payload.dedupeKey}:${userId}`);
+    if (!reserved) return { sent: 0, failed: 0, skipped: "duplicate" };
+  }
+
+  const { data, error } = await db
+    .from("push_subscriptions")
+    .select("id,user_id,endpoint,p256dh,auth")
+    .eq("user_id", userId);
+  if (error) throw error;
+
+  return sendWebPushRows((data ?? []) as PushSubscriptionRow[], payload);
 }

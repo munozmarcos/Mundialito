@@ -5,6 +5,7 @@ import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { isPredictionLocked } from "@/lib/scoring";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
+import { sendWebPushToUser } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 
 type ReminderMatch = {
@@ -229,6 +230,8 @@ export async function POST(req: Request) {
   const sentLogs = new Set((logs ?? []).map((log) => log.dedupe_key));
   const appUrl = (process.env.APP_URL ?? "").replace(/\/$/, "");
   let sent = 0;
+  let pushSent = 0;
+  let pushFailed = 0;
   let reminders = 0;
   const failures: string[] = [];
 
@@ -246,6 +249,15 @@ export async function POST(req: Request) {
 
     try {
       await sendWhatsApp(user.phone, reminderMessage(user, pending, appUrl, manual, stats, todayMatches));
+      const push = await sendWebPushToUser(user.id, {
+        dedupeKey: manual ? undefined : `${user.id}:pending:${pending.map((match) => match.id).join("-")}`,
+        title: manual ? "Pendientes Mundialito" : "Pendientes 4h",
+        body: `Te faltan ${stats.pending} de ${stats.available} pronosticos disponibles.`,
+        url: "/mi-prode",
+        tag: `pending:${user.id}`
+      });
+      pushSent += push.sent;
+      pushFailed += push.failed;
       sent += 1;
       reminders += pending.length;
 
@@ -264,7 +276,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const result = { manual, sent, users: users?.length ?? 0, matches: matches.length, reminders, failures };
+  const result = { manual, sent, pushNotifications: pushSent, pushFailures: pushFailed, users: users?.length ?? 0, matches: matches.length, reminders, failures };
   if (isAutomatic(req)) {
     await recordJobRun({
       jobPath: "/api/jobs/send-reminders",

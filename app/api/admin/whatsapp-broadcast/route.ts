@@ -1,5 +1,6 @@
 import { requireAdmin, supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
+import { sendWebPushToUser } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -45,16 +46,26 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   let sent = 0;
+  let pushSent = 0;
+  let pushFailed = 0;
   const failures: string[] = [];
   for (const user of users ?? []) {
     if (!user.phone) continue;
     try {
       await sendWhatsApp(user.phone, input.body);
+      const push = await sendWebPushToUser(user.id, {
+        title: "Mundialito",
+        body: input.body.replace(/\*/g, "").split(/\r?\n/).filter(Boolean).slice(0, 3).join(" · ").slice(0, 180),
+        url: "/novedades",
+        tag: `broadcast:${Date.now()}`
+      });
+      pushSent += push.sent;
+      pushFailed += push.failed;
       sent += 1;
     } catch (error) {
       failures.push(`${user.display_name} (${user.phone}): ${error instanceof Error ? error.message : "unknown"}`);
     }
   }
 
-  return NextResponse.json({ sent, recipients: users?.length ?? 0, failures });
+  return NextResponse.json({ sent, pushNotifications: pushSent, pushFailures: pushFailed, recipients: users?.length ?? 0, failures });
 }

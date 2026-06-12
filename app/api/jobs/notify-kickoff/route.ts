@@ -1,8 +1,6 @@
-import { formatArgentinaDateTime } from "@/lib/dates";
-import { flagEmojiForTeam } from "@/lib/flags";
+import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { supabaseAdmin } from "@/lib/supabase";
-import { sendWhatsApp } from "@/lib/whatsapp";
 import { sendWebPushToAll } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 
@@ -36,59 +34,30 @@ export async function POST(req: Request) {
     .lte("kickoff_at", to);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  const { data: users, error: usersError } = await db
-    .from("profiles")
-    .select("id,display_name,phone,role")
-    .not("phone", "is", null)
-    .in("role", ["participant", "admin"]);
-  if (usersError) return NextResponse.json({ error: usersError.message }, { status: 400 });
-
-  let sent = 0;
   let pushSent = 0;
   let pushFailed = 0;
-  const failures: string[] = [];
   for (const match of matches ?? []) {
+    const home = displayNameForTeam(match.home_team);
+    const away = displayNameForTeam(match.away_team);
     const push = await sendWebPushToAll({
       dedupeKey: `match-kickoff:${match.id}`,
-      title: "Arranca el partido",
-      body: `${flagEmoji(match.home_team, match.home_country_code)} ${match.home_team} vs ${flagEmoji(match.away_team, match.away_country_code)} ${match.away_team}`,
+      title: "Partido en vivo",
+      body: `${flagEmoji(match.home_team, match.home_country_code)} ${home} vs ${flagEmoji(match.away_team, match.away_country_code)} ${away}`,
       url: "/partidos",
       tag: `match-kickoff:${match.id}`
     });
     pushSent += push.sent;
     pushFailed += push.failed;
-
-    for (const user of users ?? []) {
-      const dedupeKey = `${match.id}:${user.id}:kickoff`;
-      const { error: logError } = await db.from("notification_logs").insert({
-        user_id: user.id,
-        match_id: match.id,
-        kind: "whatsapp-kickoff",
-        dedupe_key: dedupeKey
-      });
-      if (logError) continue;
-
-      try {
-        await sendWhatsApp(
-          user.phone,
-          [
-            "⚽ *Arranca el partido*",
-            "",
-            `${flagEmoji(match.home_team, match.home_country_code)} ${match.home_team} vs ${flagEmoji(match.away_team, match.away_country_code)} ${match.away_team}`,
-            `🕒 ${formatArgentinaDateTime(match.kickoff_at)}`,
-            "",
-            "🍿 A mirar y sufrir.",
-            "Responde *$comandos* para ver opciones."
-          ].join("\n")
-        );
-        sent += 1;
-      } catch (error) {
-        failures.push(`${user.display_name}: ${error instanceof Error ? error.message : "unknown"}`);
-      }
-    }
   }
 
-  const result = { sent, pushNotifications: pushSent, pushFailures: pushFailed, matches: matches?.length ?? 0, failures };
+  const result = {
+    sent: 0,
+    whatsappNotifications: 0,
+    pushNotifications: pushSent,
+    pushFailures: pushFailed,
+    matches: matches?.length ?? 0,
+    failures: [] as string[]
+  };
   if (isAutomatic(req)) {
     await recordJobRun({
       jobPath: "/api/jobs/notify-kickoff",
@@ -105,5 +74,3 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   return POST(req);
 }
-
-

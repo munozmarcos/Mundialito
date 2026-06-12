@@ -390,7 +390,7 @@ function rankingLine(row: Pick<RankingRow, "user_id" | "display_name" | "total_p
   return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
 }
 
-async function findProfileByPhone(from?: string) {
+export async function findProfileByPhone(from?: string) {
   if (!from || !supabaseConfigured()) return null;
   const db = supabaseAdmin();
   const { data, error } = await db.from("profiles").select("*").not("phone", "is", null);
