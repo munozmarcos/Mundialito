@@ -52,3 +52,33 @@ export async function recalculateMatch(matchId: string) {
     await recalculateAllPodiumPoints(db);
   }
 }
+
+export async function recalculateAllMatches() {
+  const db = supabaseAdmin();
+  const { error: incompleteError } = await db
+    .from("predictions")
+    .update({
+      points: 0,
+      trend_hit: false,
+      exact_hit: false,
+      score_details: ["missing-score"]
+    })
+    .or("home_goals.is.null,away_goals.is.null");
+  if (incompleteError) throw incompleteError;
+
+  const { data: matches, error: matchesError } = await db.from("matches").select("id");
+  if (matchesError) throw matchesError;
+
+  let recalculated = 0;
+  for (const match of matches ?? []) {
+    await recalculateMatch(match.id);
+    recalculated += 1;
+  }
+  await recalculateAllPodiumPoints(db);
+
+  return {
+    matches: recalculated,
+    incompletePredictionsReset: true,
+    podiumRecalculated: true
+  };
+}

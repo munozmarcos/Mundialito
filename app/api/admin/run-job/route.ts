@@ -11,6 +11,7 @@ const paths = [
   "/api/jobs/lock-matches",
   "/api/jobs/notify-kickoff",
   "/api/jobs/send-daily-ranking",
+  "/api/jobs/recalculate-all",
   "/api/jobs/notify-results"
 ] as const;
 
@@ -26,6 +27,7 @@ const titles: Record<(typeof paths)[number], string> = {
   "/api/jobs/lock-matches": "Cerrar 15m",
   "/api/jobs/notify-kickoff": "Avisar inicio",
   "/api/jobs/send-daily-ranking": "Envío Ranking",
+  "/api/jobs/recalculate-all": "Recalcular puntos",
   "/api/jobs/notify-results": "Avisar resultado"
 };
 

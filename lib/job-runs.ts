@@ -12,6 +12,8 @@ export function summarizeJob(title: string, payload: any) {
   if (typeof data.placeholders === "number") parts.push(`${data.placeholders} llaves preparadas`);
   if (typeof data.updated === "number") parts.push(`${data.updated} registros actualizados`);
   if (typeof data.matches === "number") parts.push(`${data.matches} partidos detectados`);
+  if (typeof data.incompletePredictionsReset === "boolean") parts.push("incompletos limpiados");
+  if (typeof data.podiumRecalculated === "boolean") parts.push("podio recalculado");
   if (typeof data.users === "number") parts.push(`${data.users} participantes revisados`);
   if (typeof data.reminders === "number") parts.push(`${data.reminders} pronosticos pendientes`);
   if (typeof data.locked === "number") parts.push(`${data.locked} partidos cerrados`);
