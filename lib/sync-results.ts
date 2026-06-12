@@ -25,6 +25,30 @@ function findLocalMatch(matches: any[], result: ProviderResult) {
   });
 }
 
+async function shouldUseLiveProvider(db: ReturnType<typeof supabaseAdmin>, matches: any[]) {
+  if ((process.env.LIVE_RESULTS_PROVIDER ?? process.env.RESULTS_PROVIDER) !== "api-football") return false;
+
+  const now = Date.now();
+  const hasLiveWindow = matches.some((match) => {
+    if (match.status === "locked" || match.status === "scheduled") return false;
+    const kickoff = new Date(match.kickoff_at).getTime();
+    if (!Number.isFinite(kickoff)) return false;
+    return now >= kickoff && now <= kickoff + 150 * 60 * 1000;
+  });
+  if (!hasLiveWindow) return false;
+
+  const { data } = await db
+    .from("job_runs")
+    .select("created_at,payload")
+    .eq("job_path", "/api/jobs/sync-results")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  const lastApiFootballRun = (data ?? []).find((run) => (run.payload as any)?.provider === "api-football");
+  if (!lastApiFootballRun?.created_at) return true;
+  return now - new Date(lastApiFootballRun.created_at).getTime() >= 9 * 60 * 1000;
+}
+
 async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: any) {
   if (match.home_goals == null || match.away_goals == null) return { sent: 0, failures: [] as string[] };
 
@@ -79,13 +103,18 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
   }
 
   const db = supabaseAdmin();
+  const { data: matches, error } = await db.from("matches").select("*");
+  if (error) throw error;
+
   let providerResults: ProviderResult[] = [];
   let providerError: string | null = null;
   let provider = process.env.LIVE_RESULTS_PROVIDER ?? process.env.RESULTS_PROVIDER ?? "football-data";
   let providerWarning: string | null = null;
 
   try {
-    const detailed = await fetchProviderResultsDetailed({ allowLiveProvider: options.allowLiveProvider });
+    const detailed = await fetchProviderResultsDetailed({
+      allowLiveProvider: options.allowLiveProvider ?? (await shouldUseLiveProvider(db, matches ?? []))
+    });
     providerResults = detailed.results;
     provider = detailed.provider;
     providerWarning = detailed.providerWarning ?? null;
@@ -102,9 +131,6 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
       providerError
     };
   }
-
-  const { data: matches, error } = await db.from("matches").select("*");
-  if (error) throw error;
 
   let updated = 0;
   let liveInitialized = 0;
