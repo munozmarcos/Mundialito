@@ -2,6 +2,7 @@
 
 import { Bell, X } from "lucide-react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NotificationBody } from "@/components/notification-body";
 
@@ -35,6 +36,8 @@ function isNewer(item: NotificationItem, previous: string | null) {
 
 export function NotificationToasts() {
   const initialized = useRef(false);
+  const pathname = usePathname();
+  const router = useRouter();
   const [toast, setToast] = useState<NotificationItem | null>(null);
 
   useEffect(() => {
@@ -72,6 +75,34 @@ export function NotificationToasts() {
       window.clearInterval(interval);
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function pulseLiveResults() {
+      try {
+        if (document.visibilityState !== "visible") return;
+        const res = await fetch("/api/live/pulse", { method: "POST", cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const updated = Number(data?.data?.updated ?? 0);
+        const refreshablePaths = new Set(["/", "/partidos", "/ranking", "/probar", "/novedades"]);
+        if (updated > 0 && refreshablePaths.has(pathname)) router.refresh();
+      } catch {
+        // Live score pulse is best-effort; scheduled jobs remain the main runner.
+      }
+    }
+
+    void pulseLiveResults();
+    const interval = window.setInterval(() => {
+      if (active) void pulseLiveResults();
+    }, 60_000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [pathname, router]);
 
   if (!toast) return null;
 

@@ -14,7 +14,7 @@ import { matchFitsBasicFilters, normalizeFilter } from "@/lib/match-filters";
 import { teamOptionsFromMatches, type TeamOption } from "@/lib/team-options";
 import type { Match, MatchStage, Prediction, Profile } from "@/lib/types";
 import { Calculator, GitBranch, ListChecks, Medal, Save, Table2, Trash2, Trophy } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useRef, useMemo, useState, type ReactNode } from "react";
 
 type AdminPrediction = Prediction & { profiles?: Pick<Profile, "display_name"> | null };
 type AdminPodium = {
@@ -118,6 +118,67 @@ function AdminPodiumPicker({
       </div>
       <div>{children}</div>
     </article>
+  );
+}
+
+const loadFilterOptions = [
+  { value: "none", label: "Ninguno" },
+  { value: "pending", label: "Pendientes" },
+  { value: "complete", label: "Completos" }
+];
+
+function LoadStatusPicker({ value, onChange, title }: { value: string; onChange: (value: string) => void; title: string }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const selected = loadFilterOptions.find((option) => option.value === value);
+
+  useEffect(() => {
+    function closeOnOutsideClick(event: MouseEvent | TouchEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("touchstart", closeOnOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("touchstart", closeOnOutsideClick);
+    };
+  }, []);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        aria-label={title}
+        className="field flex min-h-11 w-full items-center justify-between gap-3 px-3 text-left"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        {selected ? <span className="font-black text-ink">{selected.label}</span> : <span className="font-black text-ink/45">Seleccionar</span>}
+        <span className="shrink-0 text-xs font-black text-ink/40">▼</span>
+      </button>
+      {open && (
+        <div className="dark-scrollbar absolute left-0 right-0 top-full z-40 mt-2 max-h-72 overflow-y-auto rounded-lg border border-line bg-field p-2 shadow-2xl">
+          {!selected && (
+            <div aria-disabled="true" className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm font-black text-ink/35">
+              Seleccionar
+            </div>
+          )}
+          {loadFilterOptions.map((option) => (
+            <button
+              className={`flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm font-black hover:bg-card ${option.value === value ? "bg-card ring-1 ring-grass/40" : ""}`}
+              key={option.value}
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -679,32 +740,12 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
                 onChange={(event) => setParticipantFilter(event.target.value)}
               />
               <label className="grid gap-1">
-                <span className="px-1 text-xs font-black uppercase tracking-[0.12em] text-ink/55">Pronosticos</span>
-                <select
-                  className={`field min-h-10 px-3 text-center font-black ${loadStatusFilter === "all" ? "text-ink/45" : "text-ink"}`}
-                  value={loadStatusFilter}
-                  onChange={(event) => setLoadStatusFilter(event.target.value)}
-                  title="Filtro de pronosticos"
-                >
-                  <option className="text-ink/35" value="all" disabled>Seleccion</option>
-                  <option value="none">Ninguno</option>
-                  <option value="pending">Pendientes</option>
-                  <option value="complete">Completos</option>
-                </select>
+                <span className="px-1 text-xs font-black uppercase tracking-[0.12em] text-ink/55">Pronósticos</span>
+                <LoadStatusPicker title="Filtro de pronosticos" value={loadStatusFilter} onChange={setLoadStatusFilter} />
               </label>
               <label className="grid gap-1">
                 <span className="px-1 text-xs font-black uppercase tracking-[0.12em] text-ink/55">Podio</span>
-                <select
-                  className={`field min-h-10 px-3 text-center font-black ${podiumLoadStatusFilter === "all" ? "text-ink/45" : "text-ink"}`}
-                  value={podiumLoadStatusFilter}
-                  onChange={(event) => setPodiumLoadStatusFilter(event.target.value)}
-                  title="Filtro de podio anticipado"
-                >
-                  <option className="text-ink/35" value="all" disabled>Seleccion</option>
-                  <option value="none">Ninguno</option>
-                  <option value="pending">Pendientes</option>
-                  <option value="complete">Completos</option>
-                </select>
+                <LoadStatusPicker title="Filtro de podio anticipado" value={podiumLoadStatusFilter} onChange={setPodiumLoadStatusFilter} />
               </label>
               <button
                 className="btn secondary min-h-10 px-3"

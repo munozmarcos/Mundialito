@@ -43,16 +43,11 @@ export function CountryFilterPicker({ value, options, onChange, disabled = false
       </button>
       {open && !disabled && (
         <div className="dark-scrollbar absolute left-0 right-0 top-full z-40 mt-2 max-h-72 overflow-y-auto rounded-lg border border-line bg-field p-2 shadow-2xl">
-          <button
-            className="flex min-h-11 w-full min-w-0 items-center rounded-md px-3 text-left text-sm font-black text-ink/45 hover:bg-card"
-            onClick={() => {
-              onChange("");
-              setOpen(false);
-            }}
-            type="button"
-          >
-            Selección
-          </button>
+          {!selected && (
+            <div aria-disabled="true" className="flex min-h-11 w-full min-w-0 items-center rounded-md px-3 text-left text-sm font-black text-ink/35">
+              Selección
+            </div>
+          )}
           {options.map((option) => (
             <button
               className={`flex min-h-11 w-full min-w-0 items-center rounded-md px-3 text-left hover:bg-card ${option.name === value ? "bg-card ring-1 ring-grass/40" : ""}`}

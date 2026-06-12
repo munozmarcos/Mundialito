@@ -1,7 +1,7 @@
 import { recalculateMatch } from "@/lib/recalculate";
 import { recalculateAllPodiumPoints } from "@/lib/podium";
 import { flagEmojiForTeam } from "@/lib/flags";
-import { fetchProviderResults, teamsMatch, type ProviderResult } from "@/lib/results-provider";
+import { fetchProviderResultsDetailed, teamsMatch, type ProviderResult } from "@/lib/results-provider";
 import { supabaseAdmin, supabaseAdminConfigured } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
 
@@ -68,7 +68,7 @@ async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: an
   return { sent, failures };
 }
 
-export async function syncResultsFromProvider() {
+export async function syncResultsFromProvider(options: { allowLiveProvider?: boolean } = {}) {
   if (!supabaseAdminConfigured()) {
     return {
       mode: "not-configured",
@@ -81,9 +81,14 @@ export async function syncResultsFromProvider() {
   const db = supabaseAdmin();
   let providerResults: ProviderResult[] = [];
   let providerError: string | null = null;
+  let provider = process.env.LIVE_RESULTS_PROVIDER ?? process.env.RESULTS_PROVIDER ?? "football-data";
+  let providerWarning: string | null = null;
 
   try {
-    providerResults = await fetchProviderResults();
+    const detailed = await fetchProviderResultsDetailed({ allowLiveProvider: options.allowLiveProvider });
+    providerResults = detailed.results;
+    provider = detailed.provider;
+    providerWarning = detailed.providerWarning ?? null;
   } catch (error) {
     providerError = error instanceof Error ? error.message : "No se pudo consultar el proveedor de resultados.";
   }
@@ -206,6 +211,8 @@ export async function syncResultsFromProvider() {
 
   return {
     mode: "real",
+    provider,
+    providerWarning,
     fetched: providerResults.length,
     updated,
     liveInitialized,

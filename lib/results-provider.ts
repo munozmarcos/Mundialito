@@ -340,22 +340,15 @@ async function fetchApiFootballFixturePage(params: Record<string, string>) {
   const res = await fetch(url, { headers: apiFootballHeaders(), cache: "no-store" });
   if (!res.ok) throw new Error(`api-football results failed: ${res.status}`);
   const data = (await res.json()) as { response?: ApiFootballFixture[] };
+  const errors = (data as { errors?: unknown }).errors;
+  if (errors && JSON.stringify(errors) !== "[]" && JSON.stringify(errors) !== "{}") {
+    throw new Error(`api-football results failed: ${JSON.stringify(errors)}`);
+  }
   return data.response ?? [];
 }
 
-function todayApiFootballDates(now = new Date()) {
-  const dates = [now.toISOString().slice(0, 10)];
-  if (now.getUTCHours() < 4) {
-    dates.push(new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
-  }
-  return dates;
-}
-
 export async function fetchApiFootballResults(): Promise<ProviderResult[]> {
-  const pages = await Promise.all([
-    fetchApiFootballFixturePage({ live: "all" }),
-    ...todayApiFootballDates().map((date) => fetchApiFootballFixturePage({ date }))
-  ]);
+  const pages = [await fetchApiFootballFixturePage({ live: "all" })];
 
   const resultsByFixture = new Map<string, ProviderResult>();
   for (const match of pages.flat()) {
@@ -373,11 +366,27 @@ export async function fetchApiFootballResults(): Promise<ProviderResult[]> {
 }
 
 export async function fetchProviderResults() {
-  const provider = process.env.LIVE_RESULTS_PROVIDER ?? process.env.RESULTS_PROVIDER ?? "football-data";
-  if (provider === "api-football") return fetchApiFootballResults();
-  if (provider === "football-data") return fetchFootballDataResults();
-  if (provider === "worldcupapi") return fetchWorldCupApiResults();
-  if (provider === "mock") return [];
+  const detailed = await fetchProviderResultsDetailed();
+  return detailed.results;
+}
+
+export async function fetchProviderResultsDetailed(options: { allowLiveProvider?: boolean } = {}): Promise<{ results: ProviderResult[]; provider: string; providerWarning?: string }> {
+  const provider = options.allowLiveProvider === false ? "football-data" : (process.env.LIVE_RESULTS_PROVIDER ?? process.env.RESULTS_PROVIDER ?? "football-data");
+  if (provider === "api-football") {
+    try {
+      return { results: await fetchApiFootballResults(), provider };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "api-football failed";
+      return {
+        results: await fetchFootballDataResults(),
+        provider: "football-data",
+        providerWarning: `${message}. Se uso football-data como respaldo.`
+      };
+    }
+  }
+  if (provider === "football-data") return { results: await fetchFootballDataResults(), provider };
+  if (provider === "worldcupapi") return { results: await fetchWorldCupApiResults(), provider };
+  if (provider === "mock") return { results: [], provider };
   throw new Error(`Unsupported RESULTS_PROVIDER: ${provider}`);
 }
 

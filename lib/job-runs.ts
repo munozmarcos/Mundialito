@@ -21,6 +21,7 @@ export function summarizeJob(title: string, payload: any) {
   if (typeof data.notifications === "number") parts.push(`${data.notifications} avisos enviados`);
   if (typeof data.inserted === "number") parts.push(`${data.inserted} registros creados`);
   if (Array.isArray(data.unmatched) && data.unmatched.length) parts.push(`${data.unmatched.length} sin asociar`);
+  if (data.providerWarning) parts.push(`proveedor: ${data.providerWarning}`);
   if (data.providerError) parts.push(`proveedor: ${data.providerError}`);
   if (typeof data.failures?.length === "number" && data.failures.length) parts.push(`${data.failures.length} fallos`);
   if (data.skipped) parts.push(`omitido: ${data.reason ?? "sin cambios"}`);
