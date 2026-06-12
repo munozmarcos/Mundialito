@@ -1,6 +1,6 @@
 import { recalculateMatch } from "@/lib/recalculate";
 import { recalculateAllPodiumPoints } from "@/lib/podium";
-import { flagEmojiForTeam } from "@/lib/flags";
+import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { fetchProviderResultsDetailed, teamsMatch, type ProviderResult } from "@/lib/results-provider";
 import { supabaseAdmin, supabaseAdminConfigured } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
@@ -52,6 +52,19 @@ async function shouldUseLiveProvider(db: ReturnType<typeof supabaseAdmin>, match
 async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: any) {
   if (match.home_goals == null || match.away_goals == null) return { sent: 0, failures: [] as string[] };
 
+  const homeName = displayNameForTeam(match.home_team);
+  const awayName = displayNameForTeam(match.away_team);
+  const homeFlag = flagEmojiForTeam(match.home_team, match.home_country_code);
+  const awayFlag = flagEmojiForTeam(match.away_team, match.away_country_code);
+  const message = [
+    "🏁 *Resultado final Mundialito*",
+    "",
+    `${homeFlag} *${homeName}*  ${match.home_goals}-${match.away_goals}  *${awayName}* ${awayFlag}`,
+    "",
+    "🏆 Ranking actualizado.",
+    "👉 Responde *$ranking* para ver la tabla completa."
+  ].join("\n");
+
   const { data: users, error: usersError } = await db
     .from("profiles")
     .select("id,display_name,phone,role")
@@ -72,17 +85,7 @@ async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: an
     if (logError) continue;
 
     try {
-      await sendWhatsApp(
-        user.phone,
-        [
-          "🏁 *Partido cerrado*",
-          "",
-          `${flagEmojiForTeam(match.home_team, match.home_country_code)} ${match.home_team} *${match.home_goals}-${match.away_goals}* ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${match.away_team}`,
-          "",
-          "🏆 El ranking ya fue actualizado.",
-          "Responde *$ranking* para ver la tabla."
-        ].join("\n")
-      );
+      await sendWhatsApp(user.phone, message);
       sent += 1;
     } catch (error) {
       failures.push(`${user.display_name}: ${error instanceof Error ? error.message : "unknown"}`);
@@ -91,7 +94,6 @@ async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: an
 
   return { sent, failures };
 }
-
 export async function syncResultsFromProvider(options: { allowLiveProvider?: boolean } = {}) {
   if (!supabaseAdminConfigured()) {
     return {
@@ -247,3 +249,4 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
     unmatched: unmatched.map((item) => `${item.homeTeam} vs ${item.awayTeam}`)
   };
 }
+
