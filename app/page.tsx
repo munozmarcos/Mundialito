@@ -3,28 +3,20 @@ import { HomeMatchControls } from "@/components/home-match-controls";
 import { HomePrimaryAction } from "@/components/home-primary-action";
 import { NotificationBody } from "@/components/notification-body";
 import { RankingDescription } from "@/components/ranking-description";
-import { ShareLinkButton } from "@/components/share-link-button";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { getAppUserFromServerCookies } from "@/lib/app-auth";
 import { getMatches, getPaymentSummary, getRanking } from "@/lib/data";
 import { argentinaDateKey, formatArgentinaDateTime } from "@/lib/dates";
 import { liveMinuteLabel } from "@/lib/live-minute";
-import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
+import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { getLatestNotifications } from "@/lib/notifications";
 import { isPredictionLocked, matchStatus } from "@/lib/scoring";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
-import { CalendarDays, CreditCard, LockKeyhole, Newspaper, Target, Trophy, UsersRound } from "lucide-react";
+import { CalendarDays, CheckCircle2, CircleDot, LockKeyhole, Target, Trophy, UnlockKeyhole, UsersRound } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
-
-const features = [
-  { icon: Trophy, title: "Ranking", text: "Top 3, puntos y premios." },
-  { icon: LockKeyhole, title: "Estados", text: "Abierto, cerrado o bloqueado." },
-  { icon: Newspaper, title: "Novedades", text: "Avisos, puntos y movimientos." },
-  { icon: CreditCard, title: "Pagos", text: "Pago asociado al apodo." }
-];
 
 function addArgentinaDays(dateKey: string, days: number) {
   const date = new Date(`${dateKey}T00:00:00-03:00`);
@@ -75,6 +67,25 @@ function finalized(matches: Awaited<ReturnType<typeof getMatches>>, limit: numbe
     })
     .sort((a, b) => new Date(b.kickoff_at).getTime() - new Date(a.kickoff_at).getTime())
     .slice(0, limit);
+}
+
+function isHomeCounterBlocked(match: Awaited<ReturnType<typeof getMatches>>[number]) {
+  if (isMatchBlockedUntilOfficial(match)) return true;
+  if (match.stage === "GROUP") return false;
+  return isPlaceholderTeamName(match.home_team) || isPlaceholderTeamName(match.away_team);
+}
+
+function homeMatchCounters(matches: Awaited<ReturnType<typeof getMatches>>) {
+  const now = new Date();
+  const isCounterClosed = (match: Awaited<ReturnType<typeof getMatches>>[number]) =>
+    match.home_goals != null ||
+    match.status === "closed" ||
+    match.status === "playing" ||
+    isPredictionLocked(match.kickoff_at, match.locked, now);
+  const blocked = matches.filter((match) => isHomeCounterBlocked(match)).length;
+  const closed = matches.filter((match) => !isHomeCounterBlocked(match) && isCounterClosed(match)).length;
+  const open = matches.filter((match) => match.home_goals == null && !isHomeCounterBlocked(match) && !isCounterClosed(match)).length;
+  return { total: matches.length, open, closed, blocked };
 }
 
 function podiumClass(index: number) {
@@ -133,6 +144,7 @@ export default async function Home() {
   const finishedMatches = finalized(allMatches, 6);
   const currentUserPredictions = await getUserPredictionsForMatches(currentUser?.id, matches.map((match) => match.id));
   const currentUserPoints = currentUser ? ranking.find((row) => row.user_id === currentUser.id)?.total_points ?? 0 : 0;
+  const matchCounters = homeMatchCounters(allMatches);
   const freshNewsItems = newsItems.filter((item) => {
     const createdAt = new Date(item.created_at).getTime();
     return item.type !== "closed" && Number.isFinite(createdAt) && Date.now() - createdAt <= 24 * 60 * 60 * 1000;
@@ -155,16 +167,35 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {features.map((feature) => (
-          <article className="panel flex gap-4 p-4" key={feature.title}>
-            <feature.icon className="mt-1 h-5 w-5 shrink-0 text-grass" />
-            <div>
-              <h2 className="font-black">{feature.title}</h2>
-              <p className="text-sm text-ink/70">{feature.text}</p>
-            </div>
-          </article>
-        ))}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <article className="panel p-4">
+          <span className="flex items-center gap-2 text-sm font-bold text-ink/60">
+            <CircleDot className="h-4 w-4 text-blue-300" />
+            Totales
+          </span>
+          <strong className="block text-3xl">{matchCounters.total}</strong>
+        </article>
+        <article className="panel p-4">
+          <span className="flex items-center gap-2 text-sm font-bold text-ink/60">
+            <UnlockKeyhole className="h-4 w-4 text-grass" />
+            Abiertos
+          </span>
+          <strong className="block text-3xl">{matchCounters.open}</strong>
+        </article>
+        <article className="panel p-4">
+          <span className="flex items-center gap-2 text-sm font-bold text-ink/60">
+            <CheckCircle2 className="h-4 w-4 text-slate-200" />
+            Cerrados
+          </span>
+          <strong className="block text-3xl">{matchCounters.closed}</strong>
+        </article>
+        <article className="panel p-4">
+          <span className="flex items-center gap-2 text-sm font-bold text-ink/60">
+            <LockKeyhole className="h-4 w-4 text-sky-200" />
+            Bloqueados
+          </span>
+          <strong className="block text-3xl">{matchCounters.blocked}</strong>
+        </article>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_460px]">
@@ -247,21 +278,6 @@ export default async function Home() {
             )}
           </section>
 
-          <section className="panel overflow-hidden bg-field">
-            <div className="flex items-center justify-between gap-3 border-b border-line p-4">
-              <h2 className="text-xl font-black text-red-400">Video Promocional</h2>
-              <ShareLinkButton url="https://youtu.be/5lev6M_P3h8" text="Mira el video promocional del Mundialito 2026" />
-            </div>
-            <div className="aspect-video">
-              <iframe
-                className="h-full w-full"
-                src="https://www.youtube.com/embed/5lev6M_P3h8"
-                title="Video Promocional Mundialito"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
-            </div>
-          </section>
         </div>
 
         <div className="grid content-start gap-4">

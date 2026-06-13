@@ -1,4 +1,5 @@
 import { NotificationBody } from "@/components/notification-body";
+import { ShareLinkButton } from "@/components/share-link-button";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { getLatestNotifications } from "@/lib/notifications";
 import { Newspaper, Trophy } from "lucide-react";
@@ -45,6 +46,24 @@ export default async function NovedadesPage() {
             </article>
           ))
         )}
+        <article className="panel overflow-hidden bg-field">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line p-5">
+            <div>
+              <h2 className="text-2xl font-black">Video Promocional</h2>
+              <p className="mt-1 text-sm font-semibold text-ink/60">La primera invitación del Mundialito 2026.</p>
+            </div>
+            <ShareLinkButton url="https://youtu.be/5lev6M_P3h8" text="Mira el video promocional del Mundialito 2026" />
+          </div>
+          <div className="aspect-video">
+            <iframe
+              className="h-full w-full"
+              src="https://www.youtube.com/embed/5lev6M_P3h8"
+              title="Video Promocional Mundialito"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        </article>
       </section>
     </div>
   );
