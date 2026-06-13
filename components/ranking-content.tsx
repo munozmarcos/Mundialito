@@ -324,7 +324,7 @@ export function RankingContent({ ranking, details }: Props) {
               </div>
             </div>
 
-            <section className="mt-4 grid gap-2 p-0 sm:grid-cols-[minmax(280px,1fr)_150px_auto] lg:grid-cols-[320px_150px_44px] lg:items-center">
+            <section className="mt-4 grid gap-2 p-0 sm:grid-cols-[minmax(280px,1fr)_224px_auto] lg:grid-cols-[320px_224px_44px] lg:items-center">
               <CountryFilterPicker className="min-w-[260px]" value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
               <DateFilter value={dateFilter} onChange={setDateFilter} />
               <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>

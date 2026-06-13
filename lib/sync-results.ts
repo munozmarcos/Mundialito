@@ -1,6 +1,6 @@
 import { recalculateMatch } from "@/lib/recalculate";
 import { recalculateAllPodiumPoints } from "@/lib/podium";
-import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
+import { displayNameForTeam } from "@/lib/flags";
 import { fetchProviderResultsDetailed, teamsMatch, type ProviderResult } from "@/lib/results-provider";
 import { supabaseAdmin, supabaseAdminConfigured } from "@/lib/supabase";
 import { sendWebPushToAll } from "@/lib/web-push";
@@ -54,13 +54,11 @@ async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: an
 
   const homeName = displayNameForTeam(match.home_team);
   const awayName = displayNameForTeam(match.away_team);
-  const homeFlag = flagEmojiForTeam(match.home_team, match.home_country_code);
-  const awayFlag = flagEmojiForTeam(match.away_team, match.away_country_code);
 
   const push = await sendWebPushToAll({
     dedupeKey: `result-final:${match.id}:${match.home_goals}-${match.away_goals}`,
     title: "Resultado final",
-    body: `${homeFlag} ${homeName} ${match.home_goals}-${match.away_goals} ${awayName} ${awayFlag}`,
+    body: `${homeName} ${match.home_goals}-${match.away_goals} ${awayName}`,
     url: "/ranking",
     tag: `result-final:${match.id}`
   });
@@ -71,13 +69,11 @@ async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: an
 async function notifyLiveStart(match: any) {
   const homeName = displayNameForTeam(match.home_team);
   const awayName = displayNameForTeam(match.away_team);
-  const homeFlag = flagEmojiForTeam(match.home_team, match.home_country_code);
-  const awayFlag = flagEmojiForTeam(match.away_team, match.away_country_code);
 
   const push = await sendWebPushToAll({
     dedupeKey: `match-kickoff:${match.id}`,
     title: "Partido en vivo",
-    body: `${homeFlag} ${homeName} vs ${awayName} ${awayFlag}`,
+    body: `${homeName} vs ${awayName}`,
     url: "/partidos",
     tag: `match-kickoff:${match.id}`
   });

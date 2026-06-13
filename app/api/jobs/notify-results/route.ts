@@ -1,4 +1,4 @@
-import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
+import { displayNameForTeam } from "@/lib/flags";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWebPushToAll } from "@/lib/web-push";
 import { NextResponse } from "next/server";
@@ -23,13 +23,11 @@ async function notifyMatch(matchId: string) {
 
   const homeName = displayNameForTeam(match.home_team);
   const awayName = displayNameForTeam(match.away_team);
-  const homeFlag = flagEmojiForTeam(match.home_team, match.home_country_code);
-  const awayFlag = flagEmojiForTeam(match.away_team, match.away_country_code);
 
   const push = await sendWebPushToAll({
     dedupeKey: `result-final:${match.id}:${match.home_goals}-${match.away_goals}`,
     title: "Resultado final",
-    body: `${homeFlag} ${homeName} ${match.home_goals}-${match.away_goals} ${awayName} ${awayFlag}`,
+    body: `${homeName} ${match.home_goals}-${match.away_goals} ${awayName}`,
     url: "/ranking",
     tag: `result-final:${match.id}`
   });

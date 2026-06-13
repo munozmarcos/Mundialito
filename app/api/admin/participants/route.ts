@@ -1,4 +1,4 @@
-import { internalEmailForPhone, normalizePhone, publicPhone, randomPassword } from "@/lib/app-auth";
+import { internalEmailForPhone, normalizePhone, publicPhone } from "@/lib/app-auth";
 import { displayNameExists, normalizeDisplayName, validateDisplayName } from "@/lib/profiles";
 import { requireAdmin, supabaseAdmin } from "@/lib/supabase";
 import { NextResponse } from "next/server";
@@ -45,10 +45,11 @@ export async function POST(req: Request) {
   const normalizedPhone = normalizePhone(body.phone ?? "");
   const authEmail = body.authEmail || (normalizedPhone ? internalEmailForPhone(normalizedPhone) : "");
   if (!authEmail) return NextResponse.json({ error: "Carga un WhatsApp para crear el participante." }, { status: 400 });
+  if (!body.password) return NextResponse.json({ error: "Carga una contrasena inicial para que pueda entrar sin codigo de WhatsApp." }, { status: 400 });
 
   const { data: authUser, error: authError } = await db.auth.admin.createUser({
     email: authEmail,
-    password: body.password || randomPassword(),
+    password: body.password,
     email_confirm: true,
     user_metadata: { display_name: displayName, phone: normalizedPhone ? publicPhone(normalizedPhone) : body.phone ?? null }
   });

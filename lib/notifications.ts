@@ -27,6 +27,7 @@ type MatchNoticeRow = {
   home_country_code?: string | null;
   away_country_code?: string | null;
   kickoff_at: string;
+  result_updated_at?: string | null;
   status: "open" | "locked" | "closed" | "playing";
   home_goals: number | null;
   away_goals: number | null;
@@ -143,7 +144,7 @@ async function getClosingMatchNotifications(limit: number): Promise<LatestNotifi
   const db = supabaseAdmin();
   const { data, error } = await db
     .from("matches")
-    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,status,home_goals,away_goals")
+    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,result_updated_at,status,home_goals,away_goals")
     .eq("status", "open")
     .gte("kickoff_at", now.toISOString())
     .lte("kickoff_at", closesUntil.toISOString())
@@ -158,8 +159,8 @@ async function getClosingMatchNotifications(limit: number): Promise<LatestNotifi
   return ((data ?? []) as MatchNoticeRow[]).map((match) => ({
     id: `closing:${match.id}`,
     title: "Partido por cerrar",
-    body: "Cierra la carga de pronosticos en menos de 15 minutos.",
-    created_at: match.kickoff_at,
+    body: "Cierra la carga de pronósticos en menos de 15 minutos.",
+    created_at: new Date(new Date(match.kickoff_at).getTime() - 15 * 60 * 1000).toISOString(),
     type: "closing" as const,
     match
   }));
@@ -171,7 +172,7 @@ async function getClosedMatchNotifications(limit: number): Promise<LatestNotific
   const db = supabaseAdmin();
   const { data, error } = await db
     .from("matches")
-    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,status,home_goals,away_goals")
+    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,result_updated_at,status,home_goals,away_goals")
     .or("status.eq.closed,home_goals.not.is.null")
     .order("kickoff_at", { ascending: false })
     .limit(limit);
@@ -186,13 +187,13 @@ async function getClosedMatchNotifications(limit: number): Promise<LatestNotific
     const isLive = match.status === "playing";
     return {
       id: `closed:${match.id}:${match.home_goals ?? "x"}-${match.away_goals ?? "x"}`,
-      title: isLive ? "Partido en vivo" : hasResult ? "Partido cerrado" : "Pronosticos cerrados",
+      title: isLive ? "Partido en vivo" : hasResult ? "Partido cerrado" : "Pronósticos cerrados",
       body: isLive
-        ? "Esta en vivo."
+        ? "Está en vivo."
         : hasResult
         ? ""
-        : "Ya cerro la carga de pronosticos.",
-      created_at: match.kickoff_at,
+        : "Ya cerró la carga de pronósticos.",
+      created_at: match.result_updated_at ?? match.kickoff_at,
       type: "closed" as const,
       match
     };
@@ -217,7 +218,7 @@ async function getParticipantNotifications(limit: number): Promise<LatestNotific
   return ((data ?? []) as ParticipantNoticeRow[]).map((profile) => ({
     id: `participant:${profile.id}`,
     title: "Nuevo participante",
-    body: `${profile.display_name} se sumo al Mundialito.`,
+    body: `${profile.display_name} se sumó al Mundialito.`,
     created_at: profile.created_at,
     type: "participant" as const
   }));

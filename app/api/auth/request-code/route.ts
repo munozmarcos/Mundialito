@@ -112,8 +112,8 @@ export async function POST(req: Request) {
 
     await sendWhatsApp(publicPhone(body.phone), message);
     await sendWebPushToUser(profile.id, {
-      title: "Codigo Mundialito",
-      body: `Tu codigo para entrar es ${code}. Vence en 10 minutos.`,
+      title: "Código Mundialito",
+      body: `Tu código para entrar es ${code}. Vence en 10 minutos.`,
       url: "/login",
       tag: `login-code:${profile.id}`
     });

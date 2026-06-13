@@ -256,7 +256,10 @@ export function countryCodeForTeam(team: string, explicit?: string | null) {
 export function flagUrlForTeam(team: string, explicit?: string | null) {
   const code = countryCodeForTeam(team, explicit);
   if (!code) return null;
-  if (code === "gb-sct" || code === "gb-eng") return null;
+  if (code === "gb-sct") return "/flags/gb-sct.svg";
+  if (code === "gb-eng") return "/flags/gb-eng.svg";
+  if (code === "ba") return "/flags/ba.svg";
+  if (code === "cw") return "/flags/cw.svg";
   return `https://flagcdn.com/w40/${code}.png`;
 }
 

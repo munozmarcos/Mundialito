@@ -669,7 +669,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
       </section>
 
       {(activeTab === "todos" || activeTab === "grupos" || activeTab === "llaves") && (
-        <section className="panel grid gap-3 p-3 sm:grid-cols-[minmax(220px,360px)_160px_auto] sm:items-center">
+        <section className="panel grid gap-3 p-3 sm:grid-cols-[minmax(220px,360px)_224px_auto] sm:items-center">
           <CountryFilterPicker className="min-w-0" options={teamOptions} value={teamFilter} onChange={setTeamFilter} />
           <DateFilter value={dateFilter} onChange={setDateFilter} />
           <button

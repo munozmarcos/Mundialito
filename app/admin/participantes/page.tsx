@@ -92,7 +92,7 @@ export default function ParticipantesPage() {
       return;
     }
 
-    setMessage(editingId ? `Actualizado: ${data.profile.display_name}` : `Guardado: ${data.profile.display_name}`);
+    setMessage(editingId ? `Actualizado: ${data.profile.display_name}` : `Guardado: ${data.profile.display_name}. Ya puede entrar con apodo y contraseña.`);
     setForm(initialForm);
     setEditingId(null);
     await loadProfiles();
@@ -146,6 +146,9 @@ export default function ParticipantesPage() {
             <div>
               <h1 className="text-3xl font-black">Participantes</h1>
               <p className="mt-2 text-ink/70">Carga y edita apodo, WhatsApp, rol y estado de pago de cada jugador.</p>
+              <p className="mt-1 text-sm font-bold text-grass">
+                Alta manual: crea el participante con una contraseña inicial y pasale esos datos. No usa UltraMsg.
+              </p>
             </div>
           </div>
           <AdminBackButton />
@@ -164,24 +167,13 @@ export default function ParticipantesPage() {
             )}
           </div>
           <label className="grid gap-1 text-sm font-bold">
-            Nombre
+            Apodo
             <input
               className="field"
               required
               value={form.displayName}
               onChange={(event) => setForm({ ...form, displayName: event.target.value })}
               placeholder="Marcos"
-            />
-          </label>
-          <label className="grid gap-1 text-sm font-bold">
-            Auth interno opcional
-            <input
-              className="field"
-              disabled={Boolean(editingId)}
-              type="email"
-              value={form.authEmail}
-              onChange={(event) => setForm({ ...form, authEmail: event.target.value })}
-              placeholder={editingId ? "El ID interno no se edita" : "Se genera solo con el WhatsApp"}
             />
           </label>
           <label className="grid gap-1 text-sm font-bold">
@@ -194,15 +186,19 @@ export default function ParticipantesPage() {
             />
           </label>
           <label className="grid gap-1 text-sm font-bold">
-            Clave interna opcional
+            {editingId ? "Cambiar contraseña" : "Contraseña inicial"}
             <input
               className="field"
               minLength={6}
+              required={!editingId}
               type="password"
               value={form.password}
               onChange={(event) => setForm({ ...form, password: event.target.value })}
-              placeholder={editingId ? "Dejar vacío para mantener" : "No hace falta para entrar por WhatsApp"}
+              placeholder={editingId ? "Dejar vacio para mantener" : "Se la pasas al participante"}
             />
+            <span className="text-xs font-semibold text-ink/55">
+              {editingId ? "Solo completala si queres cambiarla." : "Con esto entra por Ya tengo usuario, usando apodo y contraseña."}
+            </span>
           </label>
           <label className="grid gap-1 text-sm font-bold">
             Rol

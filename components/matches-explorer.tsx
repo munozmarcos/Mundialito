@@ -9,7 +9,7 @@ import { liveMinuteLabel } from "@/lib/live-minute";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { matchFitsBasicFilters } from "@/lib/match-filters";
-import { matchStatus } from "@/lib/scoring";
+import { isPredictionLocked, matchStatus } from "@/lib/scoring";
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import type { Match, MatchStage } from "@/lib/types";
 import { Calculator, CheckCircle2, CircleDot, GitBranch, Lock, LockKeyhole, Table2, Trophy, UnlockKeyhole, X } from "lucide-react";
@@ -290,9 +290,15 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
   const byStage = groupBy(knockoutMatches, (match) => match.stage);
   const bracket = useMemo(() => deriveBracket(groupMatches, knockoutMatches, results), [groupMatches, knockoutMatches, results]);
-  const totalOpen = matches.filter((match) => match.home_goals == null && !isMatchUnavailable(match) && matchStatus(match.kickoff_at, match.locked, false, new Date(), match.status) === "open").length;
+  const now = new Date();
+  const isCounterClosed = (match: Match) =>
+    match.home_goals != null ||
+    match.status === "closed" ||
+    match.status === "playing" ||
+    isPredictionLocked(match.kickoff_at, match.locked, now);
+  const totalOpen = matches.filter((match) => match.home_goals == null && !isMatchUnavailable(match) && !isCounterClosed(match)).length;
   const totalBlocked = matches.filter((match) => isMatchUnavailable(match)).length;
-  const totalClosed = matches.filter((match) => match.home_goals != null || (!isMatchUnavailable(match) && matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status) === "closed")).length;
+  const totalClosed = matches.filter((match) => !isMatchUnavailable(match) && isCounterClosed(match)).length;
   const availableGroups = Object.keys(byGroup).sort();
   const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
   const availableKnockoutStages = knockoutOrder.filter((stage) => byStage[stage]?.length);
@@ -346,7 +352,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
         ))}
       </section>
 
-      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(280px,1fr)_140px_auto] lg:grid-cols-[320px_140px_44px] lg:items-center">
+      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(280px,1fr)_224px_auto] lg:grid-cols-[320px_224px_44px] lg:items-center">
         <CountryFilterPicker className="min-w-[260px]" value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
         <DateFilter value={dateFilter} onChange={setDateFilter} />
         <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>

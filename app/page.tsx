@@ -1,4 +1,5 @@
 import { EmptyState } from "@/components/empty-state";
+import { HomeMatchControls } from "@/components/home-match-controls";
 import { HomePrimaryAction } from "@/components/home-primary-action";
 import { NotificationBody } from "@/components/notification-body";
 import { RankingDescription } from "@/components/ranking-description";
@@ -11,7 +12,8 @@ import { argentinaDateKey, formatArgentinaDateTime } from "@/lib/dates";
 import { liveMinuteLabel } from "@/lib/live-minute";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { getLatestNotifications } from "@/lib/notifications";
-import { matchStatus } from "@/lib/scoring";
+import { isPredictionLocked, matchStatus } from "@/lib/scoring";
+import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 import { CalendarDays, CreditCard, LockKeyhole, Newspaper, Target, Trophy, UsersRound } from "lucide-react";
 import Link from "next/link";
 
@@ -90,6 +92,35 @@ function money(value: number) {
   }).format(value);
 }
 
+type HomePrediction = {
+  match_id: string;
+  home_goals: number | null;
+  away_goals: number | null;
+  updated_at?: string | null;
+  user_updated_at?: string | null;
+};
+
+async function getUserPredictionsForMatches(userId: string | undefined, matchIds: string[]) {
+  const predictions = new Map<string, HomePrediction>();
+  if (!userId || !matchIds.length || !supabaseConfigured()) return predictions;
+
+  try {
+    const { data, error } = await supabaseAdmin()
+      .from("predictions")
+      .select("match_id,home_goals,away_goals,updated_at,user_updated_at")
+      .eq("user_id", userId)
+      .in("match_id", matchIds);
+    if (error) throw error;
+    for (const prediction of data ?? []) {
+      predictions.set(prediction.match_id, prediction as HomePrediction);
+    }
+  } catch (error) {
+    console.warn("[home:predictions]", error);
+  }
+
+  return predictions;
+}
+
 export default async function Home() {
   const [allMatches, ranking, paymentSummary, newsItems, currentUser] = await Promise.all([
     getMatches(),
@@ -100,6 +131,7 @@ export default async function Home() {
   ]);
   const matches = upcoming(allMatches, 6);
   const finishedMatches = finalized(allMatches, 6);
+  const currentUserPredictions = await getUserPredictionsForMatches(currentUser?.id, matches.map((match) => match.id));
   const currentUserPoints = currentUser ? ranking.find((row) => row.user_id === currentUser.id)?.total_points ?? 0 : 0;
   const freshNewsItems = newsItems.filter((item) => {
     const createdAt = new Date(item.created_at).getTime();
@@ -156,34 +188,23 @@ export default async function Home() {
                       </h3>
                       <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : match.stage, match.stadium].filter(Boolean).join(" - ")}</p>
                     </div>
-                    <div className="grid justify-items-start gap-2 sm:justify-items-end">
-                      <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-                        {homeMatchStatus(match) === "playing" && match.result_updated_at && (
-                          <span className="text-[11px] italic text-ink/45">
-                            Actualizado {formatArgentinaDateTime(match.result_updated_at)}
-                          </span>
-                        )}
-                      <StatusPill
-                        status={isMatchBlockedUntilOfficial(match) ? "locked" : homeMatchStatus(match)}
-                        label={isMatchBlockedUntilOfficial(match) ? "Bloqueado" : undefined}
-                      />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {homeMatchStatus(match) === "playing" && (
-                          <span className="rounded-full border border-red-400/40 bg-red-500/12 px-2 py-1 text-xs font-black text-red-300">
-                            {liveMinuteLabel(match.kickoff_at)}
-                          </span>
-                        )}
-                      <div className="grid grid-cols-[52px_52px] gap-2">
-                        <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black text-ink" aria-label={`Goles ${match.home_team}`}>
-                          {match.home_goals ?? ""}
-                        </div>
-                        <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black text-ink" aria-label={`Goles ${match.away_team}`}>
-                          {match.away_goals ?? ""}
-                        </div>
-                      </div>
-                      </div>
-                    </div>
+                    <HomeMatchControls
+                      actualAwayGoals={match.away_goals}
+                      actualHomeGoals={match.home_goals}
+                      disabled={
+                        !currentUser ||
+                        isMatchBlockedUntilOfficial(match) ||
+                        isPredictionLocked(match.kickoff_at, Boolean(match.locked)) ||
+                        homeMatchStatus(match) === "playing"
+                      }
+                      initialPrediction={currentUser ? currentUserPredictions.get(match.id) : undefined}
+                      isPlaying={homeMatchStatus(match) === "playing"}
+                      liveMinute={liveMinuteLabel(match.kickoff_at)}
+                      matchId={match.id}
+                      matchUpdatedAt={match.result_updated_at}
+                      status={isMatchBlockedUntilOfficial(match) ? "locked" : homeMatchStatus(match)}
+                      statusLabel={isMatchBlockedUntilOfficial(match) ? "Bloqueado" : undefined}
+                    />
                   </article>
                 ))}
               </div>

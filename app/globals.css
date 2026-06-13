@@ -390,6 +390,13 @@ textarea {
   font-weight: 700;
 }
 
+.date-nav-icon {
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  stroke-width: 2.8 !important;
+}
+
 .btn.secondary {
   background: rgba(16, 33, 58, 0.92);
   color: #f4f8ff;

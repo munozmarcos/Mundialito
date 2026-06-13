@@ -1,4 +1,4 @@
-import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
+import { displayNameForTeam } from "@/lib/flags";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWebPushToAll } from "@/lib/web-push";
@@ -12,10 +12,6 @@ function assertCron(req: Request) {
   const secret = process.env.CRON_SECRET;
   const authOk = secret && req.headers.get("authorization") === `Bearer ${secret}`;
   return authOk || isAutomatic(req);
-}
-
-function flagEmoji(team: string, explicit?: string | null) {
-  return flagEmojiForTeam(team, explicit);
 }
 
 export async function POST(req: Request) {
@@ -42,7 +38,7 @@ export async function POST(req: Request) {
     const push = await sendWebPushToAll({
       dedupeKey: `match-kickoff:${match.id}`,
       title: "Partido en vivo",
-      body: `${flagEmoji(match.home_team, match.home_country_code)} ${home} vs ${flagEmoji(match.away_team, match.away_country_code)} ${away}`,
+      body: `${home} vs ${away}`,
       url: "/partidos",
       tag: `match-kickoff:${match.id}`
     });

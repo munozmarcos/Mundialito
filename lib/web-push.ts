@@ -43,6 +43,14 @@ async function reserveDedupeKey(dedupeKey?: string) {
   return !error;
 }
 
+function sanitizePushText(value: string) {
+  return value
+    .replace(/[\u{1F1E6}-\u{1F1FF}]{2}/gu, "")
+    .replace(/\u{1F3F4}[\u{E0061}-\u{E007A}]+\u{E007F}/gu, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 async function sendWebPushRows(rows: PushSubscriptionRow[], payload: WebPushPayload & { dedupeKey?: string }) {
   const db = supabaseAdmin();
   let sent = 0;
@@ -59,8 +67,8 @@ async function sendWebPushRows(rows: PushSubscriptionRow[], payload: WebPushPayl
 
     try {
       await webPush.sendNotification(subscription, JSON.stringify({
-        title: payload.title,
-        body: payload.body,
+        title: sanitizePushText(payload.title),
+        body: sanitizePushText(payload.body),
         url: payload.url ?? "/novedades",
         tag: payload.tag ?? payload.dedupeKey ?? "mundialito",
         icon: "/favicon.png",

@@ -1,4 +1,4 @@
-import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
+import { displayNameForTeam } from "@/lib/flags";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { getPodiumLockState } from "@/lib/podium";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -13,7 +13,7 @@ function assertCron(req: Request) {
 }
 
 function matchLabel(match: { home_team: string; away_team: string; home_country_code?: string | null; away_country_code?: string | null }) {
-  return `${flagEmojiForTeam(match.home_team, match.home_country_code)} ${displayNameForTeam(match.home_team)} vs ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${displayNameForTeam(match.away_team)}`;
+  return `${displayNameForTeam(match.home_team)} vs ${displayNameForTeam(match.away_team)}`;
 }
 
 export async function POST(req: Request) {
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   for (const match of matchesToNotify ?? []) {
     const push = await sendWebPushToAll({
       dedupeKey: `match-lock:${match.id}`,
-      title: "Pronosticos cerrados",
+      title: "Pronósticos cerrados",
       body: matchLabel(match),
       url: "/mi-prode",
       tag: `match-lock:${match.id}`

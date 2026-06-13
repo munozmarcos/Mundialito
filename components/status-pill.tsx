@@ -16,7 +16,7 @@ const styles: Record<PillStatus, string> = {
   locked: "border-sky-500/25 bg-slate-800/80 text-sky-100",
   closed: "border-slate-500/30 bg-slate-900/70 text-slate-200",
   closing_soon: "border-gold/35 bg-yellow-950/70 text-gold",
-  playing: "border-red-500/35 bg-red-500/15 text-red-200",
+  playing: "border-red-400/80 bg-red-950/85 text-red-100 shadow-[0_0_16px_rgba(239,68,68,0.18)]",
   payment_pending: "border-red-500/35 bg-red-500/15 text-red-200",
 };
 

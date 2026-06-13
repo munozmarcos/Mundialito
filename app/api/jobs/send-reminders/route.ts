@@ -252,7 +252,7 @@ export async function POST(req: Request) {
       const push = await sendWebPushToUser(user.id, {
         dedupeKey: manual ? undefined : `${user.id}:pending:${pending.map((match) => match.id).join("-")}`,
         title: manual ? "Pendientes Mundialito" : "Pendientes 4h",
-        body: `Te faltan ${stats.pending} de ${stats.available} pronosticos disponibles.`,
+        body: `Te faltan ${stats.pending} de ${stats.available} pronósticos disponibles.`,
         url: "/mi-prode",
         tag: `pending:${user.id}`
       });
