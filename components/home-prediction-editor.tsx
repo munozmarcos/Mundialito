@@ -32,7 +32,7 @@ function ScoreBox({ value, muted = false, real = false }: { value: number | null
   return (
     <div
       className={`grid h-10 w-12 place-items-center rounded-lg border text-sm font-black ${
-        real ? "border-red-400/80 bg-red-950/85 text-red-100" : muted ? "border-line bg-field text-ink/45" : "border-line bg-field text-ink"
+        real ? "border-red-400/70 bg-[#7f1020] text-white" : muted ? "border-line bg-field text-ink/45" : "border-line bg-field text-ink"
       }`}
     >
       {value ?? ""}

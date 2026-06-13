@@ -178,7 +178,7 @@ export default async function Home() {
             ) : (
               <div className="grid">
                 {matches.map((match) => (
-                  <article className="grid gap-3 border-b border-line p-4 last:border-0 sm:grid-cols-[1fr_auto] sm:items-center" key={match.id}>
+                  <article className="home-upcoming-card grid gap-3 border-b border-line p-4 last:border-0 sm:grid-cols-[1fr_auto] sm:items-center" key={match.id}>
                     <div>
                       <div className="text-sm font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</div>
                       <h3 className="flex flex-wrap items-center gap-2 text-xl font-black">

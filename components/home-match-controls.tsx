@@ -42,11 +42,11 @@ export function HomeMatchControls({
   const updatedAt = isPlaying ? matchUpdatedAt : predictionUpdatedAt;
 
   return (
-    <div className="grid justify-items-start gap-2 sm:justify-items-end">
-      <div className="flex w-full flex-wrap items-center justify-end gap-2">
+    <div className="home-match-controls grid justify-items-start gap-2 sm:justify-items-end">
+      <div className="home-match-status-row flex w-full flex-wrap items-center justify-end gap-2">
         {updatedAt && <span className="text-[11px] italic text-ink/45">Actualizado {formatCompactDate(updatedAt)}</span>}
         {isPlaying && liveMinute && (
-          <span className="min-w-16 rounded-full border border-red-400/80 bg-red-950/85 px-2 py-0.5 text-center text-[11px] font-black text-red-100 shadow-[0_0_16px_rgba(239,68,68,0.18)]">
+          <span className="w-12 rounded-full border border-red-400/70 bg-[#7f1020] px-0 py-0.5 text-center text-[11px] font-black text-white">
             {liveMinute}
           </span>
         )}

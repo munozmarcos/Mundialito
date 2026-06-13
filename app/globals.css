@@ -304,6 +304,26 @@ textarea {
   .header-action-icon-large circle {
     stroke-width: 2.4 !important;
   }
+
+  .home-upcoming-card {
+    position: relative;
+  }
+
+  .home-upcoming-card > div:first-child {
+    padding-right: 150px;
+  }
+
+  .home-upcoming-card .home-match-status-row {
+    position: absolute;
+    right: 16px;
+    top: 14px;
+    width: auto;
+    max-width: calc(100% - 150px);
+  }
+
+  .home-upcoming-card .home-match-controls {
+    padding-top: 2px;
+  }
 }
 
 @media (max-width: 380px) {
