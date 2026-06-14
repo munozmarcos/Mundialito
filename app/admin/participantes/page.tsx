@@ -153,9 +153,9 @@ export default function ParticipantesPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-start justify-end gap-3">
-            <div className="grid min-h-[92px] min-w-[150px] content-center justify-items-center rounded-lg bg-field px-4 py-3 text-center">
-              <UsersRound className="h-6 w-6 text-grass" />
-              <strong className="mt-1 block text-2xl">{paidParticipants}/{profiles.length}</strong>
+            <div className="grid min-h-[76px] min-w-[118px] content-center justify-items-center rounded-lg bg-field px-3 py-2 text-center">
+              <UsersRound className="h-5 w-5 text-grass" />
+              <strong className="mt-0.5 block text-xl">{paidParticipants}/{profiles.length}</strong>
               <span className="text-xs font-black uppercase text-ink/55">pagaron</span>
             </div>
             <AdminBackButton />

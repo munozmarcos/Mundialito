@@ -242,13 +242,13 @@ export function RankingContent({ ranking, details }: Props) {
               <h2 className="text-2xl font-black">Ranking</h2>
               <p className="mt-1 text-sm text-ink/60">Puntos por exactos, tendencias y aciertos del podio anticipado cuando ya exista resultado real.</p>
             </div>
-            <div className="panel grid min-h-[92px] min-w-[150px] content-center justify-items-center border-blue-300/30 bg-blue-950/20 p-3 text-center">
-              <UsersRound className="h-6 w-6 text-blue-300" />
-              <p className="mt-1 whitespace-nowrap text-2xl font-black text-blue-300">{normalizedRanking.length}</p>
+            <div className="grid min-h-[76px] min-w-[118px] content-center justify-items-center rounded-lg border border-blue-300/30 bg-blue-950/20 px-3 py-2 text-center">
+              <UsersRound className="h-5 w-5 text-blue-300" />
+              <p className="mt-0.5 whitespace-nowrap text-xl font-black text-blue-300">{normalizedRanking.length}</p>
               <span className="text-xs font-black uppercase text-ink/55">personas</span>
             </div>
           </div>
-          <div className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-[minmax(280px,1fr)_44px]">
+          <div className="mt-4 grid max-w-md gap-3 sm:grid-cols-[minmax(240px,1fr)_44px]">
             <input className="field" placeholder="Buscar apodo" value={query} onChange={(event) => setQuery(event.target.value)} />
             <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => setQuery("")}>
               <X className="h-4 w-4" />
