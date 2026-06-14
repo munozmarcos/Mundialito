@@ -41,11 +41,9 @@ export function PaymentsContent({ participants, paidParticipants, totalParticipa
             <h2 className="text-2xl font-black">Participantes</h2>
             <p className="mt-1 text-sm font-semibold text-ink/60">Apodos registrados y estado de pago.</p>
           </div>
-          <div className="rounded-lg bg-field px-4 py-3 text-right">
-            <div className="flex items-center justify-end gap-2">
-              <strong className="block text-2xl">{paidParticipants}/{totalParticipants}</strong>
-              <UsersRound className="h-5 w-5 text-grass" />
-            </div>
+          <div className="grid min-h-[92px] min-w-[150px] content-center justify-items-center rounded-lg bg-field px-4 py-3 text-center">
+            <UsersRound className="h-6 w-6 text-grass" />
+            <strong className="mt-1 block text-2xl">{paidParticipants}/{totalParticipants}</strong>
             <span className="text-xs font-black uppercase text-ink/55">pagaron</span>
           </div>
         </div>

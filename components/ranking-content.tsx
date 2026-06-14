@@ -12,7 +12,7 @@ import { competitionRankMap } from "@/lib/ranking-position";
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import type { RankingDetails, RankingPredictionDetail, RankingRow } from "@/lib/data";
 import type { Match, MatchStage } from "@/lib/types";
-import { Eye, ListChecks, Medal, Target, Trophy, X } from "lucide-react";
+import { Eye, ListChecks, Medal, Target, Trophy, UsersRound, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type Props = {
@@ -237,8 +237,17 @@ export function RankingContent({ ranking, details }: Props) {
     <section className="grid gap-4">
       <article className="panel overflow-hidden">
         <div className="border-b border-line p-5">
-          <h2 className="text-2xl font-black">Ranking</h2>
-          <p className="mt-1 text-sm text-ink/60">Puntos por exactos, tendencias y aciertos del podio anticipado cuando ya exista resultado real.</p>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black">Ranking</h2>
+              <p className="mt-1 text-sm text-ink/60">Puntos por exactos, tendencias y aciertos del podio anticipado cuando ya exista resultado real.</p>
+            </div>
+            <div className="panel grid min-h-[92px] min-w-[150px] content-center justify-items-center border-blue-300/30 bg-blue-950/20 p-3 text-center">
+              <UsersRound className="h-6 w-6 text-blue-300" />
+              <p className="mt-1 whitespace-nowrap text-2xl font-black text-blue-300">{normalizedRanking.length}</p>
+              <span className="text-xs font-black uppercase text-ink/55">personas</span>
+            </div>
+          </div>
           <div className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-[minmax(280px,1fr)_44px]">
             <input className="field" placeholder="Buscar apodo" value={query} onChange={(event) => setQuery(event.target.value)} />
             <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => setQuery("")}>

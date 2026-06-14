@@ -38,6 +38,7 @@ export default function ParticipantesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const paidParticipants = profiles.filter((profile) => profile.paid).length;
 
   const filteredProfiles = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -151,7 +152,14 @@ export default function ParticipantesPage() {
               </p>
             </div>
           </div>
-          <AdminBackButton />
+          <div className="flex flex-wrap items-start justify-end gap-3">
+            <div className="grid min-h-[92px] min-w-[150px] content-center justify-items-center rounded-lg bg-field px-4 py-3 text-center">
+              <UsersRound className="h-6 w-6 text-grass" />
+              <strong className="mt-1 block text-2xl">{paidParticipants}/{profiles.length}</strong>
+              <span className="text-xs font-black uppercase text-ink/55">pagaron</span>
+            </div>
+            <AdminBackButton />
+          </div>
         </div>
       </section>
 
