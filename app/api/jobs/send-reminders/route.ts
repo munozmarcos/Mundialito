@@ -4,7 +4,7 @@ import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { isPredictionLocked } from "@/lib/scoring";
 import { supabaseAdmin } from "@/lib/supabase";
-import { sendWhatsApp } from "@/lib/whatsapp";
+import { hasWhatsAppGroup, sendWhatsApp, sendWhatsAppGroup } from "@/lib/whatsapp";
 import { sendWebPushToUser } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 
@@ -234,6 +234,106 @@ export async function POST(req: Request) {
   let pushFailed = 0;
   let reminders = 0;
   const failures: string[] = [];
+
+  if (!manual && hasWhatsAppGroup()) {
+    const pendingByUser: Array<{ user: Profile; pending: ReminderMatch[]; stats: { loaded: number; available: number; pending: number } }> = [];
+
+    for (const user of (users ?? []) as Profile[]) {
+      const userPending = matches.filter((match) => {
+        const key = `${user.id}:${match.id}`;
+        const dedupeKey = `${match.id}:${user.id}:4h`;
+        return !predicted.has(key) && !sentLogs.has(dedupeKey);
+      });
+      if (!userPending.length) continue;
+      pendingByUser.push({
+        user,
+        pending: userPending,
+        stats: { loaded: matches.length - userPending.length, available: matches.length, pending: userPending.length }
+      });
+    }
+
+    if (!pendingByUser.length) {
+      const result = { manual, group: true, sent: 0, users: users?.length ?? 0, matches: matches.length, reminders: 0, failures };
+      if (isAutomatic(req)) {
+        await recordJobRun({
+          jobPath: "/api/jobs/send-reminders",
+          triggerType: "automatic",
+          ok: true,
+          statusCode: 200,
+          summary: summarizeJob("Recordatorios 4h", { ok: true, data: result }),
+          payload: result
+        });
+      }
+      return NextResponse.json(result);
+    }
+
+    const groupDedupeKey = `group:reminder-4h:${matches.map((match) => match.id).join("-")}`;
+    const { error: groupLogError } = await db.from("notification_logs").insert({
+      kind: "whatsapp-reminder-4h-group",
+      dedupe_key: groupDedupeKey
+    });
+
+    if (!groupLogError) {
+      const groupBody = [
+        "⚽ *Mundialito - pendientes 4h*",
+        "",
+        "*Partidos de hoy*",
+        "",
+        ...todayMatches.flatMap((match) => [
+          `*${matchLabel(match)}*`,
+          `Hora: ${formatArgentinaDateTime(match.kickoff_at)} - ${stageLabel(match)}`,
+          ""
+        ]),
+        "*Tienen pendientes por cargar:*",
+        ...pendingByUser.map(({ user, stats }) => `- ${user.display_name}: *${stats.pending}* pendientes (${stats.loaded}/${stats.available})`),
+        "",
+        "Responde *$pendientes* para ver tus partidos pendientes.",
+        appUrl ? `${appUrl}/mi-prode` : "/mi-prode"
+      ].join("\n").trim();
+
+      try {
+        await sendWhatsAppGroup(groupBody);
+        sent = 1;
+      } catch (error) {
+        failures.push(`Grupo Mundialito: ${error instanceof Error ? error.message : "unknown"}`);
+      }
+    }
+
+    for (const { user, pending, stats } of pendingByUser) {
+      const push = await sendWebPushToUser(user.id, {
+        dedupeKey: `${user.id}:pending:${pending.map((match) => match.id).join("-")}`,
+        title: "Pendientes 4h",
+        body: `Te faltan ${stats.pending} de ${stats.available} pronósticos disponibles.`,
+        url: "/mi-prode",
+        tag: `pending:${user.id}`
+      });
+      pushSent += push.sent;
+      pushFailed += push.failed;
+      reminders += pending.length;
+
+      await db.from("notification_logs").insert(
+        pending.map((match) => ({
+          user_id: user.id,
+          match_id: match.id,
+          kind: "whatsapp-reminder-4h",
+          dedupe_key: `${match.id}:${user.id}:4h`
+        }))
+      );
+    }
+
+    const result = { manual, group: true, sent, pushNotifications: pushSent, pushFailures: pushFailed, users: users?.length ?? 0, matches: matches.length, reminders, failures };
+    if (isAutomatic(req)) {
+      await recordJobRun({
+        jobPath: "/api/jobs/send-reminders",
+        triggerType: "automatic",
+        ok: true,
+        statusCode: 200,
+        summary: summarizeJob("Recordatorios 4h", { ok: true, data: result }),
+        payload: result
+      });
+    }
+    return NextResponse.json(result);
+  }
 
   for (const user of (users ?? []) as Profile[]) {
     if (!user.phone) continue;

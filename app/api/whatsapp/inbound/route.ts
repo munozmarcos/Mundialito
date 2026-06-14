@@ -32,6 +32,14 @@ function firstPhoneLike(...values: unknown[]) {
   return firstText(...values);
 }
 
+function firstGroupLike(...values: unknown[]) {
+  for (const value of values) {
+    const text = firstText(value);
+    if (/@g\.us/i.test(text)) return text;
+  }
+  return "";
+}
+
 function compactPushBody(answer: string) {
   return answer
     .replace(/\*/g, "")
@@ -51,6 +59,7 @@ export async function POST(req: Request) {
   const text = firstText(payload.body, payload.text, payload.message, payload.caption, payload.Body, body.body);
   const from = firstPhoneLike(payload.author, payload.sender, payload.from, payload.phone, payload.From, body.from);
   const to = firstText(payload.to, payload.chatId, payload.chat_id, body.to);
+  const groupChat = firstGroupLike(payload.chatId, payload.chat_id, payload.from, payload.to, body.chatId, body.chat_id, body.from, body.to);
   const isOutgoing = Boolean(payload.fromMe ?? payload.from_me ?? body.fromMe ?? body.from_me);
   const textValue = String(text);
 
@@ -59,8 +68,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: "not_a_command" });
   }
 
-  const participantPhone = isOutgoing ? to || from : from;
-  const replyTo = isOutgoing ? to || from : from;
+  const participantPhone = groupChat && !isOutgoing ? firstPhoneLike(payload.author, payload.sender, body.author, body.sender) || from : isOutgoing ? to || from : from;
+  const replyTo = groupChat || (isOutgoing ? to || from : from);
   const answer = await answerWhatsAppCommand(textValue, String(participantPhone));
 
   console.log("[whatsapp:command]", { participantPhone, replyTo, text: textValue.slice(0, 40), isOutgoing });

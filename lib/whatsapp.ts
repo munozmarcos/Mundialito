@@ -1,5 +1,13 @@
 export type WhatsAppCommand = "ranking" | "mis_apuestas" | "pendientes" | "ayuda";
 
+export function whatsappGroupId() {
+  return (process.env.ULTRAMSG_GROUP_ID ?? process.env.WHATSAPP_GROUP_ID ?? "").trim();
+}
+
+export function hasWhatsAppGroup() {
+  return Boolean(whatsappGroupId());
+}
+
 export async function sendWhatsApp(to: string, body: string) {
   if (process.env.WHATSAPP_PROVIDER !== "ultramsg") {
     console.log("[WHATSAPP:mock]", { to, body });
@@ -26,6 +34,12 @@ export async function sendWhatsApp(to: string, body: string) {
     throw new Error(`UltraMsg error ${res.status}${detail ? `: ${detail.slice(0, 180)}` : ""}`);
   }
   return res.json();
+}
+
+export async function sendWhatsAppGroup(body: string) {
+  const groupId = whatsappGroupId();
+  if (!groupId) return { ok: false, skipped: true, reason: "missing-group-id" };
+  return sendWhatsApp(groupId, body);
 }
 
 export function parseWhatsAppCommand(text: string): WhatsAppCommand {

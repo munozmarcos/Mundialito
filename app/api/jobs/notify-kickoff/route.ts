@@ -1,7 +1,8 @@
-import { displayNameForTeam } from "@/lib/flags";
+import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWebPushToAll } from "@/lib/web-push";
+import { hasWhatsAppGroup, sendWhatsAppGroup } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
 
 function isAutomatic(req: Request) {
@@ -32,6 +33,8 @@ export async function POST(req: Request) {
 
   let pushSent = 0;
   let pushFailed = 0;
+  let whatsappSent = 0;
+  const failures: string[] = [];
   for (const match of matches ?? []) {
     const home = displayNameForTeam(match.home_team);
     const away = displayNameForTeam(match.away_team);
@@ -44,15 +47,39 @@ export async function POST(req: Request) {
     });
     pushSent += push.sent;
     pushFailed += push.failed;
+
+    if (hasWhatsAppGroup()) {
+      const dedupeKey = `group:match-kickoff:${match.id}`;
+      const { error: logError } = await db.from("notification_logs").insert({
+        match_id: match.id,
+        kind: "whatsapp-match-kickoff-group",
+        dedupe_key: dedupeKey
+      });
+      if (!logError) {
+        try {
+          await sendWhatsAppGroup([
+            "🔴 *Partido en vivo*",
+            "",
+            `*${flagEmojiForTeam(match.home_team, match.home_country_code)} ${home} vs ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${away}*`,
+            "",
+            "El ranking se va actualizando con el resultado en vivo.",
+            "Responde *$ranking* para ver la tabla."
+          ].join("\n"));
+          whatsappSent += 1;
+        } catch (error) {
+          failures.push(`${home} vs ${away}: ${error instanceof Error ? error.message : "unknown"}`);
+        }
+      }
+    }
   }
 
   const result = {
     sent: 0,
-    whatsappNotifications: 0,
+    whatsappNotifications: whatsappSent,
     pushNotifications: pushSent,
     pushFailures: pushFailed,
     matches: matches?.length ?? 0,
-    failures: [] as string[]
+    failures
   };
   if (isAutomatic(req)) {
     await recordJobRun({

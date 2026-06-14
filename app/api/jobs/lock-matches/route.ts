@@ -1,8 +1,9 @@
-import { displayNameForTeam } from "@/lib/flags";
+import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { getPodiumLockState } from "@/lib/podium";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWebPushToAll } from "@/lib/web-push";
+import { hasWhatsAppGroup, sendWhatsAppGroup } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
 
 function assertCron(req: Request) {
@@ -13,7 +14,7 @@ function assertCron(req: Request) {
 }
 
 function matchLabel(match: { home_team: string; away_team: string; home_country_code?: string | null; away_country_code?: string | null }) {
-  return `${displayNameForTeam(match.home_team)} vs ${displayNameForTeam(match.away_team)}`;
+  return `${flagEmojiForTeam(match.home_team, match.home_country_code)} ${displayNameForTeam(match.home_team)} vs ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${displayNameForTeam(match.away_team)}`;
 }
 
 export async function POST(req: Request) {
@@ -46,6 +47,8 @@ export async function POST(req: Request) {
 
   let pushSent = 0;
   let pushFailed = 0;
+  let whatsappSent = 0;
+  const failures: string[] = [];
   for (const match of matchesToNotify ?? []) {
     const push = await sendWebPushToAll({
       dedupeKey: `match-lock:${match.id}`,
@@ -56,17 +59,41 @@ export async function POST(req: Request) {
     });
     pushSent += push.sent;
     pushFailed += push.failed;
+
+    if (hasWhatsAppGroup()) {
+      const dedupeKey = `group:match-lock:${match.id}`;
+      const { error: logError } = await db.from("notification_logs").insert({
+        match_id: match.id,
+        kind: "whatsapp-match-lock-group",
+        dedupe_key: dedupeKey
+      });
+      if (!logError) {
+        try {
+          await sendWhatsAppGroup([
+            "🔒 *Pronósticos cerrados*",
+            "",
+            `*${matchLabel(match)}*`,
+            "",
+            "Ya no se pueden cargar ni modificar pronósticos para este partido.",
+            "Responde *$pendientes* para revisar lo que te falta."
+          ].join("\n"));
+          whatsappSent += 1;
+        } catch (error) {
+          failures.push(`${match.home_team} vs ${match.away_team}: ${error instanceof Error ? error.message : "unknown"}`);
+        }
+      }
+    }
   }
 
   const podiumState = await getPodiumLockState(db);
   const result = {
     locked: data?.length ?? 0,
-    whatsappNotifications: 0,
+    whatsappNotifications: whatsappSent,
     pushNotifications: pushSent,
     pushFailures: pushFailed,
     podiumLocked: podiumState.locked,
     podiumReason: podiumState.reason,
-    failures: [] as string[]
+    failures
   };
 
   if (req.headers.get("x-vercel-cron") === "1") {

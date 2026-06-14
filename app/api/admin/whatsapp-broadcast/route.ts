@@ -1,11 +1,12 @@
 import { requireAdmin, supabaseAdmin } from "@/lib/supabase";
-import { sendWhatsApp } from "@/lib/whatsapp";
+import { hasWhatsAppGroup, sendWhatsApp, sendWhatsAppGroup } from "@/lib/whatsapp";
 import { sendWebPushToUser } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const Body = z.object({
   body: z.string().min(1).max(4096),
+  target: z.enum(["group", "selected"]).optional(),
   recipientIds: z.array(z.string().uuid()).optional()
 });
 
@@ -31,6 +32,38 @@ export async function POST(req: Request) {
 
   const input = Body.parse(await req.json());
   const db = supabaseAdmin();
+
+  if (input.target === "group") {
+    if (!hasWhatsAppGroup()) return NextResponse.json({ error: "No está configurado el grupo de WhatsApp." }, { status: 400 });
+
+    try {
+      await sendWhatsAppGroup(input.body);
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "No se pudo enviar al grupo." }, { status: 400 });
+    }
+
+    const { data: users, error } = await db
+      .from("profiles")
+      .select("id,role")
+      .in("role", ["participant", "admin"]);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    let pushSent = 0;
+    let pushFailed = 0;
+    for (const user of users ?? []) {
+      const push = await sendWebPushToUser(user.id, {
+        title: "Mundialito",
+        body: input.body.replace(/\*/g, "").split(/\r?\n/).filter(Boolean).slice(0, 3).join(" · ").slice(0, 180),
+        url: "/novedades",
+        tag: `broadcast-group:${Date.now()}`
+      });
+      pushSent += push.sent;
+      pushFailed += push.failed;
+    }
+
+    return NextResponse.json({ sent: 1, group: true, pushNotifications: pushSent, pushFailures: pushFailed, recipients: users?.length ?? 0, failures: [] });
+  }
+
   let query = db
     .from("profiles")
     .select("id,display_name,phone,role,paid")

@@ -1,6 +1,7 @@
 import { internalEmailForPhone, normalizePhone, publicPhone } from "@/lib/app-auth";
 import { displayNameExists, normalizeDisplayName, validateDisplayName } from "@/lib/profiles";
 import { requireAdmin, supabaseAdmin } from "@/lib/supabase";
+import { sendWhatsApp } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -17,6 +18,26 @@ const UpdateBody = Body.extend({
   id: z.string().uuid(),
   authEmail: z.string().email().optional()
 });
+
+async function sendGroupInviteIfPaid(profile: { display_name: string; phone: string | null; paid: boolean }) {
+  const inviteUrl = (process.env.WHATSAPP_GROUP_INVITE_URL ?? "").trim();
+  if (!profile.paid || !profile.phone || !inviteUrl) return null;
+
+  try {
+    await sendWhatsApp(profile.phone, [
+      "⚽ *Mundialito*",
+      "",
+      `${profile.display_name}, ya figurás como *Pago*.`,
+      "Entrá al grupo oficial para recibir avisos, ranking y novedades:",
+      inviteUrl,
+      "",
+      "También podés usar comandos por privado o en el grupo."
+    ].join("\n"));
+    return null;
+  } catch (error) {
+    return error instanceof Error ? error.message : "No se pudo enviar la invitación al grupo.";
+  }
+}
 
 export async function GET(req: Request) {
   const admin = await requireAdmin(req);
@@ -89,7 +110,8 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ profile: data });
+  const groupInviteWarning = await sendGroupInviteIfPaid(data);
+  return NextResponse.json({ profile: data, groupInviteWarning });
 }
 
 export async function PUT(req: Request) {
@@ -103,6 +125,7 @@ export async function PUT(req: Request) {
   if (displayNameError) return NextResponse.json({ error: displayNameError }, { status: 400 });
   if (await displayNameExists(db, displayName, body.id)) return NextResponse.json({ error: "Ese apodo ya esta usado. Elegi otro." }, { status: 409 });
   const normalizedPhone = normalizePhone(body.phone ?? "");
+  const { data: previousProfile } = await db.from("profiles").select("paid").eq("id", body.id).maybeSingle();
 
   const authUpdate: { password?: string; user_metadata: { display_name: string } } = {
     user_metadata: { display_name: displayName }
@@ -125,7 +148,9 @@ export async function PUT(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ profile: data });
+  const becamePaid = !previousProfile?.paid && data.paid;
+  const groupInviteWarning = becamePaid ? await sendGroupInviteIfPaid(data) : null;
+  return NextResponse.json({ profile: data, groupInviteWarning });
 }
 
 export async function DELETE(req: Request) {

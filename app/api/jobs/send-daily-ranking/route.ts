@@ -2,7 +2,7 @@ import { getRanking } from "@/lib/data";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
 import { competitionRankForIndex, rankingPrefix } from "@/lib/ranking-position";
 import { supabaseAdmin } from "@/lib/supabase";
-import { sendWhatsApp } from "@/lib/whatsapp";
+import { hasWhatsAppGroup, sendWhatsApp, sendWhatsAppGroup } from "@/lib/whatsapp";
 import { sendWebPushToUser } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 
@@ -152,6 +152,62 @@ export async function POST(req: Request) {
   let pushSent = 0;
   let pushFailed = 0;
   const failures: string[] = [];
+
+  const groupBody = [
+    "🏆 *Ranking diario Mundialito*",
+    `📅 ${today}`,
+    "",
+    ranking.length ? ranking.map((row, index) => rankingLine(ranking, row, index)).join("\n") : "Todavia no hay puntos cargados.",
+    "",
+    "Responde *$ranking* para ver la tabla completa cuando quieras."
+  ].join("\n");
+
+  if (hasWhatsAppGroup()) {
+    let shouldSendGroup = true;
+    if (!manual) {
+      const dedupeKey = `group:daily-ranking:${today}`;
+      const { error: logError } = await db.from("notification_logs").insert({
+        kind: "whatsapp-daily-ranking-group",
+        dedupe_key: dedupeKey
+      });
+      shouldSendGroup = !logError;
+    }
+
+    if (shouldSendGroup) {
+      try {
+        await sendWhatsAppGroup(groupBody);
+        sent = 1;
+      } catch (err) {
+        failures.push(`Grupo Mundialito: ${err instanceof Error ? err.message : "unknown"}`);
+      }
+    }
+
+    for (const user of users ?? []) {
+      const push = await sendWebPushToUser(user.id, {
+        dedupeKey: manual ? undefined : `${user.id}:daily-ranking-push:${today}`,
+        title: "Ranking Mundialito",
+        body: `Ranking del ${today}. Responde $ranking o toca para verlo en la app.`,
+        url: "/ranking",
+        tag: `daily-ranking:${today}:${user.id}`
+      });
+      pushSent += push.sent;
+      pushFailed += push.failed;
+    }
+
+    const result = { date: today, manual, group: true, sent, pushNotifications: pushSent, pushFailures: pushFailed, failures };
+    if (!manual) {
+      await recordJobRun({
+        jobPath: "/api/jobs/send-daily-ranking",
+        triggerType: "automatic",
+        ok: true,
+        statusCode: 200,
+        summary: summarizeJob("Enviar ranking por WhatsApp", { ok: true, data: result }),
+        payload: result
+      });
+    }
+    return NextResponse.json(result);
+  }
+
   for (const user of users ?? []) {
     if (!user.phone) continue;
 
