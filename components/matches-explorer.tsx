@@ -254,15 +254,15 @@ function MatchCard({ match, display }: { match: Match; display?: DisplayMatch })
               {match.result_updated_at ? `Actualizado ${formatArgentinaDateTime(match.result_updated_at)}` : "En vivo"}
             </span>
           )}
+          {status === "playing" && (
+            <span className="w-12 rounded-full border border-red-400/70 bg-[#7f1020] px-0 py-1 text-center text-xs font-black text-white">
+              {liveMinuteLabel(match.kickoff_at)}
+            </span>
+          )}
           <StatusPill status={unavailable ? "locked" : status} label={unavailable ? "Bloqueado" : undefined} />
         </div>
       </div>
       <div className="grid gap-2">
-        {status === "playing" && (
-          <div className="flex justify-end">
-            <span className="rounded-full border border-red-400/40 bg-red-500/12 px-2 py-1 text-xs font-black text-red-300">{liveMinuteLabel(match.kickoff_at)}</span>
-          </div>
-        )}
         <div className="grid grid-cols-[1fr_68px] items-center gap-3 rounded-md border border-line bg-field p-2">
           <TeamOrLock team={home} />
           <input className="field text-center font-black" disabled value={match.home_goals ?? ""} aria-label={`Goles ${home.name}`} readOnly />

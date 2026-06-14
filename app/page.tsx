@@ -11,6 +11,7 @@ import { argentinaDateKey, formatArgentinaDateTime } from "@/lib/dates";
 import { liveMinuteLabel } from "@/lib/live-minute";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { getLatestNotifications } from "@/lib/notifications";
+import { competitionRankForIndex } from "@/lib/ranking-position";
 import { isPredictionLocked, matchStatus } from "@/lib/scoring";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 import { CalendarDays, CheckCircle2, CircleDot, LockKeyhole, Target, Trophy, UnlockKeyhole, UsersRound } from "lucide-react";
@@ -304,9 +305,11 @@ export default async function Home() {
             {!ranking.length ? (
               <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay ranking.</p>
             ) : (
-              ranking.slice(0, 3).map((row, index) => (
-                <div className={`grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b p-4 last:border-0 ${podiumClass(index)}`} key={row.user_id}>
-                  <strong className="text-xl font-black">#{index + 1}</strong>
+              ranking.slice(0, 3).map((row, index) => {
+                const rank = competitionRankForIndex(ranking, index, (item) => item.total_points);
+                return (
+                <div className={`grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b p-4 last:border-0 ${podiumClass(rank - 1)}`} key={row.user_id}>
+                  <strong className="text-xl font-black">#{rank}</strong>
                   <div>
                     <strong className="text-xl font-black">{row.display_name}</strong>
                     <RankingDescription
@@ -323,7 +326,8 @@ export default async function Home() {
                     <span className="text-xs font-black uppercase text-ink/45">Pts</span>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
             <div className="p-4">
               <Link className="btn secondary w-full" href="/ranking">Ver ranking completo</Link>

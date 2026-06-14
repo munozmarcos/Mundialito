@@ -21,6 +21,11 @@ export function MatchCard({ match }: { match: Match }) {
               {match.result_updated_at ? `Actualizado ${formatArgentinaDateTime(match.result_updated_at)}` : "En vivo"}
             </span>
           )}
+          {status === "playing" && (
+            <span className="w-12 rounded-full border border-red-400/70 bg-[#7f1020] px-0 py-1 text-center text-xs font-black text-white">
+              {liveMinuteLabel(match.kickoff_at)}
+            </span>
+          )}
           <StatusPill status={status} label={blocked ? "Bloqueado" : undefined} />
         </div>
       </div>
@@ -28,10 +33,7 @@ export function MatchCard({ match }: { match: Match }) {
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-3">
           <TeamLabel name={match.home_team} code={match.home_country_code} />
-          <div className="flex items-center gap-2">
-            {status === "playing" && <span className="rounded-full border border-red-400/40 bg-red-500/12 px-2 py-1 text-xs font-black text-red-300">{liveMinuteLabel(match.kickoff_at)}</span>}
-            <span className="min-w-8 text-right font-black">{match.home_goals ?? "-"}</span>
-          </div>
+          <span className="min-w-8 text-right font-black">{match.home_goals ?? "-"}</span>
         </div>
         <div className="flex items-center justify-between gap-3">
           <TeamLabel name={match.away_team} code={match.away_country_code} />

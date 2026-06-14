@@ -3,6 +3,7 @@ import { formatArgentinaDateTime } from "@/lib/dates";
 import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { getPodiumLockState, recalculateAllPodiumPoints, validatePodiumTeams } from "@/lib/podium";
+import { competitionRankForIndex, rankingPrefix } from "@/lib/ranking-position";
 import { isPredictionLocked } from "@/lib/scoring";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 
@@ -384,8 +385,14 @@ async function answerPodio(text: string, from?: string) {
   ].join("\n");
 }
 
-function rankingLine(row: Pick<RankingRow, "user_id" | "display_name" | "total_points">, index: number, highlightedUserId?: string | null) {
-  const prefix = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`;
+function rankingLine(
+  ranking: Pick<RankingRow, "user_id" | "display_name" | "total_points">[],
+  row: Pick<RankingRow, "user_id" | "display_name" | "total_points">,
+  index: number,
+  highlightedUserId?: string | null
+) {
+  const rank = competitionRankForIndex(ranking, index, (item) => item.total_points);
+  const prefix = rankingPrefix(rank);
   if (highlightedUserId && row.user_id === highlightedUserId) return `*${prefix} ${row.display_name} - ${row.total_points} pts*`;
   return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
 }
@@ -698,7 +705,7 @@ export async function answerWhatsAppCommand(text: string, from?: string) {
     return [
       "🏆 *Ranking Mundialito*",
       "",
-      ...ranking.map((row, index) => rankingLine(row, index, profile?.id))
+      ...ranking.map((row, index) => rankingLine(ranking, row, index, profile?.id))
     ].join("\n");
   }
 

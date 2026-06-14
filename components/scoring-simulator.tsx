@@ -12,6 +12,7 @@ import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { PointsPill, pointsInputClass, pointsPillClass } from "@/components/points-pill";
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import { RankingDescription } from "@/components/ranking-description";
+import { competitionRankMap } from "@/lib/ranking-position";
 import { Calculator, CircleDot, ClipboardPaste, Eye, GitBranch, ListChecks, Lock, Medal, RotateCcw, Table2, Target, Trophy, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -569,6 +570,10 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
     };
   }, [matches, podiumPredictions, predictionsByMatch, profiles, results, simulated.displays, simulatedChampion, simulatedRunnerUp, simulatedThirdPlace]);
   const ranking = rankingData.rows;
+  const rankByUser = useMemo(
+    () => competitionRankMap(ranking, (row) => row.userId, (row) => row.points),
+    [ranking]
+  );
   const selectedRankingRow = ranking.find((row) => row.userId === selectedRankingUserId) ?? null;
   const selectedRankingDetails = rankingData.details.filter((detail) => detail.userId === selectedRankingUserId);
   const selectedUserPredictionCount = selectedRankingUserId ? predictions.filter((prediction) => prediction.user_id === selectedRankingUserId).length : 0;
@@ -926,9 +931,11 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
           <h2 className="flex items-center gap-2 text-xl font-black"><Trophy className="h-5 w-5 text-gold" />Ranking simulado</h2>
           <p className="mt-1 text-sm text-ink/60">Puntos por exactos y tendencias con los resultados simulados.</p>
         </div>
-        {ranking.map((row, index) => (
-          <div className={`grid gap-3 border-b p-3 last:border-0 sm:grid-cols-[42px_1fr_auto] sm:items-center ${podiumClass(index)}`} key={row.userId}>
-            <strong className={`text-center text-xl font-black sm:text-2xl ${index < 3 ? "" : "text-gold"}`}>#{index + 1}</strong>
+        {ranking.map((row) => {
+          const rank = rankByUser.get(row.userId) ?? 0;
+          return (
+          <div className={`grid gap-3 border-b p-3 last:border-0 sm:grid-cols-[42px_1fr_auto] sm:items-center ${podiumClass(rank - 1)}`} key={row.userId}>
+            <strong className={`text-center text-xl font-black sm:text-2xl ${rank <= 3 ? "" : "text-gold"}`}>#{rank}</strong>
             <div>
               <strong className="text-xl font-black sm:text-2xl">{row.name}</strong>
               <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -951,7 +958,8 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
               <span className="text-xs font-black uppercase text-ink/45">Pts</span>
             </div>
           </div>
-        ))}
+          );
+        })}
       </section>
       {selectedRankingRow && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-3">

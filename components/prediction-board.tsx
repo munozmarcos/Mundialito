@@ -9,6 +9,7 @@ import { PointsPill } from "@/components/points-pill";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { displayNameForTeam } from "@/lib/flags";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
+import { liveMinuteLabel } from "@/lib/live-minute";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { dateKey, matchFitsBasicFilters } from "@/lib/match-filters";
 import { isPredictionLocked, matchStatus } from "@/lib/scoring";
@@ -393,6 +394,11 @@ function PredictionCard({
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           {(prediction?.user_updated_at ?? prediction?.updated_at) && <span className="self-center text-[11px] italic text-ink/45">Actualizado - {formatKickoff(prediction.user_updated_at ?? prediction.updated_at!)}</span>}
+          {status === "playing" && (
+            <span className="w-12 rounded-full border border-red-400/70 bg-[#7f1020] px-0 py-1 text-center text-xs font-black text-white">
+              {liveMinuteLabel(match.kickoff_at)}
+            </span>
+          )}
           <StatusPill status={unavailable ? "locked" : status} label={unavailable ? "Bloqueado" : undefined} />
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { getRanking } from "@/lib/data";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
+import { competitionRankForIndex, rankingPrefix } from "@/lib/ranking-position";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWhatsApp } from "@/lib/whatsapp";
 import { sendWebPushToUser } from "@/lib/web-push";
@@ -76,8 +77,14 @@ async function findCompletedMatchDay(db: ReturnType<typeof supabaseAdmin>, now =
   return null;
 }
 
-function rankingLine(row: { user_id: string; display_name: string; total_points: number }, index: number, highlightedUserId?: string | null) {
-  const prefix = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`;
+function rankingLine(
+  ranking: { user_id: string; display_name: string; total_points: number }[],
+  row: { user_id: string; display_name: string; total_points: number },
+  index: number,
+  highlightedUserId?: string | null
+) {
+  const rank = competitionRankForIndex(ranking, index, (item) => item.total_points);
+  const prefix = rankingPrefix(rank);
   if (highlightedUserId && row.user_id === highlightedUserId) return `*${prefix} ${row.display_name} - ${row.total_points} pts*`;
   return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
 }
@@ -163,7 +170,7 @@ export async function POST(req: Request) {
       "🏆 *Ranking diario Mundialito*",
       `📅 ${today}`,
       "",
-      ranking.length ? ranking.map((row, index) => rankingLine(row, index, user.id)).join("\n") : "Todavia no hay puntos cargados.",
+      ranking.length ? ranking.map((row, index) => rankingLine(ranking, row, index, user.id)).join("\n") : "Todavia no hay puntos cargados.",
       "",
       "Responde *$ranking* para ver la tabla completa cuando quieras."
     ].join("\n");

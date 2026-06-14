@@ -8,6 +8,7 @@ import { RankingDescription } from "@/components/ranking-description";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { matchFitsBasicFilters } from "@/lib/match-filters";
+import { competitionRankMap } from "@/lib/ranking-position";
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import type { RankingDetails, RankingPredictionDetail, RankingRow } from "@/lib/data";
 import type { Match, MatchStage } from "@/lib/types";
@@ -219,7 +220,7 @@ export function RankingContent({ ranking, details }: Props) {
     [normalizedQuery, normalizedRanking]
   );
   const rankByUser = useMemo(
-    () => new Map(normalizedRanking.map((row, index) => [row.user_id, index + 1])),
+    () => competitionRankMap(normalizedRanking, (row) => row.user_id, (row) => row.total_points),
     [normalizedRanking]
   );
 
