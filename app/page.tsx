@@ -91,7 +91,7 @@ function homeMatchCounters(matches: Awaited<ReturnType<typeof getMatches>>) {
 
 function podiumClass(index: number) {
   if (index === 0) return "border-yellow-300/50 bg-yellow-300/12 text-yellow-200";
-  if (index === 1) return "border-slate-200/50 bg-slate-200/12 text-slate-100";
+  if (index === 1) return "border-[#cfd6e6]/60 bg-[#cfd6e6]/14 text-[#c9ced8]";
   if (index === 2) return "border-orange-300/50 bg-orange-400/12 text-orange-200";
   return "border-line";
 }

@@ -52,7 +52,7 @@ function normalize(value: string) {
 
 function podiumClass(index: number) {
   if (index === 0) return "border-yellow-300/50 bg-yellow-300/12 text-yellow-200";
-  if (index === 1) return "border-slate-200/50 bg-slate-200/12 text-slate-100";
+  if (index === 1) return "border-[#cfd6e6]/60 bg-[#cfd6e6]/14 text-[#c9ced8]";
   if (index === 2) return "border-orange-300/50 bg-orange-400/12 text-orange-200";
   return "border-line";
 }
@@ -237,7 +237,7 @@ export function RankingContent({ ranking, details }: Props) {
     <section className="grid gap-4">
       <article className="panel overflow-hidden">
         <div className="border-b border-line p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-2xl font-black">Ranking</h2>
               <p className="mt-1 text-sm text-ink/60">Puntos por exactos, tendencias y aciertos del podio anticipado cuando ya exista resultado real.</p>
@@ -245,7 +245,6 @@ export function RankingContent({ ranking, details }: Props) {
             <div className="grid min-h-[76px] min-w-[118px] content-center justify-items-center rounded-lg border border-blue-300/30 bg-blue-950/20 px-3 py-2 text-center">
               <UsersRound className="h-5 w-5 text-blue-300" />
               <p className="mt-0.5 whitespace-nowrap text-xl font-black text-blue-300">{normalizedRanking.length}</p>
-              <span className="text-xs font-black uppercase text-ink/55">personas</span>
             </div>
           </div>
           <div className="mt-4 grid max-w-md gap-3 sm:grid-cols-[minmax(240px,1fr)_44px]">
