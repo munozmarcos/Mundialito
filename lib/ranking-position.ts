@@ -1,11 +1,15 @@
 export function competitionRankForIndex<T>(rows: T[], index: number, score: (row: T) => number) {
   if (index <= 0) return 1;
-  const currentScore = score(rows[index]);
-  const previousScore = score(rows[index - 1]);
-  if (currentScore === previousScore) {
-    return competitionRankForIndex(rows, index - 1, score);
+  let rank = 1;
+  let previousScore = score(rows[0]);
+  for (let currentIndex = 1; currentIndex <= index; currentIndex += 1) {
+    const currentScore = score(rows[currentIndex]);
+    if (currentScore !== previousScore) {
+      rank += 1;
+      previousScore = currentScore;
+    }
   }
-  return index + 1;
+  return rank;
 }
 
 export function competitionRankMap<T>(rows: T[], key: (row: T) => string, score: (row: T) => number) {
