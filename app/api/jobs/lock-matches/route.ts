@@ -1,9 +1,11 @@
+import { formatArgentinaDateTime } from "@/lib/dates";
 import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
+import { ICONS } from "@/lib/message-icons";
 import { getPodiumLockState } from "@/lib/podium";
 import { supabaseAdmin } from "@/lib/supabase";
-import { sendWebPushToAll } from "@/lib/web-push";
 import { hasWhatsAppGroup, sendWhatsAppGroup } from "@/lib/whatsapp";
+import { sendWebPushToAll } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 
 function assertCron(req: Request) {
@@ -17,6 +19,24 @@ function matchLabel(match: { home_team: string; away_team: string; home_country_
   return `${flagEmojiForTeam(match.home_team, match.home_country_code)} ${displayNameForTeam(match.home_team)} vs ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${displayNameForTeam(match.away_team)}`;
 }
 
+function minutesUntilPredictionClose(kickoffAt: string, now: Date) {
+  const closeAt = new Date(new Date(kickoffAt).getTime() - 15 * 60 * 1000);
+  return Math.max(0, Math.ceil((closeAt.getTime() - now.getTime()) / 60000));
+}
+
+function minutesUntilKickoff(kickoffAt: string, now: Date) {
+  return Math.max(0, Math.ceil((new Date(kickoffAt).getTime() - now.getTime()) / 60000));
+}
+
+async function alreadyLogged(db: ReturnType<typeof supabaseAdmin>, kind: string, dedupeKey: string) {
+  const { count } = await db
+    .from("notification_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("kind", kind)
+    .eq("dedupe_key", dedupeKey);
+  return (count ?? 0) > 0;
+}
+
 export async function POST(req: Request) {
   if (!assertCron(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -25,6 +45,18 @@ export async function POST(req: Request) {
   const now = url.searchParams.get("now") ? new Date(url.searchParams.get("now")!) : new Date();
   const notifyFrom = new Date(now.getTime() - 20 * 60 * 1000).toISOString();
   const lockBefore = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
+  const oneHourWarningFrom = new Date(now.getTime() + 58 * 60 * 1000).toISOString();
+  const oneHourWarningTo = new Date(now.getTime() + 62 * 60 * 1000).toISOString();
+
+  const { data: matchesToWarnOneHour, error: warningError } = await db
+    .from("matches")
+    .select("*")
+    .gte("kickoff_at", oneHourWarningFrom)
+    .lte("kickoff_at", oneHourWarningTo)
+    .eq("locked", false)
+    .is("home_goals", null)
+    .not("status", "in", "(locked,scheduled,closed)");
+  if (warningError) return NextResponse.json({ error: warningError.message }, { status: 400 });
 
   const { data: matchesToNotify, error: readError } = await db
     .from("matches")
@@ -32,7 +64,6 @@ export async function POST(req: Request) {
     .gte("kickoff_at", notifyFrom)
     .lte("kickoff_at", lockBefore)
     .not("status", "in", "(locked,scheduled,closed)");
-
   if (readError) return NextResponse.json({ error: readError.message }, { status: 400 });
 
   const { data, error } = await db
@@ -42,18 +73,61 @@ export async function POST(req: Request) {
     .eq("locked", false)
     .is("home_goals", null)
     .select("id");
-
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   let pushSent = 0;
   let pushFailed = 0;
   let whatsappSent = 0;
+  let oneHourNotified = 0;
   const failures: string[] = [];
+
+  for (const match of matchesToWarnOneHour ?? []) {
+    const label = matchLabel(match);
+    const minutesToKickoff = minutesUntilKickoff(match.kickoff_at, now);
+    const minutesToClose = minutesUntilPredictionClose(match.kickoff_at, now);
+    const push = await sendWebPushToAll({
+      dedupeKey: `match-close-1h:${match.id}`,
+      title: "Cierra pronto",
+      body: label,
+      url: "/mi-prode",
+      tag: `match-close-1h:${match.id}`
+    });
+    pushSent += push.sent;
+    pushFailed += push.failed;
+
+    if (hasWhatsAppGroup()) {
+      const kind = "whatsapp-match-close-1h-group";
+      const dedupeKey = `group:match-close-1h:${match.id}`;
+      if (!(await alreadyLogged(db, kind, dedupeKey))) {
+        try {
+          await sendWhatsAppGroup([
+            `${ICONS.hourglass} *Cierra pronto*`,
+            "",
+            `*${label}*`,
+            `Empieza: ${formatArgentinaDateTime(match.kickoff_at)}`,
+            "",
+            `Faltan ${minutesToKickoff} minutos para el inicio.`,
+            "",
+            "La carga cierra 15 minutos antes.",
+            `Quedan ${minutesToClose} minutos para cargar o modificar pronósticos.`
+          ].join("\n"));
+          await db.from("notification_logs").insert({ match_id: match.id, kind, dedupe_key: dedupeKey });
+          whatsappSent += 1;
+          oneHourNotified += 1;
+        } catch (error) {
+          failures.push(`${match.home_team} vs ${match.away_team}: ${error instanceof Error ? error.message : "unknown"}`);
+        }
+      }
+    }
+  }
+
   for (const match of matchesToNotify ?? []) {
+    const label = matchLabel(match);
+    const minutesLeft = minutesUntilPredictionClose(match.kickoff_at, now);
     const push = await sendWebPushToAll({
       dedupeKey: `match-lock:${match.id}`,
       title: "Pronósticos cerrados",
-      body: matchLabel(match),
+      body: label,
       url: "/mi-prode",
       tag: `match-lock:${match.id}`
     });
@@ -61,22 +135,21 @@ export async function POST(req: Request) {
     pushFailed += push.failed;
 
     if (hasWhatsAppGroup()) {
+      const kind = "whatsapp-match-lock-group";
       const dedupeKey = `group:match-lock:${match.id}`;
-      const { error: logError } = await db.from("notification_logs").insert({
-        match_id: match.id,
-        kind: "whatsapp-match-lock-group",
-        dedupe_key: dedupeKey
-      });
-      if (!logError) {
+      if (!(await alreadyLogged(db, kind, dedupeKey))) {
         try {
           await sendWhatsAppGroup([
-            "🔒 *Pronósticos cerrados*",
+            `${ICONS.lock} *Pronósticos cerrados*`,
             "",
-            `*${matchLabel(match)}*`,
+            `*${label}*`,
+            `Empieza: ${formatArgentinaDateTime(match.kickoff_at)}`,
             "",
-            "Ya no se pueden cargar ni modificar pronósticos para este partido.",
-            "Responde *$pendientes* para revisar lo que te falta."
+            minutesLeft > 0
+              ? `Quedan ${minutesLeft} minutos para cargar o modificar pronósticos. El partido cierra 15 minutos antes del inicio.`
+              : "Ya no se pueden cargar ni modificar pronósticos para este partido."
           ].join("\n"));
+          await db.from("notification_logs").insert({ match_id: match.id, kind, dedupe_key: dedupeKey });
           whatsappSent += 1;
         } catch (error) {
           failures.push(`${match.home_team} vs ${match.away_team}: ${error instanceof Error ? error.message : "unknown"}`);
@@ -88,6 +161,8 @@ export async function POST(req: Request) {
   const podiumState = await getPodiumLockState(db);
   const result = {
     locked: data?.length ?? 0,
+    oneHourNotified,
+    closeSoonNotified: matchesToNotify?.length ?? 0,
     whatsappNotifications: whatsappSent,
     pushNotifications: pushSent,
     pushFailures: pushFailed,

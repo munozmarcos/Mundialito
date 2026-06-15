@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
+import { sendGroupInviteIfPaid } from "@/lib/whatsapp-group-invite";
 
 export async function readMercadoPagoPayment(paymentId: string) {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
@@ -37,9 +38,25 @@ export async function applyMercadoPagoPayment(paymentId: string) {
     })
     .eq("id", attempt.id);
 
+  let groupInviteWarning: string | null = null;
   if (payment.status === "approved") {
-    await db.from("profiles").update({ paid: true }).eq("id", attempt.user_id);
+    const { data: previousProfile } = await db
+      .from("profiles")
+      .select("display_name,phone,paid")
+      .eq("id", attempt.user_id)
+      .maybeSingle();
+
+    const { data: updatedProfile } = await db
+      .from("profiles")
+      .update({ paid: true })
+      .eq("id", attempt.user_id)
+      .select("display_name,phone,paid")
+      .maybeSingle();
+
+    if (!previousProfile?.paid && updatedProfile?.paid) {
+      groupInviteWarning = await sendGroupInviteIfPaid(updatedProfile);
+    }
   }
 
-  return { ok: true, status: payment.status as string | undefined, attemptId: attempt.id, userId: attempt.user_id, payment };
+  return { ok: true, status: payment.status as string | undefined, attemptId: attempt.id, userId: attempt.user_id, groupInviteWarning, payment };
 }

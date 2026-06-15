@@ -169,11 +169,22 @@ async function getClosingMatchNotifications(limit: number): Promise<LatestNotifi
 async function getClosedMatchNotifications(limit: number): Promise<LatestNotification[]> {
   if (!supabaseConfigured()) return [];
 
+  const now = new Date();
+  const todayKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(now);
+  const todayStart = new Date(`${todayKey}T00:00:00-03:00`);
+  todayStart.setUTCDate(todayStart.getUTCDate() - 1);
+
   const db = supabaseAdmin();
   const { data, error } = await db
     .from("matches")
     .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,result_updated_at,status,home_goals,away_goals")
     .or("status.eq.closed,home_goals.not.is.null")
+    .gte("kickoff_at", todayStart.toISOString())
     .order("kickoff_at", { ascending: false })
     .limit(limit);
 

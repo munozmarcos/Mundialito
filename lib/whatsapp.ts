@@ -8,9 +8,24 @@ export function hasWhatsAppGroup() {
   return Boolean(whatsappGroupId());
 }
 
+function decodeEscapedUnicode(value: string) {
+  const normalized = value.replace(/\\{2,}u/g, "\\u");
+  if (!/\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]+\}/.test(normalized)) return normalized;
+
+  return normalized
+    .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/\\u(d[89ab][0-9a-fA-F]{2})\\u(d[cdef][0-9a-fA-F]{2})/gi, (_, high, low) => {
+      const highCode = parseInt(high, 16);
+      const lowCode = parseInt(low, 16);
+      return String.fromCodePoint((highCode - 0xd800) * 0x400 + (lowCode - 0xdc00) + 0x10000);
+    })
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
 export async function sendWhatsApp(to: string, body: string) {
+  const cleanBody = decodeEscapedUnicode(body);
   if (process.env.WHATSAPP_PROVIDER !== "ultramsg") {
-    console.log("[WHATSAPP:mock]", { to, body });
+    console.log("[WHATSAPP:mock]", { to, body: cleanBody });
     return { ok: true, provider: "mock" };
   }
 
@@ -26,7 +41,7 @@ export async function sendWhatsApp(to: string, body: string) {
   const res = await fetch(`https://api.ultramsg.com/${instance}/messages/chat`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ token, to, body })
+    body: new URLSearchParams({ token, to, body: cleanBody })
   });
 
   if (!res.ok) {

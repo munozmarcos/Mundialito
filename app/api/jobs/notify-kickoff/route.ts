@@ -1,8 +1,9 @@
 import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
+import { ICONS } from "@/lib/message-icons";
 import { supabaseAdmin } from "@/lib/supabase";
-import { sendWebPushToAll } from "@/lib/web-push";
 import { hasWhatsAppGroup, sendWhatsAppGroup } from "@/lib/whatsapp";
+import { sendWebPushToAll } from "@/lib/web-push";
 import { NextResponse } from "next/server";
 
 function isAutomatic(req: Request) {
@@ -13,6 +14,15 @@ function assertCron(req: Request) {
   const secret = process.env.CRON_SECRET;
   const authOk = secret && req.headers.get("authorization") === `Bearer ${secret}`;
   return authOk || isAutomatic(req);
+}
+
+async function alreadyLogged(db: ReturnType<typeof supabaseAdmin>, kind: string, dedupeKey: string) {
+  const { count } = await db
+    .from("notification_logs")
+    .select("id", { count: "exact", head: true })
+    .eq("kind", kind)
+    .eq("dedupe_key", dedupeKey);
+  return (count ?? 0) > 0;
 }
 
 export async function POST(req: Request) {
@@ -35,9 +45,11 @@ export async function POST(req: Request) {
   let pushFailed = 0;
   let whatsappSent = 0;
   const failures: string[] = [];
+
   for (const match of matches ?? []) {
     const home = displayNameForTeam(match.home_team);
     const away = displayNameForTeam(match.away_team);
+    const label = `${flagEmojiForTeam(match.home_team, match.home_country_code)} ${home} vs ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${away}`;
     const push = await sendWebPushToAll({
       dedupeKey: `match-kickoff:${match.id}`,
       title: "Partido en vivo",
@@ -49,22 +61,12 @@ export async function POST(req: Request) {
     pushFailed += push.failed;
 
     if (hasWhatsAppGroup()) {
+      const kind = "whatsapp-match-kickoff-group";
       const dedupeKey = `group:match-kickoff:${match.id}`;
-      const { error: logError } = await db.from("notification_logs").insert({
-        match_id: match.id,
-        kind: "whatsapp-match-kickoff-group",
-        dedupe_key: dedupeKey
-      });
-      if (!logError) {
+      if (!(await alreadyLogged(db, kind, dedupeKey))) {
         try {
-          await sendWhatsAppGroup([
-            "🔴 *Partido en vivo*",
-            "",
-            `*${flagEmojiForTeam(match.home_team, match.home_country_code)} ${home} vs ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${away}*`,
-            "",
-            "El ranking se va actualizando con el resultado en vivo.",
-            "Responde *$ranking* para ver la tabla."
-          ].join("\n"));
+          await sendWhatsAppGroup([`${ICONS.redCircle} *Partido en vivo*`, "", `*${label}*`, "", "El ranking se va actualizando con el resultado en vivo."].join("\n"));
+          await db.from("notification_logs").insert({ match_id: match.id, kind, dedupe_key: dedupeKey });
           whatsappSent += 1;
         } catch (error) {
           failures.push(`${home} vs ${away}: ${error instanceof Error ? error.message : "unknown"}`);

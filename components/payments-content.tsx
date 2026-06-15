@@ -2,13 +2,14 @@
 
 import { EmptyState } from "@/components/empty-state";
 import type { ParticipantPaymentRow } from "@/lib/data";
-import { UsersRound, X } from "lucide-react";
+import { MessageCircle, UsersRound, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type Props = {
   participants: ParticipantPaymentRow[];
   paidParticipants: number;
   totalParticipants: number;
+  groupInviteUrl?: string;
 };
 
 function normalize(value: string) {
@@ -21,7 +22,7 @@ function paymentSelectClass(value: string) {
   return "field";
 }
 
-export function PaymentsContent({ participants, paidParticipants, totalParticipants }: Props) {
+export function PaymentsContent({ participants, paidParticipants, totalParticipants, groupInviteUrl }: Props) {
   const [query, setQuery] = useState("");
   const [paidFilter, setPaidFilter] = useState("ALL");
   const normalizedQuery = normalize(query);
@@ -41,10 +42,31 @@ export function PaymentsContent({ participants, paidParticipants, totalParticipa
             <h2 className="text-2xl font-black">Participantes</h2>
             <p className="mt-1 text-sm font-semibold text-ink/60">Apodos registrados y estado de pago.</p>
           </div>
-          <div className="grid min-h-[76px] min-w-[118px] content-center justify-items-center rounded-lg bg-field px-3 py-2 text-center">
-            <UsersRound className="h-5 w-5 text-grass" />
-            <strong className="mt-0.5 block text-xl">{paidParticipants}/{totalParticipants}</strong>
-            <span className="text-xs font-black uppercase text-ink/55">pagaron</span>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <div className="grid min-h-[76px] min-w-[118px] content-center justify-items-center rounded-lg bg-field px-3 py-2 text-center">
+              <UsersRound className="h-5 w-5 text-grass" />
+              <strong className="mt-0.5 block text-xl">{paidParticipants}/{totalParticipants}</strong>
+              <span className="text-xs font-black uppercase text-ink/55">pagaron</span>
+            </div>
+            {groupInviteUrl && (
+              <a
+                className="grid min-h-[76px] min-w-[118px] content-center justify-items-center rounded-lg border border-grass/25 bg-grass/10 px-3 py-2 text-center transition hover:border-grass/50"
+                href={groupInviteUrl}
+                rel="noreferrer"
+                target="_blank"
+                title="Entrar al grupo de WhatsApp"
+              >
+                <img
+                  alt="QR grupo WhatsApp"
+                  className="h-12 w-12 rounded bg-white p-1"
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=96x96&data=${encodeURIComponent(groupInviteUrl)}`}
+                />
+                <span className="mt-1 inline-flex items-center gap-1 text-xs font-black uppercase text-grass">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  Grupo WhatsApp
+                </span>
+              </a>
+            )}
           </div>
         </div>
         <div className="mt-4 grid max-w-[720px] gap-3 sm:grid-cols-[minmax(260px,1fr)_150px_auto]">

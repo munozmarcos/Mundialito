@@ -1,10 +1,11 @@
-import { recalculateMatch } from "@/lib/recalculate";
+﻿import { recalculateMatch } from "@/lib/recalculate";
 import { recalculateAllPodiumPoints } from "@/lib/podium";
 import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { fetchProviderResultsDetailed, teamsMatch, type ProviderResult } from "@/lib/results-provider";
 import { supabaseAdmin, supabaseAdminConfigured } from "@/lib/supabase";
 import { sendWebPushToAll } from "@/lib/web-push";
 import { hasWhatsAppGroup, sendWhatsAppGroup } from "@/lib/whatsapp";
+import { ICONS } from "@/lib/message-icons";
 
 function resultTimeMatches(match: any, result: ProviderResult) {
   if (!result.playedAt) return true;
@@ -55,10 +56,11 @@ async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: an
 
   const homeName = displayNameForTeam(match.home_team);
   const awayName = displayNameForTeam(match.away_team);
+  const label = `${flagEmojiForTeam(match.home_team, match.home_country_code)} ${homeName} ${match.home_goals}-${match.away_goals} ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${awayName}`;
 
   const push = await sendWebPushToAll({
     dedupeKey: `result-final:${match.id}:${match.home_goals}-${match.away_goals}`,
-    title: "Resultado final",
+    title: "Partido finalizado",
     body: `${homeName} ${match.home_goals}-${match.away_goals} ${awayName}`,
     url: "/ranking",
     tag: `result-final:${match.id}`
@@ -67,22 +69,13 @@ async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: an
   let whatsappSent = 0;
   const failures: string[] = [];
   if (hasWhatsAppGroup()) {
-    const dedupeKey = `group:result-final:${match.id}:${match.home_goals}-${match.away_goals}`;
-    const { error: logError } = await db.from("notification_logs").insert({
-      match_id: match.id,
-      kind: "whatsapp-result-final-group",
-      dedupe_key: dedupeKey
-    });
-    if (!logError) {
+    const kind = "whatsapp-result-final-group";
+    const dedupeKey = `group:result-final:${match.id}`;
+    const { count } = await db.from("notification_logs").select("id", { count: "exact", head: true }).eq("kind", kind).eq("dedupe_key", dedupeKey);
+    if ((count ?? 0) === 0) {
       try {
-        await sendWhatsAppGroup([
-          "🏁 *Partido finalizado*",
-          "",
-          `*${flagEmojiForTeam(match.home_team, match.home_country_code)} ${homeName} ${match.home_goals}-${match.away_goals} ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${awayName}*`,
-          "",
-          "El ranking ya fue actualizado.",
-          "Responde *$ranking* para ver la tabla."
-        ].join("\n"));
+        await sendWhatsAppGroup([`${ICONS.checkeredFlag} *Partido finalizado*`, "", `*${label}*`, "", "El ranking ya fue actualizado."].join("\n"));
+        await db.from("notification_logs").insert({ match_id: match.id, kind, dedupe_key: dedupeKey });
         whatsappSent = 1;
       } catch (error) {
         failures.push(`${homeName} vs ${awayName}: ${error instanceof Error ? error.message : "unknown"}`);
@@ -96,6 +89,7 @@ async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: an
 async function notifyLiveStart(db: ReturnType<typeof supabaseAdmin>, match: any) {
   const homeName = displayNameForTeam(match.home_team);
   const awayName = displayNameForTeam(match.away_team);
+  const label = `${flagEmojiForTeam(match.home_team, match.home_country_code)} ${homeName} vs ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${awayName}`;
 
   const push = await sendWebPushToAll({
     dedupeKey: `match-kickoff:${match.id}`,
@@ -108,22 +102,13 @@ async function notifyLiveStart(db: ReturnType<typeof supabaseAdmin>, match: any)
   let whatsappSent = 0;
   const failures: string[] = [];
   if (hasWhatsAppGroup()) {
+    const kind = "whatsapp-match-kickoff-group";
     const dedupeKey = `group:match-kickoff:${match.id}`;
-    const { error: logError } = await db.from("notification_logs").insert({
-      match_id: match.id,
-      kind: "whatsapp-match-kickoff-group",
-      dedupe_key: dedupeKey
-    });
-    if (!logError) {
+    const { count } = await db.from("notification_logs").select("id", { count: "exact", head: true }).eq("kind", kind).eq("dedupe_key", dedupeKey);
+    if ((count ?? 0) === 0) {
       try {
-        await sendWhatsAppGroup([
-          "🔴 *Partido en vivo*",
-          "",
-          `*${flagEmojiForTeam(match.home_team, match.home_country_code)} ${homeName} vs ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${awayName}*`,
-          "",
-          "El ranking se va actualizando con el resultado en vivo.",
-          "Responde *$ranking* para ver la tabla."
-        ].join("\n"));
+        await sendWhatsAppGroup([`${ICONS.redCircle} *Partido en vivo*`, "", `*${label}*`, "", "El ranking se va actualizando con el resultado en vivo."].join("\n"));
+        await db.from("notification_logs").insert({ match_id: match.id, kind, dedupe_key: dedupeKey });
         whatsappSent = 1;
       } catch (error) {
         failures.push(`${homeName} vs ${awayName}: ${error instanceof Error ? error.message : "unknown"}`);
@@ -196,6 +181,11 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
     const homeGoals = providerHomeGoals ?? local.home_goals;
     const awayGoals = providerAwayGoals ?? local.away_goals;
     const penaltyWinner = result.penaltyWinner ?? null;
+    const localIsFinal = local.status === "closed" && local.home_goals != null && local.away_goals != null;
+
+    if (localIsFinal && result.status === "playing") {
+      continue;
+    }
 
     if ((homeGoals == null || awayGoals == null) && result.statusOnly) {
       continue;
@@ -207,17 +197,16 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
       (local.penalty_winner ?? null) === penaltyWinner &&
       local.status === result.status;
 
+    if (result.status === "closed" && local.status === "closed") {
+      continue;
+    }
+
     if (sameResult && result.status === "playing") {
       const { error: heartbeatError } = await db
         .from("matches")
         .update({ result_updated_at: new Date().toISOString() })
         .eq("id", local.id);
       if (heartbeatError) throw heartbeatError;
-      const notification = await notifyLiveStart(db, local);
-      kickoffNotifications += notification.pushSent;
-      kickoffNotifications += notification.sent ?? 0;
-      if (notification.pushFailed) notificationFailures.push(`${local.home_team} vs ${local.away_team}: ${notification.pushFailed} push fallidos`);
-      notificationFailures.push(...(notification.failures ?? []));
       updated += 1;
       continue;
     }
@@ -240,7 +229,7 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
 
     if (updateError) throw updateError;
     await recalculateMatch(local.id);
-    if (result.status === "playing" && local.status !== "playing") {
+    if (result.status === "playing" && local.status !== "playing" && !localIsFinal) {
       const notification = await notifyLiveStart(db, {
         ...local,
         home_goals: homeGoals,
@@ -252,7 +241,7 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
       if (notification.pushFailed) notificationFailures.push(`${local.home_team} vs ${local.away_team}: ${notification.pushFailed} push fallidos`);
       notificationFailures.push(...(notification.failures ?? []));
     }
-    if (result.status === "closed") {
+    if (result.status === "closed" && local.status !== "closed") {
       const notification = await notifyFinalResult(db, {
         ...local,
         home_goals: homeGoals,

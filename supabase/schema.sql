@@ -73,7 +73,7 @@ create table if not exists podium_settings (
 
 create table if not exists notification_logs (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid not null references profiles(id) on delete cascade,
+  user_id uuid references profiles(id) on delete cascade,
   match_id uuid references matches(id) on delete cascade,
   kind text not null,
   dedupe_key text not null unique,

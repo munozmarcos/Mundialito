@@ -1,3 +1,5 @@
+import { ICONS } from "@/lib/message-icons";
+
 export function competitionRankForIndex<T>(rows: T[], index: number, score: (row: T) => number) {
   if (index <= 0) return 1;
   let rank = 1;
@@ -17,8 +19,8 @@ export function competitionRankMap<T>(rows: T[], key: (row: T) => string, score:
 }
 
 export function rankingPrefix(rank: number) {
-  if (rank === 1) return "🥇";
-  if (rank === 2) return "🥈";
-  if (rank === 3) return "🥉";
+  if (rank === 1) return ICONS.first;
+  if (rank === 2) return ICONS.second;
+  if (rank === 3) return ICONS.third;
   return `${rank}.`;
 }

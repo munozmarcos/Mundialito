@@ -622,30 +622,35 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
       return;
     }
 
-    setResults((current) => {
-      const next = { ...current };
-      for (const prediction of mine) {
-        const match = matches.find((item) => item.id === prediction.match_id);
-        const savedWinner = prediction.penalty_winner ?? "";
-        const winner =
-          savedWinner === "HOME" ||
-          savedWinner === match?.home_team
-            ? "HOME"
-            : savedWinner === "AWAY" || savedWinner === match?.away_team
-              ? "AWAY"
-              : next[prediction.match_id]?.winner ?? "";
-        next[prediction.match_id] = {
-          ...next[prediction.match_id],
-          home: prediction.home_goals,
-          away: prediction.away_goals,
-          winner
-        };
-      }
-      return next;
-    });
+    const baseResults = initialResults(matches);
+    let copied = 0;
+    const nextResults = { ...baseResults };
+    for (const prediction of mine) {
+      const match = matches.find((item) => item.id === prediction.match_id);
+      if (!match || prediction.home_goals == null || prediction.away_goals == null) continue;
+      const savedWinner = prediction.penalty_winner ?? "";
+      const winner =
+        savedWinner === "HOME" ||
+        savedWinner === match.home_team
+          ? "HOME"
+          : savedWinner === "AWAY" || savedWinner === match.away_team
+            ? "AWAY"
+            : nextResults[prediction.match_id]?.winner ?? "";
+      nextResults[prediction.match_id] = {
+        ...nextResults[prediction.match_id],
+        home: prediction.home_goals,
+        away: prediction.away_goals,
+        winner
+      };
+      copied += 1;
+    }
+    setResults(nextResults);
+    try {
+      window.localStorage.setItem(simulatorStorageKey(sessionUserId), JSON.stringify({ results: nextResults }));
+    } catch {}
     const userName = profiles.find((profile) => profile.id === sessionUserId)?.display_name ?? "tu usuario";
     const hasPodium = podiumPredictions.some((item) => item.user_id === sessionUserId && (item.champion_team || item.runner_up_team || item.third_place_team));
-    setCopyMessage(`Carga exitosa. Se cargaron ${mine.length} partidos${hasPodium ? ` y el podio anticipado de ${userName}` : ""}.`);
+    setCopyMessage(`Carga exitosa. Se cargaron ${copied} de ${mine.length} partidos${hasPodium ? ` y el podio anticipado de ${userName}` : ""}.`);
   }
 
   function applyBulk() {

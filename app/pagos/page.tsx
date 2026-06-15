@@ -87,6 +87,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams?: Pa
         participants={participants}
         paidParticipants={summary.paidParticipants}
         totalParticipants={summary.totalParticipants}
+        groupInviteUrl={process.env.WHATSAPP_GROUP_INVITE_URL}
       />
     </div>
   );

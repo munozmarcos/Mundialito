@@ -13,8 +13,10 @@ type NewsItem = {
   created_at: string;
 };
 
+const defaultNewsTitle = "Mundialito 🏆⚽";
+
 export default function AdminNewsPage() {
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(defaultNewsTitle);
   const [body, setBody] = useState("");
   const [news, setNews] = useState<NewsItem[]>([]);
   const [message, setMessage] = useState("");
@@ -51,7 +53,7 @@ export default function AdminNewsPage() {
       setMessage(data.error ?? "No se pudo crear la novedad.");
       return;
     }
-    setTitle("");
+    setTitle(defaultNewsTitle);
     setBody("");
     setNews((current) => [data.news, ...current]);
     setMessage("Novedad publicada.");

@@ -1,4 +1,4 @@
-import { getMatches, getRanking, type RankingRow } from "@/lib/data";
+﻿import { getMatches, getRanking, type RankingRow } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
@@ -6,6 +6,17 @@ import { getPodiumLockState, recalculateAllPodiumPoints, validatePodiumTeams } f
 import { competitionRankForIndex, rankingPrefix } from "@/lib/ranking-position";
 import { isPredictionLocked } from "@/lib/scoring";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
+import { ICONS } from "@/lib/message-icons";
+
+function argentinaDisplayDate(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Argentina/Buenos_Aires"
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("day")}/${get("month")}`;
+}
 
 type PendingMatch = {
   id?: string;
@@ -133,55 +144,55 @@ function matchLabel(match: Pick<MatchLite, "home_team" | "away_team" | "home_cou
 function extractTeamQuery(text: string) {
   return stripSelfCommandPrefix(text)
     .replace(/^(partidos?|fixture|calendario|resultados?|pendientes?|pronosticos?|podioanticipado|podio|ranking|tabla|reglas?|comandos?|ayuda)\b/gi, "")
-    .replace(/^(de|del|para|ver|quiero|como va|cómo va)\s+/gi, "")
+    .replace(/^(de|del|para|ver|quiero|como va|cÃ³mo va)\s+/gi, "")
     .trim();
 }
 
 function answerRules() {
   return [
-    "📋 *Reglas del Mundialito*",
+    "ðŸ“‹ *Reglas del Mundialito*",
     "",
-    "✅ *Tendencia correcta*",
+    "âœ… *Tendencia correcta*",
     "Gana local, gana visitante o empate = *1 punto*.",
     "",
-    "🎯 *Resultado exacto*",
-    "Si además acertás los goles exactos = *+2 puntos extra*.",
+    "ðŸŽ¯ *Resultado exacto*",
+    "Si ademÃ¡s acertÃ¡s los goles exactos = *+2 puntos extra*.",
     "Aplica igual en grupos y eliminatorias.",
     "En eliminatorias cuenta el resultado de los *120 minutos*.",
     "",
-    "🏆 *Podio anticipado*",
-    "Campeón = *3 pts*, Subcampeón = *2 pts*, 3er puesto = *1 pt*.",
+    "ðŸ† *Podio anticipado*",
+    "CampeÃ³n = *3 pts*, SubcampeÃ³n = *2 pts*, 3er puesto = *1 pt*.",
     "Se carga durante la fase de grupos y se cierra cuando se habilitan los 16vos o 15 minutos antes del primer partido de esa fase.",
     "",
-    "⚽ *Ejemplos*",
-    "🇦🇷 Argentina 2-1 🇲🇽 Mexico",
+    "âš½ *Ejemplos*",
+    "ðŸ‡¦ðŸ‡· Argentina 2-1 ðŸ‡²ðŸ‡½ Mexico",
     "_Tu apuesta 1-0 = 1 punto_",
     "",
-    "🇧🇷 Brasil 3-1 🇲🇦 Marruecos",
+    "ðŸ‡§ðŸ‡· Brasil 3-1 ðŸ‡²ðŸ‡¦ Marruecos",
     "_Tu apuesta 3-1 = 3 puntos_",
     "",
-    "🤝 Real 0-0 y apuesta 1-1 = *1 punto* por empate."
+    "ðŸ¤ Real 0-0 y apuesta 1-1 = *1 punto* por empate."
   ].join("\n");
 }
 
 function answerCommands() {
   return [
-    "⚽ *Comandos Mundialito*",
+    "âš½ *Comandos Mundialito*",
     "",
-    "🏆 *$ranking*",
+    "ðŸ† *$ranking*",
     "Tabla completa del prode.",
     "",
     "_Sin filtro:_",
     "_$ranking_",
     "",
-    "📋 *$reglas*",
+    "ðŸ“‹ *$reglas*",
     "Puntos, estados y podio anticipado.",
     "",
     "_Sin filtro:_",
     "_$reglas_",
     "",
-    "📅 *$partidos*",
-    "Próximos partidos.",
+    "ðŸ“… *$partidos*",
+    "PrÃ³ximos partidos.",
     "",
     "_Sin filtro:_",
     "_$partidos_",
@@ -189,7 +200,7 @@ function answerCommands() {
     "_Con filtro:_",
     "_$partidos Argentina_",
     "",
-    "🏁 *$resultados*",
+    "ðŸ *$resultados*",
     "Marcadores reales cargados.",
     "",
     "_Sin filtro:_",
@@ -198,20 +209,20 @@ function answerCommands() {
     "_Con filtro:_",
     "_$resultados Brasil_",
     "",
-    "⏳ *$pendientes*",
-    "Pronósticos abiertos que te faltan cargar. No incluye cerrados, bloqueados ni partidos que ya cargaste.",
+    "â³ *$pendientes*",
+    "PronÃ³sticos abiertos que te faltan cargar. No incluye cerrados, bloqueados ni partidos que ya cargaste.",
     "",
     "_Sin filtro:_",
     "_$pendientes_",
     "",
-    "⚽ *$pronosticos*",
+    "âš½ *$pronosticos*",
     "Tu historia cargada para copiar.",
     "",
     "_Sin filtro:_",
     "_$pronosticos_",
     "",
-    "🏆 *$podio*",
-    "Campeón, subcampeón y 3er puesto.",
+    "ðŸ† *$podio*",
+    "CampeÃ³n, subcampeÃ³n y 3er puesto.",
     "",
     "_Sin cargar:_",
     "_$podio_",
@@ -219,8 +230,8 @@ function answerCommands() {
     "_Para cargar:_",
     "_$podio Argentina Brasil Uruguay_",
     "",
-    "✍️ *$carga*",
-    "Carga masiva de pronósticos.",
+    "âœï¸ *$carga*",
+    "Carga masiva de pronÃ³sticos.",
     "",
     "_Sin carga:_",
     "_$carga_",
@@ -230,7 +241,7 @@ function answerCommands() {
     "_Argentina 2-1 Mexico_",
     "_Brasil 3-1 Marruecos_",
     "",
-    "🧭 *$comandos*",
+    "ðŸ§­ *$comandos*",
     "Ver esta ayuda.",
     "",
     "_Sin filtro:_",
@@ -306,11 +317,11 @@ function podiumTeamLine(label: string, team?: string | null, points?: number | n
 }
 
 async function answerPodio(text: string, from?: string) {
-  if (!supabaseConfigured()) return "⚽ *Mundialito*\nTodavía no está lista la base. Probá de nuevo en unos minutos.";
+  if (!supabaseConfigured()) return "âš½ *Mundialito*\nTodavÃ­a no estÃ¡ lista la base. ProbÃ¡ de nuevo en unos minutos.";
 
   const profile = await findProfileByPhone(from);
-  if (!profile) return "⚽ *Podio anticipado*\nNo tengo registrado tu WhatsApp como participante.";
-  if (!profile.paid) return "🏆 *Podio anticipado*\nTenés el pago pendiente. Cuando quede confirmado, se habilita la carga.";
+  if (!profile) return "âš½ *Podio anticipado*\nNo tengo registrado tu WhatsApp como participante.";
+  if (!profile.paid) return "ðŸ† *Podio anticipado*\nTenÃ©s el pago pendiente. Cuando quede confirmado, se habilita la carga.";
 
   const db = supabaseAdmin();
   const payload = extractPodiumPayload(text);
@@ -320,26 +331,26 @@ async function answerPodio(text: string, from?: string) {
     const { data, error } = await db.from("podium_predictions").select("*").eq("user_id", profile.id).maybeSingle();
     if (error) throw error;
     return [
-      "🏆 *Podio anticipado*",
-      podiumTeamLine("Campeón +3", data?.champion_team, data?.champion_points),
-      podiumTeamLine("Subcampeón +2", data?.runner_up_team, data?.runner_up_points),
+      "ðŸ† *Podio anticipado*",
+      podiumTeamLine("CampeÃ³n +3", data?.champion_team, data?.champion_points),
+      podiumTeamLine("SubcampeÃ³n +2", data?.runner_up_team, data?.runner_up_points),
       podiumTeamLine("3er puesto +1", data?.third_place_team, data?.third_place_points),
       "",
-      lockState.locked ? "El podio ya está cerrado." : "Para cargarlo:",
+      lockState.locked ? "El podio ya estÃ¡ cerrado." : "Para cargarlo:",
       lockState.locked ? "" : "_$podio Argentina Brasil Uruguay_"
     ].join("\n");
   }
 
   if (lockState.locked) {
-    return `🏆 *Podio anticipado*\n${lockState.reason ?? "El podio ya está cerrado."}`;
+    return `ðŸ† *Podio anticipado*\n${lockState.reason ?? "El podio ya estÃ¡ cerrado."}`;
   }
 
   const selectableTeams = await getSelectableTeams(db);
   const rawTeams = splitPodiumTeams(payload, selectableTeams);
   if (rawTeams.length !== 3) {
     return [
-      "🏆 *Podio anticipado*",
-      "Mandame 3 selecciones en orden: campeón, subcampeón y 3er puesto.",
+      "ðŸ† *Podio anticipado*",
+      "Mandame 3 selecciones en orden: campeÃ³n, subcampeÃ³n y 3er puesto.",
       "",
       "Ejemplo:",
       "_$podio Argentina Brasil Uruguay_"
@@ -349,15 +360,15 @@ async function answerPodio(text: string, from?: string) {
   const selected = rawTeams.map((team) => findSelectableTeam(team, selectableTeams));
   if (selected.some((team) => !team)) {
     return [
-      "🏆 *Podio anticipado*",
-      "No encontré una de esas selecciones en el fixture.",
-      "Probá con nombres como Argentina, Brasil, Francia."
+      "ðŸ† *Podio anticipado*",
+      "No encontrÃ© una de esas selecciones en el fixture.",
+      "ProbÃ¡ con nombres como Argentina, Brasil, Francia."
     ].join("\n");
   }
 
   const [champion, runnerUp, thirdPlace] = selected as Array<{ name: string; code?: string | null }>;
   if (!validatePodiumTeams(champion.name, runnerUp.name, thirdPlace.name)) {
-    return "🏆 *Podio anticipado*\nNo podés repetir selección en el podio.";
+    return "ðŸ† *Podio anticipado*\nNo podÃ©s repetir selecciÃ³n en el podio.";
   }
 
   const { error } = await db
@@ -376,12 +387,12 @@ async function answerPodio(text: string, from?: string) {
   await recalculateAllPodiumPoints(db);
 
   return [
-    "✅ *Podio guardado*",
-    podiumTeamLine("Campeón +3", champion.name),
-    podiumTeamLine("Subcampeón +2", runnerUp.name),
+    "âœ… *Podio guardado*",
+    podiumTeamLine("CampeÃ³n +3", champion.name),
+    podiumTeamLine("SubcampeÃ³n +2", runnerUp.name),
     podiumTeamLine("3er puesto +1", thirdPlace.name),
     "",
-    "Podés verlo cuando quieras con *$podio*."
+    "PodÃ©s verlo cuando quieras con *$podio*."
   ].join("\n");
 }
 
@@ -397,6 +408,17 @@ function rankingLine(
   return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
 }
 
+function rankingLineForGroupCommand(
+  ranking: Pick<RankingRow, "user_id" | "display_name" | "total_points">[],
+  row: Pick<RankingRow, "user_id" | "display_name" | "total_points">,
+  index: number
+) {
+  const rank = competitionRankForIndex(ranking, index, (item) => item.total_points);
+  const prefix = rankingPrefix(rank);
+  if (rank <= 3) return `*${prefix} ${row.display_name} - ${row.total_points} pts*`;
+  return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
+}
+
 export async function findProfileByPhone(from?: string) {
   if (!from || !supabaseConfigured()) return null;
   const db = supabaseAdmin();
@@ -408,11 +430,11 @@ export async function findProfileByPhone(from?: string) {
 async function savePredictionFromWhatsApp(text: string, from?: string) {
   const prediction = parsePrediction(text);
   if (!prediction) return null;
-  if (!supabaseConfigured()) return "⚽ *Mundialito*\nTodavía no está lista la base. Probá de nuevo en unos minutos.";
+  if (!supabaseConfigured()) return "âš½ *Mundialito*\nTodavÃ­a no estÃ¡ lista la base. ProbÃ¡ de nuevo en unos minutos.";
 
   const profile = await findProfileByPhone(from);
-  if (!profile) return "⚽ *Mundialito*\nNo tengo registrado tu WhatsApp como participante.";
-  if (!profile.paid) return "⚽ *Mundialito*\nTenés el pago pendiente. Cuando quede confirmado, se habilita la carga de pronósticos.";
+  if (!profile) return "âš½ *Mundialito*\nNo tengo registrado tu WhatsApp como participante.";
+  if (!profile.paid) return "âš½ *Mundialito*\nTenÃ©s el pago pendiente. Cuando quede confirmado, se habilita la carga de pronÃ³sticos.";
 
   const db = supabaseAdmin();
   const { data: matches, error: matchesError } = await db
@@ -425,9 +447,9 @@ async function savePredictionFromWhatsApp(text: string, from?: string) {
   const match = (matches ?? []).find(
     (item) => teamsAreClose(prediction.homeTeam, item.home_team) && teamsAreClose(prediction.awayTeam, item.away_team)
   );
-  if (match && isMatchBlockedUntilOfficial(match)) return "⚽ *Mundialito*\nEse cruce todavía no está confirmado oficialmente.";
-  if (!match) return `⚽ *Mundialito*\nNo encontré partido abierto para ${prediction.homeTeam} vs ${prediction.awayTeam}.`;
-  if (isPredictionLocked(match.kickoff_at, match.locked)) return `⚽ *Mundialito*\nEse partido ya está cerrado: ${displayNameForTeam(match.home_team)} vs ${displayNameForTeam(match.away_team)}.`;
+  if (match && isMatchBlockedUntilOfficial(match)) return "âš½ *Mundialito*\nEse cruce todavÃ­a no estÃ¡ confirmado oficialmente.";
+  if (!match) return `âš½ *Mundialito*\nNo encontrÃ© partido abierto para ${prediction.homeTeam} vs ${prediction.awayTeam}.`;
+  if (isPredictionLocked(match.kickoff_at, match.locked)) return `âš½ *Mundialito*\nEse partido ya estÃ¡ cerrado: ${displayNameForTeam(match.home_team)} vs ${displayNameForTeam(match.away_team)}.`;
 
   const savedAt = new Date().toISOString();
   const { error } = await db.from("predictions").upsert(
@@ -444,7 +466,7 @@ async function savePredictionFromWhatsApp(text: string, from?: string) {
   if (error) throw error;
 
   return [
-    "✅ *Predicción guardada*",
+    "âœ… *PredicciÃ³n guardada*",
     matchLabel(match),
     `Tu apuesta: *${prediction.homeGoals}-${prediction.awayGoals}*`,
     `Jugador: ${profile.display_name}`
@@ -455,20 +477,20 @@ async function saveBulkPredictionsFromWhatsApp(text: string, from?: string) {
   const payload = extractBulkPayload(text);
   if (!payload) {
     return [
-      "⚽ *Carga masiva*",
-      "Mandame el bloque en el mismo mensaje, así:",
+      "âš½ *Carga masiva*",
+      "Mandame el bloque en el mismo mensaje, asÃ­:",
       "",
       "*$carga*",
-      "🇦🇷 Argentina 2-1 🇲🇽 Mexico",
-      "🇧🇷 Brazil 3-1 🇲🇦 Morocco"
+      "ðŸ‡¦ðŸ‡· Argentina 2-1 ðŸ‡²ðŸ‡½ Mexico",
+      "ðŸ‡§ðŸ‡· Brazil 3-1 ðŸ‡²ðŸ‡¦ Morocco"
     ].join("\n");
   }
 
-  if (!supabaseConfigured()) return "⚽ *Mundialito*\nTodavía no está lista la base. Probá de nuevo en unos minutos.";
+  if (!supabaseConfigured()) return "âš½ *Mundialito*\nTodavÃ­a no estÃ¡ lista la base. ProbÃ¡ de nuevo en unos minutos.";
 
   const profile = await findProfileByPhone(from);
-  if (!profile) return "⚽ *Mundialito*\nNo tengo registrado tu WhatsApp como participante.";
-  if (!profile.paid) return "⚽ *Carga masiva*\nTenés el pago pendiente. Cuando quede confirmado, se habilita la carga.";
+  if (!profile) return "âš½ *Mundialito*\nNo tengo registrado tu WhatsApp como participante.";
+  if (!profile.paid) return "âš½ *Carga masiva*\nTenÃ©s el pago pendiente. Cuando quede confirmado, se habilita la carga.";
 
   const db = supabaseAdmin();
   const { data: matches, error: matchesError } = await db
@@ -528,13 +550,13 @@ async function saveBulkPredictionsFromWhatsApp(text: string, from?: string) {
   }
 
   return [
-    "✅ *Carga masiva procesada*",
+    "âœ… *Carga masiva procesada*",
     `Jugador: ${profile.display_name}`,
     `Guardadas: *${dedupedRows.length}*`,
     `Omitidas: *${skipped}*`,
-    `Líneas inválidas: *${invalid}*`,
+    `LÃ­neas invÃ¡lidas: *${invalid}*`,
     "",
-    "Podés revisar con *$pronosticos*."
+    "PodÃ©s revisar con *$pronosticos*."
   ].join("\n");
 }
 
@@ -547,7 +569,7 @@ async function answerUpcoming(text: string) {
     .slice(0, 8);
 
   if (!upcoming.length && query) {
-    return `📅 *Próximos partidos*\nNo encontré pendientes para "${extractTeamQuery(text)}".\nProbá *$partidos* o *$resultados*.`;
+    return `ðŸ“… *PrÃ³ximos partidos*\nNo encontrÃ© pendientes para "${extractTeamQuery(text)}".\nProbÃ¡ *$partidos* o *$resultados*.`;
   }
 
   if (!upcoming.length) {
@@ -555,19 +577,19 @@ async function answerUpcoming(text: string) {
       .filter((match) => match.home_goals != null && match.away_goals != null)
       .slice(-5)
       .reverse();
-    if (!recent.length) return "📅 *Próximos partidos*\nTodavía no hay partidos cargados.";
+    if (!recent.length) return "ðŸ“… *PrÃ³ximos partidos*\nTodavÃ­a no hay partidos cargados.";
     return [
-      "📅 *Próximos partidos*",
-      "No quedan pendientes. Últimos resultados:",
+      "ðŸ“… *PrÃ³ximos partidos*",
+      "No quedan pendientes. Ãšltimos resultados:",
       ...recent.map((match) => `${matchLabel(match)}\nMarcador: *${match.home_goals}-${match.away_goals}*`)
     ].join("\n");
   }
 
   return [
-    "📅 *Próximos partidos*",
+    "ðŸ“… *PrÃ³ximos partidos*",
     ...upcoming.map((match) => [
       matchLabel(match),
-      `🕒 ${formatArgentinaDateTime(match.kickoff_at)}`,
+      `ðŸ•’ ${formatArgentinaDateTime(match.kickoff_at)}`,
       match.group_name ? `Grupo ${match.group_name}` : match.stage
     ].join("\n"))
   ].join("\n");
@@ -581,9 +603,9 @@ async function answerResults(text: string) {
     .filter((match) => !query || teamsAreClose(query, match.home_team) || teamsAreClose(query, match.away_team))
     .slice(0, 8);
 
-  if (!results.length) return "🏁 *Resultados reales*\nTodavía no hay resultados reales para esa búsqueda.";
+  if (!results.length) return "ðŸ *Resultados reales*\nTodavÃ­a no hay resultados reales para esa bÃºsqueda.";
   return [
-    "🏁 *Resultados reales*",
+    "ðŸ *Resultados reales*",
     ...results.map((match) => `${matchLabel(match)}\nMarcador: *${match.home_goals}-${match.away_goals}*`)
   ].join("\n");
 }
@@ -592,9 +614,9 @@ async function answerPending(from?: string) {
   const profile = await findProfileByPhone(from);
   if (!profile || !supabaseConfigured()) {
     return [
-      "⏳ *Pendientes de predicción*",
+      "â³ *Pendientes de predicciÃ³n*",
       "No pude identificar tu WhatsApp como participante.",
-      "Escribile al admin para revisar que tu número esté bien cargado."
+      "Escribile al admin para revisar que tu nÃºmero estÃ© bien cargado."
     ].join("\n");
   }
 
@@ -618,25 +640,25 @@ async function answerPending(from?: string) {
   const loaded = available.length - pending.length;
   if (!pending.length) {
     return [
-      "⏳ *Pendientes de predicción*",
-      `Cargados: *${loaded} / ${available.length}* pronósticos disponibles.`,
-      "No tenés partidos pendientes para predecir.",
+      "â³ *Pendientes de predicciÃ³n*",
+      `Cargados: *${loaded} / ${available.length}* pronÃ³sticos disponibles.`,
+      "No tenÃ©s partidos pendientes para predecir.",
       "Los partidos cerrados o bloqueados no cuentan."
     ].join("\n");
   }
 
   return [
-    "⏳ *Pendientes de predicción*",
-    `Cargados: *${loaded} / ${available.length}* pronósticos disponibles.`,
-    "Próximos pendientes a jugarse:",
+    "â³ *Pendientes de predicciÃ³n*",
+    `Cargados: *${loaded} / ${available.length}* pronÃ³sticos disponibles.`,
+    "PrÃ³ximos pendientes a jugarse:",
     "",
-    ...pending.slice(0, 8).map((match) => `${matchLabel(match)}\n🕒 ${formatArgentinaDateTime(match.kickoff_at)}`)
+    ...pending.slice(0, 8).map((match) => `${matchLabel(match)}\nðŸ•’ ${formatArgentinaDateTime(match.kickoff_at)}`)
   ].join("\n");
 }
 
 async function answerPronosticos(from?: string) {
   const profile = await findProfileByPhone(from);
-  if (!profile || !supabaseConfigured()) return "⚽ *Pronósticos*\nNo tengo registrado tu WhatsApp como participante.";
+  if (!profile || !supabaseConfigured()) return "âš½ *PronÃ³sticos*\nNo tengo registrado tu WhatsApp como participante.";
 
   const db = supabaseAdmin();
   const [{ data, error }, { data: podium, error: podiumError }] = await Promise.all([
@@ -660,18 +682,18 @@ async function answerPronosticos(from?: string) {
   const podiumLines = podium?.champion_team || podium?.runner_up_team || podium?.third_place_team
     ? [
         "",
-        "🏆 *Podio anticipado*",
-        podiumTeamLine("Campeón +3", podium?.champion_team),
-        podiumTeamLine("Subcampeón +2", podium?.runner_up_team),
+        "ðŸ† *Podio anticipado*",
+        podiumTeamLine("CampeÃ³n +3", podium?.champion_team),
+        podiumTeamLine("SubcampeÃ³n +2", podium?.runner_up_team),
         podiumTeamLine("3er puesto +1", podium?.third_place_team),
         `Puntos actuales: *${podium?.points ?? 0} pts*`
       ]
     : [];
 
-  if (!rows.length && !podiumLines.length) return "⚽ *Pronósticos*\nTodavía no tenés predicciones cargadas.";
+  if (!rows.length && !podiumLines.length) return "âš½ *PronÃ³sticos*\nTodavÃ­a no tenÃ©s predicciones cargadas.";
 
   return [
-    `⚽ *Pronósticos de ${profile.display_name}*`,
+    `âš½ *PronÃ³sticos de ${profile.display_name}*`,
     "Copialo como historia o pegalo en la carga masiva del simulador:",
     "",
     ...rows.map(({ prediction, match }) => {
@@ -700,15 +722,31 @@ export async function answerWhatsAppCommand(text: string, from?: string) {
 
   if (clean.includes("ranking") || clean.includes("tabla")) {
     const ranking = await getRanking();
-    if (!ranking.length) return "🏆 *Ranking Mundialito*\nTodavía no hay participantes en el ranking.";
+    if (!ranking.length) return `${ICONS.trophy} *Ranking Mundialito*\nTodavía no hay participantes en el ranking.`;
     const profile = await findProfileByPhone(from);
+    const podium: string[] = [];
+    const others: string[] = [];
+    ranking.forEach((row, index) => {
+      const rank = competitionRankForIndex(ranking, index, (item) => item.total_points);
+      const prefix = rankingPrefix(rank);
+      const isHighlighted = profile?.id && row.user_id === profile.id;
+      const line = rank <= 3 || isHighlighted
+        ? `*${prefix} ${row.display_name} - ${row.total_points} pts*`
+        : `${prefix} ${row.display_name} - *${row.total_points} pts*`;
+      if (rank <= 3) podium.push(line);
+      else others.push(line);
+    });
     return [
-      "🏆 *Ranking Mundialito*",
+      `${ICONS.trophy} *Ranking Mundialito*`,
+      `${ICONS.calendar} ${argentinaDisplayDate()}`,
       "",
-      ...ranking.map((row, index) => rankingLine(ranking, row, index, profile?.id))
+      ...podium,
+      ...(others.length ? ["", ...others] : [])
     ].join("\n");
   }
 
   if (clean.includes("pendiente")) return answerPending(from);
   return answerCommands();
 }
+
+

@@ -1,6 +1,7 @@
 import { internalEmailForPhone, normalizePhone, publicPhone } from "@/lib/app-auth";
 import { displayNameExists, normalizeDisplayName, validateDisplayName } from "@/lib/profiles";
 import { requireAdmin, supabaseAdmin } from "@/lib/supabase";
+import { sendGroupInviteIfPaid as sendGroupInviteMessageIfPaid } from "@/lib/whatsapp-group-invite";
 import { sendWhatsApp } from "@/lib/whatsapp";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -110,7 +111,7 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  const groupInviteWarning = await sendGroupInviteIfPaid(data);
+  const groupInviteWarning = await sendGroupInviteMessageIfPaid(data);
   return NextResponse.json({ profile: data, groupInviteWarning });
 }
 
@@ -149,7 +150,7 @@ export async function PUT(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   const becamePaid = !previousProfile?.paid && data.paid;
-  const groupInviteWarning = becamePaid ? await sendGroupInviteIfPaid(data) : null;
+  const groupInviteWarning = becamePaid ? await sendGroupInviteMessageIfPaid(data) : null;
   return NextResponse.json({ profile: data, groupInviteWarning });
 }
 

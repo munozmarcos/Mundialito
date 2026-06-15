@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { AdminBackButton } from "@/components/admin-back-button";
 import { CheckSquare, MessageCircle, Search, Send, Square, UsersRound } from "lucide-react";
@@ -15,7 +15,7 @@ type Recipient = {
 type Filter = "group" | "all" | "paid" | "unpaid";
 
 const filters: { value: Filter; label: string }[] = [
-  { value: "group", label: "Grupo" },
+  { value: "group", label: "Grupo WhatsApp" },
   { value: "all", label: "Todos" },
   { value: "paid", label: "Pagos" },
   { value: "unpaid", label: "Impagos" }
@@ -175,12 +175,13 @@ export default function WhatsAppAdminPage() {
                   onClick={() => setFilter(item.value)}
                   type="button"
                 >
+                  {item.value === "group" && <MessageCircle className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />}
                   {item.label}
                 </button>
               ))}
             </div>
             {filter !== "group" && (
-              <div className="grid max-w-xl gap-3 sm:grid-cols-[minmax(220px,1fr)_44px]">
+              <div className="grid max-w-[360px] grid-cols-[minmax(0,1fr)_44px] gap-3">
                 <label className="relative block">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" />
                   <input className="field h-11 pl-11 text-left" placeholder="Buscar apodo o nro" value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -231,3 +232,5 @@ export default function WhatsAppAdminPage() {
     </div>
   );
 }
+
+

@@ -416,6 +416,7 @@ function PredictionCard({
               pattern="[0-9]*"
               type="text"
               value={homeGoals}
+              onBlur={() => void saveDraft(false)}
               onChange={(event) => {
                 const value = parseGoalInput(event.target.value);
                 if (value !== null && (value === "" || value <= 30)) {
@@ -436,6 +437,7 @@ function PredictionCard({
               pattern="[0-9]*"
               type="text"
               value={awayGoals}
+              onBlur={() => void saveDraft(false)}
               onChange={(event) => {
                 const value = parseGoalInput(event.target.value);
                 if (value !== null && (value === "" || value <= 30)) {
