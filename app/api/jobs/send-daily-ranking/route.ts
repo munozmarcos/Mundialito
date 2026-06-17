@@ -67,7 +67,7 @@ async function findCompletedMatchDay(db: ReturnType<typeof supabaseAdmin>, now =
   const candidates = [argentinaDate(now), argentinaDate(addDays(now, -1))];
   const { data, error } = await db
     .from("matches")
-    .select("id,kickoff_at,status")
+    .select("id,kickoff_at,status,home_goals,away_goals")
     .gte("kickoff_at", "2026-06-11T00:00:00.000Z")
     .lte("kickoff_at", "2026-07-20T12:00:00.000Z");
 
@@ -77,7 +77,7 @@ async function findCompletedMatchDay(db: ReturnType<typeof supabaseAdmin>, now =
     if (!inWorldCupWindow(date)) continue;
     const matches = (data ?? []).filter((match) => kickoffDate(match) === date);
     if (!matches.length) continue;
-    if (matches.every((match) => match.status === "closed")) return date;
+    if (matches.every((match) => match.status === "closed" && match.home_goals != null && match.away_goals != null)) return date;
   }
 
   return null;

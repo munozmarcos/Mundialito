@@ -1,6 +1,6 @@
 ﻿import { getMatches, getRanking, type RankingRow } from "@/lib/data";
 import { formatArgentinaDateTime } from "@/lib/dates";
-import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
+import { displayNameForTeam, flagEmojiForTeam, searchKeysForTeam } from "@/lib/flags";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { getPodiumLockState, recalculateAllPodiumPoints, validatePodiumTeams } from "@/lib/podium";
 import { competitionRankForIndex, rankingPrefix } from "@/lib/ranking-position";
@@ -114,6 +114,14 @@ function normalizeText(value: string) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function teamSearchAliases(value: string) {
+  const compact = normalizeText(value).replace(/[.\s_-]+/g, "");
+  if (compact === "usa" || compact === "eeuu" || compact === "estadosunidos") {
+    return ["usa", "eeuu", "estados unidos", "united states"];
+  }
+  return [value];
+}
+
 function normalizePhone(value: string) {
   return value
     .replace(/@.+$/, "")
@@ -128,9 +136,30 @@ function phonesMatch(left: string, right: string) {
 }
 
 function teamsAreClose(query: string, team: string) {
-  const q = normalizeText(query);
+  const queryAliases = teamSearchAliases(query).map(normalizeText);
+  const teamAliases = teamSearchAliases(team).map(normalizeText);
   const t = normalizeText(team);
-  return t.includes(q) || q.includes(t) || t.split(/\s+/).some((part) => part.length >= 3 && q.includes(part));
+  return queryAliases.some((q) =>
+    teamAliases.some((candidate) => candidate.includes(q) || q.includes(candidate)) ||
+    t.includes(q) ||
+    q.includes(t) ||
+    t.split(/\s+/).some((part) => part.length >= 3 && q.includes(part))
+  );
+}
+
+function matchTeamQuery(query: string, team: string, code?: string | null) {
+  if (!query) return true;
+  const queryAliases = teamSearchAliases(query).map((item) => normalizeText(item).replace(/[.\s_-]+/g, ""));
+  const keys = searchKeysForTeam(team, code);
+  return queryAliases.some((q) =>
+    keys.some((key) => key.includes(q) || q.includes(key)) ||
+    teamsAreClose(query, team) ||
+    teamsAreClose(query, displayNameForTeam(team))
+  );
+}
+
+function matchQueryAgainstMatch(query: string, match: Pick<MatchLite, "home_team" | "away_team" | "home_country_code" | "away_country_code">) {
+  return matchTeamQuery(query, match.home_team, match.home_country_code) || matchTeamQuery(query, match.away_team, match.away_country_code);
 }
 
 function flagEmoji(team: string, explicit?: string | null) {
@@ -191,8 +220,8 @@ function answerCommands() {
     "_Sin filtro:_",
     "_$reglas_",
     "",
-    "ðŸ“… *$partidos*",
-    "PrÃ³ximos partidos.",
+    `${ICONS.calendar} *$partidos*`,
+    "Próximos partidos.",
     "",
     "_Sin filtro:_",
     "_$partidos_",
@@ -565,11 +594,11 @@ async function answerUpcoming(text: string) {
   const matches = (await getMatches()) as MatchLite[];
   const upcoming = matches
     .filter((match) => match.home_goals == null)
-    .filter((match) => !query || teamsAreClose(query, match.home_team) || teamsAreClose(query, match.away_team))
+    .filter((match) => !query || matchQueryAgainstMatch(query, match))
     .slice(0, 8);
 
   if (!upcoming.length && query) {
-    return `ðŸ“… *PrÃ³ximos partidos*\nNo encontrÃ© pendientes para "${extractTeamQuery(text)}".\nProbÃ¡ *$partidos* o *$resultados*.`;
+    return `${ICONS.calendar} *Próximos partidos*\nNo encontré pendientes para "${extractTeamQuery(text)}".\nProbá *$partidos* o *$resultados*.`;
   }
 
   if (!upcoming.length) {
@@ -577,19 +606,19 @@ async function answerUpcoming(text: string) {
       .filter((match) => match.home_goals != null && match.away_goals != null)
       .slice(-5)
       .reverse();
-    if (!recent.length) return "ðŸ“… *PrÃ³ximos partidos*\nTodavÃ­a no hay partidos cargados.";
+    if (!recent.length) return `${ICONS.calendar} *Próximos partidos*\nTodavía no hay partidos cargados.`;
     return [
-      "ðŸ“… *PrÃ³ximos partidos*",
-      "No quedan pendientes. Ãšltimos resultados:",
+      `${ICONS.calendar} *Próximos partidos*`,
+      "No quedan pendientes. Últimos resultados:",
       ...recent.map((match) => `${matchLabel(match)}\nMarcador: *${match.home_goals}-${match.away_goals}*`)
     ].join("\n");
   }
 
   return [
-    "ðŸ“… *PrÃ³ximos partidos*",
+    `${ICONS.calendar} *Próximos partidos*`,
     ...upcoming.map((match) => [
       matchLabel(match),
-      `ðŸ•’ ${formatArgentinaDateTime(match.kickoff_at)}`,
+      `${ICONS.clock} ${formatArgentinaDateTime(match.kickoff_at)}`,
       match.group_name ? `Grupo ${match.group_name}` : match.stage
     ].join("\n"))
   ].join("\n");
@@ -600,12 +629,12 @@ async function answerResults(text: string) {
   const matches = (await getMatches()) as MatchLite[];
   const results = matches
     .filter((match) => match.home_goals != null && match.away_goals != null)
-    .filter((match) => !query || teamsAreClose(query, match.home_team) || teamsAreClose(query, match.away_team))
+    .filter((match) => !query || matchQueryAgainstMatch(query, match))
     .slice(0, 8);
 
-  if (!results.length) return "ðŸ *Resultados reales*\nTodavÃ­a no hay resultados reales para esa bÃºsqueda.";
+  if (!results.length) return `${ICONS.checkeredFlag} *Resultados reales*\nTodavía no hay resultados reales para esa búsqueda.`;
   return [
-    "ðŸ *Resultados reales*",
+    `${ICONS.checkeredFlag} *Resultados reales*`,
     ...results.map((match) => `${matchLabel(match)}\nMarcador: *${match.home_goals}-${match.away_goals}*`)
   ].join("\n");
 }

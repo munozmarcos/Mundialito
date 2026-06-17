@@ -31,8 +31,8 @@ export async function POST(req: Request) {
   const db = supabaseAdmin();
   const url = new URL(req.url);
   const now = url.searchParams.get("now") ? new Date(url.searchParams.get("now")!) : new Date();
-  const from = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
-  const to = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
+  const from = new Date(now.getTime() - 6 * 60 * 1000).toISOString();
+  const to = now.toISOString();
 
   const { data: matches, error } = await db
     .from("matches")

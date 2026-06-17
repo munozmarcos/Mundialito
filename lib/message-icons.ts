@@ -1,6 +1,7 @@
 export const ICONS = {
   ball: String.fromCodePoint(0x26bd),
   calendar: String.fromCodePoint(0x1f4c5),
+  clock: String.fromCodePoint(0x1f552),
   checkeredFlag: String.fromCodePoint(0x1f3c1),
   lock: String.fromCodePoint(0x1f512),
   redCircle: String.fromCodePoint(0x1f534),

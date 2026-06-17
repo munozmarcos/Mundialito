@@ -15,6 +15,10 @@ const aliases: Record<string, string> = {
   czechia: "cz",
   chequia: "cz",
   "republica checa": "cz",
+  usa: "us",
+  eeuu: "us",
+  "ee uu": "us",
+  "ee.uu.": "us",
   "estados unidos": "us",
   "united states": "us",
   qatar: "qa",
@@ -143,6 +147,11 @@ const fifaToIso: Record<string, string> = {
   UZB: "uz"
 };
 
+const isoToFifa = Object.entries(fifaToIso).reduce<Record<string, string[]>>((acc, [fifa, iso]) => {
+  acc[iso] = [...(acc[iso] ?? []), fifa];
+  return acc;
+}, {});
+
 const displayNames: Record<string, string> = {
   argentina: "Argentina",
   mexico: "México",
@@ -160,6 +169,10 @@ const displayNames: Record<string, string> = {
   czechia: "Chequia",
   chequia: "Chequia",
   "republica checa": "República Checa",
+  usa: "Estados Unidos",
+  eeuu: "Estados Unidos",
+  "ee uu": "Estados Unidos",
+  "ee.uu.": "Estados Unidos",
   "estados unidos": "Estados Unidos",
   "united states": "Estados Unidos",
   qatar: "Qatar",
@@ -278,4 +291,27 @@ export function flagEmojiForTeam(team: string, explicit?: string | null) {
 export function displayNameForTeam(team: string) {
   if (isBracketPlaceholder(team)) return team;
   return displayNames[normalize(team)] ?? team;
+}
+
+export function searchKeysForTeam(team: string, explicit?: string | null) {
+  const keys = new Set<string>();
+  const add = (value?: string | null) => {
+    if (!value) return;
+    const clean = value.trim();
+    if (!clean) return;
+    keys.add(normalize(clean));
+    keys.add(normalize(clean).replace(/[.\s_-]+/g, ""));
+  };
+
+  add(team);
+  add(displayNameForTeam(team));
+  add(explicit);
+
+  const iso = countryCodeForTeam(team, explicit);
+  add(iso);
+  if (iso) {
+    for (const fifa of isoToFifa[iso] ?? []) add(fifa);
+  }
+
+  return [...keys];
 }
