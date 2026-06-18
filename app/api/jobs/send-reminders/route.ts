@@ -223,7 +223,7 @@ function reminderMessage(
 
   return [
 
-    manual ? `${ICONS.ball} *Pendientes Mundialito*` : `${ICONS.ball} *Mundialito - pendientes 4h*`,
+    manual ? `${ICONS.ball} *Pendientes Mundialito*` : `${ICONS.ball} *Mundialito - pendientes*`,
 
     "",
 
@@ -603,7 +603,7 @@ export async function POST(req: Request) {
 
         dedupeKey: manual ? undefined : `${user.id}:pending:${pending.map((match) => match.id).join("-")}`,
 
-        title: manual ? "Pendientes Mundialito" : "Pendientes 4h",
+        title: manual ? "Pendientes Mundialito" : "Pendientes Mundialito",
 
         body: `Te faltan ${stats.pending} de ${stats.available} partidos de la jornada.`,
         url: "/mi-prode",

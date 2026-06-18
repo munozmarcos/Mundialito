@@ -18,6 +18,16 @@ function argentinaDisplayDate(now = new Date()) {
   return `${get("day")}/${get("month")}`;
 }
 
+function argentinaMatchDate(value: string) {
+  const parts = new Intl.DateTimeFormat("es-AR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Argentina/Buenos_Aires"
+  }).formatToParts(new Date(value));
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("day")}/${get("month")}`;
+}
+
 type PendingMatch = {
   id?: string;
   home_team: string;
@@ -629,13 +639,24 @@ async function answerResults(text: string) {
   const matches = (await getMatches()) as MatchLite[];
   const results = matches
     .filter((match) => match.home_goals != null && match.away_goals != null)
-    .filter((match) => !query || matchQueryAgainstMatch(query, match))
-    .slice(0, 8);
+    .filter((match) => !query || matchQueryAgainstMatch(query, match));
 
-  if (!results.length) return `${ICONS.checkeredFlag} *Resultados reales*\nTodavía no hay resultados reales para esa búsqueda.`;
+  if (!results.length) return `${ICONS.checkeredFlag} *Resultados*\nTodavía no hay resultados para esa búsqueda.`;
+  const lines: string[] = [];
+  let currentDate = "";
+  for (const match of results) {
+    const date = argentinaMatchDate(match.kickoff_at);
+    if (date !== currentDate) {
+      if (lines.length) lines.push("");
+      lines.push(`*${date}*`);
+      currentDate = date;
+    }
+    lines.push(`${flagEmoji(match.home_team, match.home_country_code)} ${displayNameForTeam(match.home_team)} *${match.home_goals}-${match.away_goals}* ${flagEmoji(match.away_team, match.away_country_code)} ${displayNameForTeam(match.away_team)}`);
+  }
+
   return [
-    `${ICONS.checkeredFlag} *Resultados reales*`,
-    ...results.map((match) => `${matchLabel(match)}\nMarcador: *${match.home_goals}-${match.away_goals}*`)
+    `${ICONS.checkeredFlag} *Resultados*`,
+    ...lines
   ].join("\n");
 }
 
