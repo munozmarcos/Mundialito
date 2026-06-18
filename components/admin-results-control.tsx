@@ -209,6 +209,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
   const [teamFilter, setTeamFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [participantFilter, setParticipantFilter] = useState("");
+  const [predictionParticipantFilter, setPredictionParticipantFilter] = useState("");
   const [loadStatusFilter, setLoadStatusFilter] = useState("all");
   const [podiumLoadStatusFilter, setPodiumLoadStatusFilter] = useState("all");
   const [message, setMessage] = useState("");
@@ -293,6 +294,11 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
       return participantOk && predictionsOk && podiumOk;
     });
   }, [loadStats, loadStatusFilter, participantFilter, podiumLoadStatusFilter]);
+  const filteredPredictionProfiles = useMemo(() => {
+    const participant = normalizeFilter(predictionParticipantFilter);
+    if (!participant) return profiles;
+    return profiles.filter((profile) => normalizeFilter(profile.display_name).includes(participant));
+  }, [predictionParticipantFilter, profiles]);
 
   function updateLocalMatch(matchId: string, patch: Partial<Match>) {
     setMatches((current) => current.map((match) => (match.id === matchId ? { ...match, ...patch } : match)));
@@ -892,9 +898,30 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
         <article className="panel overflow-hidden">
           <div className="border-b border-line p-4">
             <h2 className="text-xl font-black">Apuestas de jugadores</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(220px,360px)_auto] sm:items-center">
+              <input
+                className="field min-h-10 px-3 text-center"
+                placeholder="Buscar participante"
+                value={predictionParticipantFilter}
+                onChange={(event) => setPredictionParticipantFilter(event.target.value)}
+              />
+              <button
+                className="btn secondary min-h-10 px-3"
+                disabled={!predictionParticipantFilter}
+                onClick={() => setPredictionParticipantFilter("")}
+                type="button"
+              >
+                Limpiar
+              </button>
+            </div>
           </div>
           <div className="match-card-grid p-4">
-            {profiles.map((profile) => {
+            {!filteredPredictionProfiles.length && (
+              <p className="rounded-lg border border-line bg-field p-4 text-center text-sm font-bold text-ink/60">
+                No hay participantes para ese filtro.
+              </p>
+            )}
+            {filteredPredictionProfiles.map((profile) => {
               const key = predictionKey(profile.id, selectedMatch.id);
               const existing = predictionMap[key];
               const draft = drafts[key] ?? { home: existing?.home_goals ?? "", away: existing?.away_goals ?? "", penaltyWinner: existing?.penalty_winner ?? null };
