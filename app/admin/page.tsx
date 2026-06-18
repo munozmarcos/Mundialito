@@ -14,7 +14,7 @@ const pages = [
 const jobs = [
   { path: "/api/jobs/sync-fixtures", icon: RefreshCw, title: "Actualizar partidos", text: "Trae fixture y cruces oficiales cuando cambian sedes, horarios, equipos o llaves.", cron: "Horario: todos los días 03:00" },
   { path: "/api/jobs/sync-results", icon: Trophy, title: "Actualizar resultados", text: "Trae marcadores reales, guarda resultados y recalcula puntos.", cron: "Horario: cada 5 minutos" },
-  { path: "/api/jobs/send-reminders", icon: ListChecks, title: "Recordatorios 4h", text: "Avisa por WhatsApp 4h antes del primer partido del dia y lista pendientes de hoy mas 2 dias.", cron: "Horario: cada 15 minutos" },
+  { path: "/api/jobs/send-reminders", icon: ListChecks, title: "Recordatorios 4h", text: "Avisa 4h antes del primer partido de la jornada, publica próximos en el grupo y recuerda pendientes por WhatsApp/push.", cron: "Horario: cada 15 minutos" },
   { path: "/api/jobs/lock-matches", icon: LockKeyhole, title: "Cerrar 15m", text: "Cierra partidos que empiezan en 15 minutos, incluyendo podio anticipado 15 minutos antes del primer 16vos.", cron: "Horario: cada 5 minutos" },
   { path: "/api/jobs/notify-kickoff", icon: MessageCircle, title: "Avisar inicio", text: "Notifica por WhatsApp los partidos que están por empezar.", cron: "Horario: cada 1 minuto" },
   { path: "/api/jobs/send-daily-ranking", icon: MessageCircle, title: "Envío Ranking", text: "Manda el ranking al cerrar el ultimo partido de la fecha.", cron: "Horario: cada 5 minutos; envia solo cuando termina la fecha" },

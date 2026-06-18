@@ -310,15 +310,15 @@ textarea {
   }
 
   .home-upcoming-card > div:first-child {
-    padding-right: 150px;
+    padding-right: 96px;
   }
 
   .home-upcoming-card .home-match-status-row {
     position: absolute;
     right: 16px;
     top: 14px;
-    width: auto;
-    max-width: calc(100% - 150px);
+    width: min(260px, calc(100% - 32px));
+    max-width: none;
   }
 
   .home-upcoming-card .home-match-controls {

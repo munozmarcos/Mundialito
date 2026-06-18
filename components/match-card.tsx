@@ -18,7 +18,7 @@ export function MatchCard({ match }: { match: Match }) {
         <div className="flex flex-wrap items-center justify-end gap-2">
           {status === "playing" && (
             <span className="text-[11px] italic text-ink/45">
-              {match.result_updated_at ? `Actualizado ${formatArgentinaDateTime(match.result_updated_at)}` : "En vivo"}
+              {match.result_updated_at ? formatArgentinaDateTime(match.result_updated_at) : "En vivo"}
             </span>
           )}
           {status === "playing" && (

@@ -23,7 +23,7 @@ const styles: Record<PillStatus, string> = {
 export function StatusPill({ status, label }: { status: PillStatus; label?: string }) {
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-full border px-2.5 py-1 text-xs font-bold ${
+      className={`inline-flex shrink-0 items-center justify-center rounded-full border px-2.5 py-1 text-xs font-bold ${
         status === "playing" ? "w-12 px-0" : ""
       } ${styles[status] ?? styles.closed}`}
     >

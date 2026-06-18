@@ -43,8 +43,8 @@ export function HomeMatchControls({
 
   return (
     <div className="home-match-controls grid justify-items-start gap-2 sm:justify-items-end">
-      <div className="home-match-status-row flex w-full flex-wrap items-center justify-end gap-2">
-        {updatedAt && <span className="text-[11px] italic text-ink/45">Actualizado {formatCompactDate(updatedAt)}</span>}
+      <div className="home-match-status-row flex w-full flex-nowrap items-center justify-end gap-2">
+        {updatedAt && <span className="min-w-0 truncate text-[11px] italic text-ink/45">{formatCompactDate(updatedAt)}</span>}
         {isPlaying && liveMinute && (
           <span className="w-12 rounded-full border border-red-400/70 bg-[#7f1020] px-0 py-0.5 text-center text-[11px] font-black text-white">
             {liveMinute}

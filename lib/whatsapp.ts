@@ -22,6 +22,33 @@ function decodeEscapedUnicode(value: string) {
     .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 }
 
+let ultraMsgConnectionCache: { checkedAt: number; ok: boolean; message?: string } | null = null;
+
+async function assertUltraMsgConnected(instance: string, token: string) {
+  const now = Date.now();
+  if (ultraMsgConnectionCache && now - ultraMsgConnectionCache.checkedAt < 20_000) {
+    if (ultraMsgConnectionCache.ok) return;
+    throw new Error(ultraMsgConnectionCache.message ?? "UltraMsg no conectado");
+  }
+
+  const res = await fetch(`https://api.ultramsg.com/${instance}/instance/me?token=${encodeURIComponent(token)}`, {
+    cache: "no-store"
+  });
+  const payload = await res.json().catch(() => null);
+  const error = payload && typeof payload === "object" && "error" in payload
+    ? String((payload as { error?: unknown }).error)
+    : "";
+
+  const ok = res.ok && !error;
+  ultraMsgConnectionCache = {
+    checkedAt: now,
+    ok,
+    message: ok ? undefined : `UltraMsg no conectado${error ? `: ${error}` : ""}. Escaneá el QR de la instancia.`
+  };
+
+  if (!ok) throw new Error(ultraMsgConnectionCache.message);
+}
+
 export async function sendWhatsApp(to: string, body: string) {
   const cleanBody = decodeEscapedUnicode(body);
   if (process.env.WHATSAPP_PROVIDER !== "ultramsg") {
@@ -38,6 +65,8 @@ export async function sendWhatsApp(to: string, body: string) {
     .replace(/^https?:\/\/api\.ultramsg\.com\//i, "")
     .replace(/^\/+|\/+$/g, "");
 
+  await assertUltraMsgConnected(instance, token);
+
   const res = await fetch(`https://api.ultramsg.com/${instance}/messages/chat`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -48,7 +77,23 @@ export async function sendWhatsApp(to: string, body: string) {
     const detail = await res.text().catch(() => "");
     throw new Error(`UltraMsg error ${res.status}${detail ? `: ${detail.slice(0, 180)}` : ""}`);
   }
-  return res.json();
+
+  const payload = await res.json().catch(() => null);
+  if (!payload || typeof payload !== "object") {
+    throw new Error("UltraMsg error: respuesta inválida");
+  }
+
+  const sentValue = "sent" in payload ? String((payload as { sent?: unknown }).sent).toLowerCase() : "";
+  const okValue = "ok" in payload ? Boolean((payload as { ok?: unknown }).ok) : undefined;
+  if (sentValue === "false" || okValue === false || "error" in payload) {
+    const message =
+      (payload as { error?: unknown; message?: unknown }).error ??
+      (payload as { error?: unknown; message?: unknown }).message ??
+      "envío rechazado";
+    throw new Error(`UltraMsg error: ${String(message).slice(0, 180)}`);
+  }
+
+  return payload;
 }
 
 export async function sendWhatsAppGroup(body: string) {

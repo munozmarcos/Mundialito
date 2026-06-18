@@ -105,6 +105,14 @@ function argentinaDayStart(date: Date) {
 
 }
 
+function argentinaJornadaStart(date: Date) {
+  const currentDayTwo = new Date(`${argentinaDateKey(date)}T02:00:00-03:00`);
+  if (date.getTime() < currentDayTwo.getTime()) {
+    return new Date(`${argentinaDateKey(addDays(currentDayTwo, -1))}T02:00:00-03:00`);
+  }
+  return currentDayTwo;
+}
+
 
 
 function addDays(date: Date, days: number) {
@@ -117,8 +125,8 @@ function addDays(date: Date, days: number) {
 
 }
 
-function tomorrowEarlyEnd(todayStart: Date) {
-  return new Date(`${argentinaDateKey(addDays(todayStart, 1))}T10:00:00-03:00`);
+function tomorrowEarlyEnd(jornadaStart: Date) {
+  return new Date(`${argentinaDateKey(addDays(jornadaStart, 1))}T02:00:00-03:00`);
 }
 
 
@@ -271,7 +279,7 @@ export async function POST(req: Request) {
 
   const now = url.searchParams.get("now") ? new Date(url.searchParams.get("now")!) : new Date();
 
-  const todayStart = argentinaDayStart(now);
+  const todayStart = argentinaJornadaStart(now);
 
   const reminderWindowEnd = tomorrowEarlyEnd(todayStart);
 
@@ -309,13 +317,21 @@ export async function POST(req: Request) {
 
   });
 
-  const openReminderWindowMatches = reminderWindowMatches.filter((match) => match.home_goals == null);
+  const upcomingReminderWindowMatches = reminderWindowMatches.filter((match) => {
+
+    const kickoff = new Date(match.kickoff_at).getTime();
+
+    return kickoff > now.getTime();
+
+  });
+
+  const openReminderWindowMatches = upcomingReminderWindowMatches.filter((match) => match.home_goals == null);
 
 
 
   if (!manual) {
 
-    const firstToday = reminderWindowMatches[0];
+    const firstToday = upcomingReminderWindowMatches[0];
 
     const msUntilFirstToday = firstToday ? new Date(firstToday.kickoff_at).getTime() - now.getTime() : null;
 
@@ -337,7 +353,7 @@ export async function POST(req: Request) {
 
         skipped: true,
 
-        reason: firstToday ? "outside-first-match-4h-window" : "no-matches-in-reminder-window",
+        reason: firstToday ? "outside-first-match-4h-window" : "no-upcoming-matches-in-reminder-window",
 
         failures: [] as string[]
 
@@ -422,7 +438,7 @@ export async function POST(req: Request) {
 
       .from("predictions")
 
-      .select("user_id,match_id")
+      .select("user_id,match_id,home_goals,away_goals")
 
       .in("match_id", matchIds),
 
@@ -452,7 +468,11 @@ export async function POST(req: Request) {
 
 
 
-  const predicted = new Set((predictions ?? []).map((prediction) => `${prediction.user_id}:${prediction.match_id}`));
+  const predicted = new Set(
+    (predictions ?? [])
+      .filter((prediction) => prediction.home_goals != null && prediction.away_goals != null)
+      .map((prediction) => `${prediction.user_id}:${prediction.match_id}`)
+  );
 
   const sentLogs = new Set((logs ?? []).map((log) => log.dedupe_key));
 
@@ -470,62 +490,62 @@ export async function POST(req: Request) {
 
 
 
-  if (!manual && hasWhatsAppGroup()) {
+  const pendingByUser: Array<{ user: Profile; pending: ReminderMatch[]; notifyPending: ReminderMatch[]; stats: { loaded: number; available: number; pending: number } }> = [];
 
-    const pendingByUser: Array<{ user: Profile; pending: ReminderMatch[]; stats: { loaded: number; available: number; pending: number } }> = [];
+  for (const user of (users ?? []) as Profile[]) {
 
+    const userPending = matches.filter((match) => {
 
+      const key = `${user.id}:${match.id}`;
 
-    for (const user of (users ?? []) as Profile[]) {
+      return !predicted.has(key);
 
-      const userPending = matches.filter((match) => {
+    });
 
-        const key = `${user.id}:${match.id}`;
+    const notifyPending = userPending.filter((match) => {
 
-        const dedupeKey = `${match.id}:${user.id}:4h`;
+      const dedupeKey = `${match.id}:${user.id}:4h`;
 
-        return !predicted.has(key) && !sentLogs.has(dedupeKey);
+      return manual || !sentLogs.has(dedupeKey);
 
-      });
+    });
 
-      if (!userPending.length) continue;
+    if (!userPending.length) continue;
 
-      pendingByUser.push({
+    pendingByUser.push({
 
-        user,
+      user,
 
-        pending: userPending,
+      pending: userPending,
 
-        stats: { loaded: matches.length - userPending.length, available: matches.length, pending: userPending.length }
+      notifyPending,
 
-      });
+      stats: { loaded: matches.length - userPending.length, available: matches.length, pending: userPending.length }
 
-    }
+    });
 
+  }
 
+  if (hasWhatsAppGroup()) {
 
     const groupDedupeKey = `group:reminder-4h:${argentinaDateKey(todayStart)}`;
-    const { count: groupLogCount } = await db
-
-      .from("notification_logs")
-
-      .select("id", { count: "exact", head: true })
-
-      .eq("kind", "whatsapp-reminder-4h-group")
-
-      .eq("dedupe_key", groupDedupeKey);
-
-
+    const { count: groupLogCount } = manual
+      ? { count: 0 }
+      : await db
+          .from("notification_logs")
+          .select("id", { count: "exact", head: true })
+          .eq("kind", "whatsapp-reminder-4h-group")
+          .eq("dedupe_key", groupDedupeKey);
 
     if ((groupLogCount ?? 0) === 0) {
-      const pendingLines = pendingByUser.map(({ user, stats }) => `- ${user.display_name}: *${stats.pending}* pendientes de hoy (${stats.loaded}/${stats.available})`);
-      const pendingBlock = pendingLines.length ? ["*Pendientes de hoy por cargar:*", ...pendingLines, ""] : [];
+      const pendingLines = pendingByUser.map(({ user, stats }) => `- ${user.display_name}: *${stats.pending}* pendientes de la jornada (${stats.loaded}/${stats.available})`);
+      const pendingBlock = pendingLines.length ? ["*Pendientes de la jornada por cargar:*", ...pendingLines, ""] : [];
       const groupBody = [
         `${ICONS.ball} *Mundialito - jornada de hoy*`,
         "",
         "*Próximos partidos*",
         "",
-        ...reminderWindowMatches.flatMap((match) => [
+        ...upcomingReminderWindowMatches.flatMap((match) => [
 
           `*${matchLabel(match)}*`,
 
@@ -539,20 +559,21 @@ export async function POST(req: Request) {
         appUrl ? `${appUrl}/` : "/"
       ].join("\n").trim();
 
-
       try {
 
         await sendWhatsAppGroup(groupBody);
 
-        await db.from("notification_logs").insert({
+        if (!manual) {
+          await db.from("notification_logs").insert({
 
-          kind: "whatsapp-reminder-4h-group",
+            kind: "whatsapp-reminder-4h-group",
 
-          dedupe_key: groupDedupeKey
+            dedupe_key: groupDedupeKey
 
-        });
+          });
+        }
 
-        sent = 1;
+        sent += 1;
 
       } catch (error) {
 
@@ -562,97 +583,13 @@ export async function POST(req: Request) {
 
     }
 
-
-
-    for (const { user, pending, stats } of pendingByUser) {
-
-      const push = await sendWebPushToUser(user.id, {
-
-        dedupeKey: `${user.id}:pending:${pending.map((match) => match.id).join("-")}`,
-
-        title: "Pendientes 4h",
-        body: `Te faltan ${stats.pending} de ${stats.available} partidos de hoy.`,
-        url: "/mi-prode",
-
-        tag: `pending:${user.id}`
-
-      });
-
-      pushSent += push.sent;
-
-      pushFailed += push.failed;
-
-      reminders += pending.length;
-
-
-
-      await db.from("notification_logs").insert(
-
-        pending.map((match) => ({
-
-          user_id: user.id,
-
-          match_id: match.id,
-
-          kind: "whatsapp-reminder-4h",
-
-          dedupe_key: `${match.id}:${user.id}:4h`
-
-        }))
-
-      );
-
-    }
-
-
-
-    const result = { manual, group: true, sent, pushNotifications: pushSent, pushFailures: pushFailed, users: users?.length ?? 0, matches: matches.length, reminders, failures };
-
-    if (isAutomatic(req)) {
-
-      await recordJobRun({
-
-        jobPath: "/api/jobs/send-reminders",
-
-        triggerType: "automatic",
-
-        ok: true,
-
-        statusCode: 200,
-
-        summary: summarizeJob("Recordatorios 4h", { ok: true, data: result }),
-
-        payload: result
-
-      });
-
-    }
-
-    return NextResponse.json(result);
-
   }
 
-
-
-  for (const user of (users ?? []) as Profile[]) {
+  for (const { user, notifyPending, stats } of pendingByUser) {
 
     if (!user.phone) continue;
 
-
-
-    const userPending = matches.filter((match) => {
-
-      const key = `${user.id}:${match.id}`;
-
-      const dedupeKey = `${match.id}:${user.id}:4h`;
-
-      return !predicted.has(key) && (manual || !sentLogs.has(dedupeKey));
-
-    });
-
-    const stats = { loaded: matches.length - userPending.length, available: matches.length, pending: userPending.length };
-
-    const pending = userPending.slice(0, manual ? 8 : undefined);
+    const pending = notifyPending.slice(0, manual ? 8 : undefined);
 
     if (!pending.length) continue;
 
@@ -660,7 +597,7 @@ export async function POST(req: Request) {
 
     try {
 
-      await sendWhatsApp(user.phone, reminderMessage(user, pending, appUrl, manual, stats, reminderWindowMatches));
+      await sendWhatsApp(user.phone, reminderMessage(user, pending, appUrl, manual, stats, upcomingReminderWindowMatches));
 
       const push = await sendWebPushToUser(user.id, {
 
@@ -668,7 +605,7 @@ export async function POST(req: Request) {
 
         title: manual ? "Pendientes Mundialito" : "Pendientes 4h",
 
-        body: `Te faltan ${stats.pending} de ${stats.available} partidos de hoy.`,
+        body: `Te faltan ${stats.pending} de ${stats.available} partidos de la jornada.`,
         url: "/mi-prode",
 
         tag: `pending:${user.id}`
@@ -715,7 +652,7 @@ export async function POST(req: Request) {
 
 
 
-  const result = { manual, sent, pushNotifications: pushSent, pushFailures: pushFailed, users: users?.length ?? 0, matches: matches.length, reminders, failures };
+  const result = { manual, group: hasWhatsAppGroup(), sent, pushNotifications: pushSent, pushFailures: pushFailed, users: users?.length ?? 0, matches: matches.length, reminders, failures };
 
   if (isAutomatic(req)) {
 

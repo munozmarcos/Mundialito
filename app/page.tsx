@@ -252,7 +252,7 @@ export default async function Home() {
             ) : (
               <div className="grid">
                 {finishedMatches.map((match) => (
-                  <article className="grid gap-3 border-b border-line p-4 last:border-0 sm:grid-cols-[1fr_auto] sm:items-center" key={match.id}>
+                  <article className="home-upcoming-card grid gap-3 border-b border-line p-4 last:border-0 sm:grid-cols-[1fr_auto] sm:items-center" key={match.id}>
                     <div>
                       <div className="text-sm font-bold text-ink/60">{formatArgentinaDateTime(match.kickoff_at)}</div>
                       <h3 className="flex flex-wrap items-center gap-2 text-xl font-black">
@@ -263,7 +263,9 @@ export default async function Home() {
                       <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : match.stage, match.stadium].filter(Boolean).join(" - ")}</p>
                     </div>
                     <div className="grid justify-items-start gap-2 sm:justify-items-end">
-                      <StatusPill status="closed" label="Cerrado" />
+                      <div className="home-match-status-row flex w-full flex-nowrap items-center justify-end gap-2">
+                        <StatusPill status="closed" label="Cerrado" />
+                      </div>
                       <div className="grid grid-cols-[52px_52px] gap-2">
                         <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black text-ink" aria-label={`Goles ${match.home_team}`}>
                           {match.home_goals ?? ""}

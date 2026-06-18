@@ -393,7 +393,7 @@ function PredictionCard({
           <p className="mt-2 text-xs font-bold text-ink/60">{formatKickoff(match.kickoff_at)}</p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          {(prediction?.user_updated_at ?? prediction?.updated_at) && <span className="self-center text-[11px] italic text-ink/45">Actualizado - {formatKickoff(prediction.user_updated_at ?? prediction.updated_at!)}</span>}
+          {(prediction?.user_updated_at ?? prediction?.updated_at) && <span className="self-center text-[11px] italic text-ink/45">{formatKickoff(prediction.user_updated_at ?? prediction.updated_at!)}</span>}
           {status === "playing" && (
             <span className="w-12 rounded-full border border-red-400/70 bg-[#7f1020] px-0 py-1 text-center text-xs font-black text-white">
               {liveMinuteLabel(match.kickoff_at)}
@@ -883,7 +883,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
 
       <section className="panel relative grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="absolute right-4 top-4 flex flex-wrap items-center justify-end gap-2 text-right">
-          {podium?.updated_at && <span className="text-[11px] italic text-ink/45">Actualizado - {formatKickoff(podium.updated_at)}</span>}
+          {podium?.updated_at && <span className="text-[11px] italic text-ink/45">{formatKickoff(podium.updated_at)}</span>}
           <StatusPill status={podiumLocked ? "closed" : "open"} label={podiumLocked ? "Cerrado" : "Abierto"} />
         </div>
         <div>
