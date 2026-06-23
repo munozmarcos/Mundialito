@@ -1,4 +1,5 @@
 import { knockoutPlaceholders } from "@/data/knockout-placeholders";
+import { isOfficialKnockoutMatchReady, isPlaceholderTeamName } from "@/lib/match-availability";
 import { fetchProviderFixtures, teamsMatch, type ProviderFixture } from "@/lib/results-provider";
 import { supabaseAdmin, supabaseAdminConfigured } from "@/lib/supabase";
 
@@ -17,7 +18,33 @@ function sameFixture(match: any, fixture: ProviderFixture) {
   );
 }
 
+function sameKnockoutSlot(match: any, fixture: Pick<ProviderFixture, "stage" | "kickoffAt">) {
+  return match.stage === fixture.stage && fixture.stage !== "GROUP" && kickoffClose(match.kickoff_at, fixture.kickoffAt);
+}
+
+function isFixtureOfficialKnockout(fixture: ProviderFixture) {
+  if (fixture.stage === "GROUP") return false;
+  return isOfficialKnockoutMatchReady({
+    stage: fixture.stage,
+    status: "open",
+    home_team: fixture.homeTeam,
+    away_team: fixture.awayTeam
+  });
+}
+
+function shouldOpenConfirmedFixture(existing: any, fixture: ProviderFixture) {
+  if (!isFixtureOfficialKnockout(fixture)) return false;
+  if (existing?.status === "closed" || existing?.status === "playing") return false;
+  if (existing?.home_goals != null || existing?.away_goals != null) return false;
+  return true;
+}
+
 async function upsertFixture(db: ReturnType<typeof supabaseAdmin>, fixture: ProviderFixture, matches: any[]) {
+  const existing =
+    matches.find((match) => String(match.provider_match_id ?? "") === String(fixture.providerMatchId)) ??
+    matches.find((match) => sameFixture(match, fixture)) ??
+    matches.find((match) => sameKnockoutSlot(match, fixture));
+
   const row = {
     provider_match_id: fixture.providerMatchId,
     home_team: fixture.homeTeam,
@@ -28,10 +55,9 @@ async function upsertFixture(db: ReturnType<typeof supabaseAdmin>, fixture: Prov
     stadium: fixture.stadium,
     stage: fixture.stage,
     group_name: fixture.groupName,
-    status: "open"
+    status: shouldOpenConfirmedFixture(existing, fixture) ? "open" : existing?.status ?? "open",
+    locked: shouldOpenConfirmedFixture(existing, fixture) ? false : existing?.locked ?? false
   };
-
-  const existing = matches.find((match) => String(match.provider_match_id ?? "") === String(fixture.providerMatchId)) ?? matches.find((match) => sameFixture(match, fixture));
 
   if (existing) {
     const { error } = await db.from("matches").update(row).eq("id", existing.id);
@@ -40,7 +66,11 @@ async function upsertFixture(db: ReturnType<typeof supabaseAdmin>, fixture: Prov
     return;
   }
 
-  const { data, error } = await db.from("matches").insert(row).select("id,home_team,away_team,kickoff_at,provider_match_id").single();
+  const { data, error } = await db
+    .from("matches")
+    .insert(row)
+    .select("id,home_team,away_team,kickoff_at,provider_match_id,stage,status,locked,home_goals,away_goals")
+    .single();
   if (error) throw error;
   if (data) matches.push(data);
 }
@@ -52,18 +82,34 @@ export async function syncFixturesFromProvider() {
 
   const db = supabaseAdmin();
   const fixtures = await fetchProviderFixtures();
-  const { data: existingMatches, error: existingError } = await db.from("matches").select("id,home_team,away_team,kickoff_at,provider_match_id");
+  const { data: existingMatches, error: existingError } = await db
+    .from("matches")
+    .select("id,home_team,away_team,kickoff_at,provider_match_id,stage,status,locked,home_goals,away_goals");
   if (existingError) throw existingError;
   const matches = existingMatches ?? [];
   let imported = 0;
   let placeholders = 0;
+  let opened = 0;
 
   for (const fixture of fixtures) {
+    const existingBefore =
+      matches.find((match) => String(match.provider_match_id ?? "") === String(fixture.providerMatchId)) ??
+      matches.find((match) => sameFixture(match, fixture)) ??
+      matches.find((match) => sameKnockoutSlot(match, fixture));
+    if (shouldOpenConfirmedFixture(existingBefore, fixture)) opened += 1;
     await upsertFixture(db, fixture, matches);
     imported += 1;
   }
 
   for (const fixture of knockoutPlaceholders) {
+    const hasConfirmedOrPreparedSlot = matches.some(
+      (match) =>
+        match.stage === fixture.stage &&
+        kickoffClose(match.kickoff_at, fixture.kickoffAt) &&
+        (!isPlaceholderTeamName(match.home_team) || !isPlaceholderTeamName(match.away_team) || String(match.provider_match_id ?? "") !== `fifa-${fixture.matchNumber}`)
+    );
+    if (hasConfirmedOrPreparedSlot) continue;
+
     const { error } = await db.from("matches").upsert(
       {
         provider_match_id: `fifa-${fixture.matchNumber}`,
@@ -75,7 +121,8 @@ export async function syncFixturesFromProvider() {
         stadium: fixture.stadium,
         stage: fixture.stage,
         group_name: null,
-        status: "open"
+        status: "locked",
+        locked: true
       },
       { onConflict: "provider_match_id" }
     );
@@ -83,5 +130,5 @@ export async function syncFixturesFromProvider() {
     placeholders += 1;
   }
 
-  return { mode: "real", imported, placeholders, total: imported + placeholders, provider: process.env.RESULTS_PROVIDER ?? "football-data" };
+  return { mode: "real", imported, placeholders, opened, total: imported + placeholders, provider: process.env.RESULTS_PROVIDER ?? "football-data" };
 }

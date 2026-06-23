@@ -139,6 +139,13 @@ function ScoreBox({ value, className = "" }: { value: number | string | null | u
 
 function initialResults(matches: Match[]): ResultMap {
   return matches.reduce<ResultMap>((acc, match) => {
+    acc[match.id] = { home: "", away: "", winner: "" };
+    return acc;
+  }, {});
+}
+
+function realResults(matches: Match[]): ResultMap {
+  return matches.reduce<ResultMap>((acc, match) => {
     acc[match.id] = {
       home: match.home_goals ?? "",
       away: match.away_goals ?? "",
@@ -610,6 +617,20 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
     window.localStorage.setItem(simulatorStorageKey(sessionUserId), JSON.stringify({ results: initialResults(matches) }));
   }
 
+  function copyRealResults() {
+    const nextResults = realResults(matches);
+    const copied = matches.filter((match) => match.home_goals != null && match.away_goals != null).length;
+    if (!copied) {
+      setCopyMessage("Todavía no hay resultados reales cargados para copiar.");
+      return;
+    }
+    setResults(nextResults);
+    try {
+      window.localStorage.setItem(simulatorStorageKey(sessionUserId), JSON.stringify({ results: nextResults }));
+    } catch {}
+    setCopyMessage(`Realidad copiada. Se cargaron ${copied} partidos cerrados o en vivo.`);
+  }
+
   function copyMyPrediction() {
     if (!sessionUserId) {
       setCopyMessage("Entrá con tu usuario para copiar tu pronóstico.");
@@ -758,6 +779,10 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
           <button className="btn secondary" onClick={copyMyPrediction} type="button">
             <ClipboardPaste className="h-4 w-4" />
             Copiar mi pronóstico
+          </button>
+          <button className="btn secondary" onClick={copyRealResults} type="button">
+            <Trophy className="h-4 w-4" />
+            Copiar realidad
           </button>
           <button className="btn secondary" onClick={() => setBulkOpen(true)} type="button">
             <Calculator className="h-4 w-4" />

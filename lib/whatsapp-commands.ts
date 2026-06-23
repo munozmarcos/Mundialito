@@ -161,11 +161,10 @@ function matchTeamQuery(query: string, team: string, code?: string | null) {
   if (!query) return true;
   const queryAliases = teamSearchAliases(query).map((item) => normalizeText(item).replace(/[.\s_-]+/g, ""));
   const keys = searchKeysForTeam(team, code);
-  return queryAliases.some((q) =>
-    keys.some((key) => key.includes(q) || q.includes(key)) ||
-    teamsAreClose(query, team) ||
-    teamsAreClose(query, displayNameForTeam(team))
-  );
+  return queryAliases.some((q) => {
+    if (q.length <= 3) return keys.some((key) => key === q);
+    return keys.some((key) => key === q || key.startsWith(q));
+  });
 }
 
 function matchQueryAgainstMatch(query: string, match: Pick<MatchLite, "home_team" | "away_team" | "home_country_code" | "away_country_code">) {
