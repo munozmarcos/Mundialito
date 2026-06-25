@@ -23,6 +23,7 @@ function kickoffClose(a: string, b: string) {
 }
 
 function sameFixture(match: any, fixture: ProviderFixture) {
+  if (!fixture.homeTeam || !fixture.awayTeam) return false;
   return (
     teamsMatch(match.home_team, fixture.homeTeam) &&
     teamsMatch(match.away_team, fixture.awayTeam) &&
@@ -36,6 +37,7 @@ function sameKnockoutSlot(match: any, fixture: Pick<ProviderFixture, "stage" | "
 
 function isFixtureOfficialKnockout(fixture: ProviderFixture) {
   if (fixture.stage === "GROUP") return false;
+  if (!fixture.homeTeam || !fixture.awayTeam) return false;
   return isOfficialKnockoutMatchReady({
     stage: fixture.stage,
     status: "open",
@@ -171,18 +173,33 @@ async function upsertFixture(db: ReturnType<typeof supabaseAdmin>, fixture: Prov
     matches.find((match) => sameFixture(match, fixture)) ??
     matches.find((match) => sameKnockoutSlot(match, fixture));
 
+  if (!existing && (!fixture.homeTeam || !fixture.awayTeam)) return;
+
+  const nextHomeTeam = fixture.homeTeam ?? existing?.home_team;
+  const nextAwayTeam = fixture.awayTeam ?? existing?.away_team;
+  const nextHomeCode = fixture.homeCode ?? existing?.home_country_code ?? null;
+  const nextAwayCode = fixture.awayCode ?? existing?.away_country_code ?? null;
+  const mergedFixture = {
+    ...fixture,
+    homeTeam: nextHomeTeam,
+    awayTeam: nextAwayTeam,
+    homeCode: nextHomeCode,
+    awayCode: nextAwayCode
+  };
+  const shouldOpen = shouldOpenConfirmedFixture(existing, mergedFixture);
+
   const row = {
     provider_match_id: fixture.providerMatchId,
-    home_team: fixture.homeTeam,
-    away_team: fixture.awayTeam,
-    home_country_code: fixture.homeCode,
-    away_country_code: fixture.awayCode,
+    home_team: nextHomeTeam,
+    away_team: nextAwayTeam,
+    home_country_code: nextHomeCode,
+    away_country_code: nextAwayCode,
     kickoff_at: fixture.kickoffAt,
     stadium: fixture.stadium,
     stage: fixture.stage,
     group_name: fixture.groupName,
-    status: shouldOpenConfirmedFixture(existing, fixture) ? "open" : existing?.status ?? "open",
-    locked: shouldOpenConfirmedFixture(existing, fixture) ? false : existing?.locked ?? false
+    status: shouldOpen ? "open" : existing?.status ?? "open",
+    locked: shouldOpen ? false : existing?.locked ?? false
   };
 
   if (existing) {
@@ -222,7 +239,16 @@ export async function syncFixturesFromProvider() {
       matches.find((match) => String(match.provider_match_id ?? "") === String(fixture.providerMatchId)) ??
       matches.find((match) => sameFixture(match, fixture)) ??
       matches.find((match) => sameKnockoutSlot(match, fixture));
-    if (shouldOpenConfirmedFixture(existingBefore, fixture)) opened += 1;
+    const mergedFixture = existingBefore
+      ? {
+          ...fixture,
+          homeTeam: fixture.homeTeam ?? existingBefore.home_team,
+          awayTeam: fixture.awayTeam ?? existingBefore.away_team,
+          homeCode: fixture.homeCode ?? existingBefore.home_country_code ?? null,
+          awayCode: fixture.awayCode ?? existingBefore.away_country_code ?? null
+        }
+      : fixture;
+    if (shouldOpenConfirmedFixture(existingBefore, mergedFixture)) opened += 1;
     await upsertFixture(db, fixture, matches);
     imported += 1;
   }

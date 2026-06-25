@@ -12,8 +12,8 @@ export type ProviderResult = {
 
 export type ProviderFixture = {
   providerMatchId: string;
-  homeTeam: string;
-  awayTeam: string;
+  homeTeam: string | null;
+  awayTeam: string | null;
   homeCode?: string | null;
   awayCode?: string | null;
   kickoffAt: string;
@@ -212,18 +212,23 @@ export async function fetchFootballDataFixtures(): Promise<ProviderFixture[]> {
   const data = (await res.json()) as { matches?: FootballDataMatch[] };
 
   return (data.matches ?? [])
-    .filter((match) => match.homeTeam?.name && match.awayTeam?.name)
-    .map((match) => ({
-      providerMatchId: String(match.id),
-      homeTeam: match.homeTeam!.name!,
-      awayTeam: match.awayTeam!.name!,
-      homeCode: footballDataCodeToFlagCode(match.homeTeam?.tla),
-      awayCode: footballDataCodeToFlagCode(match.awayTeam?.tla),
-      kickoffAt: match.utcDate,
-      stadium: null,
-      stage: mapFootballDataStage(match.stage),
-      groupName: mapFootballDataGroup(match.group)
-    }));
+    .map((match) => {
+      const stage = mapFootballDataStage(match.stage);
+      const homeTeam = match.homeTeam?.name ?? null;
+      const awayTeam = match.awayTeam?.name ?? null;
+      return {
+        providerMatchId: String(match.id),
+        homeTeam,
+        awayTeam,
+        homeCode: footballDataCodeToFlagCode(match.homeTeam?.tla),
+        awayCode: footballDataCodeToFlagCode(match.awayTeam?.tla),
+        kickoffAt: match.utcDate,
+        stadium: null,
+        stage,
+        groupName: mapFootballDataGroup(match.group)
+      };
+    })
+    .filter((match) => (match.stage === "GROUP" ? Boolean(match.homeTeam && match.awayTeam) : Boolean(match.homeTeam || match.awayTeam)));
 }
 
 export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
