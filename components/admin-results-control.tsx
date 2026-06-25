@@ -6,6 +6,7 @@ import { TeamLabel } from "@/components/team-label";
 import { PointsPill } from "@/components/points-pill";
 import { StatusPill } from "@/components/status-pill";
 import { countryCodeForTeam, displayNameForTeam } from "@/lib/flags";
+import { compareGroups } from "@/lib/group-sort";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import type { PodiumStatus } from "@/lib/podium";
@@ -219,7 +220,7 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
   const knockoutMatches = matches.filter((match) => match.stage !== "GROUP");
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
   const byStage = groupBy(knockoutMatches, (match) => match.stage);
-  const availableGroups = Object.keys(byGroup).sort();
+  const availableGroups = Object.keys(byGroup).sort(compareGroups);
   const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
   const availableKnockoutStages = knockoutOrder.filter((stage) => byStage[stage]?.length);
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
@@ -645,10 +646,12 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
         away.points += 1;
       }
     }
-    return [...rowsByGroup.entries()].map(([group, rows]) => ({
-      group,
-      rows: [...rows.values()].sort((a, b) => b.points - a.points || b.diff - a.diff || a.order - b.order)
-    }));
+    return [...rowsByGroup.entries()]
+      .sort(([a], [b]) => compareGroups(a, b))
+      .map(([group, rows]) => ({
+        group,
+        rows: [...rows.values()].sort((a, b) => b.points - a.points || b.diff - a.diff || a.order - b.order)
+      }));
   }, [matches, scores]);
   if (!selectedMatch) return null;
   return (

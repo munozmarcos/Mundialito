@@ -5,6 +5,7 @@ import { DateFilter } from "@/components/date-filter";
 import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
+import { compareGroups, sortedGroupEntries } from "@/lib/group-sort";
 import { liveMinuteLabel } from "@/lib/live-minute";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
@@ -299,7 +300,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const totalOpen = matches.filter((match) => (match.home_goals == null || match.away_goals == null) && !isMatchUnavailable(match) && !isCounterClosed(match)).length;
   const totalBlocked = matches.filter((match) => isMatchUnavailable(match)).length;
   const totalClosed = matches.filter((match) => !isMatchUnavailable(match) && isCounterClosed(match)).length;
-  const availableGroups = Object.keys(byGroup).sort();
+  const availableGroups = Object.keys(byGroup).sort(compareGroups);
   const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
   const availableKnockoutStages = knockoutOrder.filter((stage) => byStage[stage]?.length);
   const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
@@ -307,7 +308,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
   const allFilteredByStage = groupBy(allFilteredMatches, (match) => match.stage);
   const teamOptions = useMemo(() => teamOptionsFromMatches(groupMatches), [groupMatches]);
-  const filteredGroups = Object.entries(byGroup)
+  const filteredGroups = sortedGroupEntries(Object.entries(byGroup))
     .filter(([group]) => activeTab === "tablas" || !selectedGroup || group === selectedGroup)
     .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
     .filter(([, items]) => items.length);
@@ -372,7 +373,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
               if (!items.length) return null;
               if (stage === "GROUP") {
                 const grouped = groupBy(items, (match) => match.group_name || "Sin grupo");
-                return Object.entries(grouped).map(([group, groupItems]) => (
+                return sortedGroupEntries(Object.entries(grouped)).map(([group, groupItems]) => (
                   <section className="grid gap-3" key={`${stage}-${group}`}>
                     <h3 className="flex items-center gap-2 text-xl font-black"><CircleDot className="h-4 w-4 text-red-400" />Grupo {group}</h3>
                     <div className="match-card-grid">

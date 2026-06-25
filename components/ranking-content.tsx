@@ -7,6 +7,7 @@ import { PointsPill, pointsInputClass, pointsPillClass } from "@/components/poin
 import { RankingDescription } from "@/components/ranking-description";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
+import { sortedGroupEntries } from "@/lib/group-sort";
 import { matchFitsBasicFilters } from "@/lib/match-filters";
 import { competitionRankMap } from "@/lib/ranking-position";
 import { teamOptionsFromMatches } from "@/lib/team-options";
@@ -363,7 +364,7 @@ export function RankingContent({ ranking, details }: Props) {
                   if (!rows.length) return null;
                   if (stage === "GROUP") {
                     const byGroup = groupBy(rows, (detail) => asMatch(detail.matches)?.group_name ?? "Sin grupo");
-                    return Object.entries(byGroup).map(([group, items]) => (
+                    return sortedGroupEntries(Object.entries(byGroup)).map(([group, items]) => (
                       <section className="grid gap-3" key={`${stage}-${group}`}>
                         <h3 className="text-xl font-black">Grupo {group}</h3>
                         <div className="match-card-grid">{items.map((detail) => <DetailCard detail={detail} key={detail.id} />)}</div>

@@ -4,6 +4,7 @@ import { scorePrediction } from "@/lib/scoring";
 import { formatArgentinaDate } from "@/lib/dates";
 import { matchFitsBasicFilters } from "@/lib/match-filters";
 import { displayNameForTeam } from "@/lib/flags";
+import { compareGroups, sortedGroupEntries } from "@/lib/group-sort";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import type { Match, MatchStage, PodiumPrediction, Prediction, Profile } from "@/lib/types";
 import { TeamLabel } from "@/components/team-label";
@@ -442,9 +443,9 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
   const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
   const allFilteredByStage = groupBy(allFilteredMatches, (match) => match.stage);
   const teamOptions = useMemo(() => teamOptionsFromMatches(groupMatches), [groupMatches]);
-  const availableGroups = Object.keys(byGroup).sort();
+  const availableGroups = Object.keys(byGroup).sort(compareGroups);
   const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
-  const filteredGroups = Object.entries(byGroup)
+  const filteredGroups = sortedGroupEntries(Object.entries(byGroup))
     .filter(([group]) => activeTab === "tablas" || !selectedGroup || group === selectedGroup)
     .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
     .filter(([, items]) => items.length);
@@ -836,7 +837,7 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
               if (!items.length) return null;
               if (stage === "GROUP") {
                 const grouped = groupBy(items, (match) => match.group_name || "Sin grupo");
-                return Object.entries(grouped).map(([group, groupItems]) => (
+                return sortedGroupEntries(Object.entries(grouped)).map(([group, groupItems]) => (
                   <section className="grid gap-3" key={`${stage}-${group}`}>
                     <h4 className="flex items-center gap-2 text-xl font-black"><CircleDot className="h-4 w-4 text-red-400" />Grupo {group}</h4>
                     <div className="match-card-grid">
@@ -1079,7 +1080,7 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
                   if (!rows.length) return null;
                   if (stage === "GROUP") {
                     const grouped = groupBy(rows, (detail) => detail.match.group_name || "Sin grupo");
-                    return Object.entries(grouped).map(([group, items]) => (
+                    return sortedGroupEntries(Object.entries(grouped)).map(([group, items]) => (
                       <section className="grid gap-3" key={`${stage}-${group}`}>
                         <h3 className="flex items-center gap-2 text-xl font-black"><CircleDot className="h-4 w-4 text-red-400" />Grupo {group}</h3>
                         <div className="match-card-grid">

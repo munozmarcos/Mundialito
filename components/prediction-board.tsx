@@ -8,6 +8,7 @@ import { TeamLabel } from "@/components/team-label";
 import { PointsPill } from "@/components/points-pill";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { displayNameForTeam } from "@/lib/flags";
+import { compareGroups, sortedGroupEntries } from "@/lib/group-sort";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { liveMinuteLabel } from "@/lib/live-minute";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
@@ -630,9 +631,9 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const totalPoints = predictions.reduce((sum, prediction) => sum + (prediction.points ?? 0), 0) + podiumPoints;
   const paid = Boolean(user?.paid);
   const unpaidLocked = Boolean(user && !paid);
-  const availableGroups = Object.keys(byGroup).sort();
+  const availableGroups = Object.keys(byGroup).sort(compareGroups);
   const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
-  const groupEntries = activeTab === "tablas" ? Object.entries(byGroup) : selectedGroup ? Object.entries(byGroup).filter(([group]) => group === selectedGroup) : [];
+  const groupEntries = activeTab === "tablas" ? sortedGroupEntries(Object.entries(byGroup)) : selectedGroup ? sortedGroupEntries(Object.entries(byGroup)).filter(([group]) => group === selectedGroup) : [];
   const filteredGroupEntries = groupEntries
     .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
     .filter(([, items]) => items.length);
@@ -966,7 +967,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
               if (!items.length) return null;
               if (stage === "GROUP") {
                 const grouped = groupBy(items, (match) => match.group_name || "Sin grupo");
-                return Object.entries(grouped).map(([group, groupItems]) => (
+                return sortedGroupEntries(Object.entries(grouped)).map(([group, groupItems]) => (
                   <section className="grid gap-3" key={`${stage}-${group}`}>
                     <h4 className="flex items-center gap-2 text-xl font-black"><CircleDot className="h-4 w-4 text-red-400" />Grupo {group}</h4>
                     <div className="match-card-grid">
