@@ -34,8 +34,12 @@ export function NotificationBody({ item, compact = false }: { item: LatestNotifi
         <div className="grid gap-2">
           {groupedPointPlayers(item.point_players).map(([points, names]) => (
             <span className="text-sm font-semibold text-ink/78" key={points}>
-              <span className={`mr-2 rounded-full border px-2 py-1 text-xs font-black ${pointClass(points)}`}>{points} Pts</span>
+              <span className={`mr-2 rounded-full border px-2 py-1 text-xs font-black ${pointClass(points)}`}>
+                {points} pts
+              </span>
+              <span className="mr-2 text-ink/45">-</span>
               <span className="font-semibold text-ink/72">{names.join(", ")}</span>
+              <span className="ml-2 text-ink/60">({names.length})</span>
             </span>
           ))}
         </div>

@@ -235,7 +235,7 @@ function deriveBracket(groupMatches: Match[], knockoutMatches: Match[], results:
 }
 
 function MatchCard({ match, display }: { match: Match; display?: DisplayMatch }) {
-  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
+  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null && match.away_goals != null, new Date(), match.status);
   const unavailable = isMatchUnavailable(match, display);
   const useOfficialPlaceholder = isMatchBlockedUntilOfficial(match);
   const home = useOfficialPlaceholder ? { name: match.home_team, code: match.home_country_code } : display?.home ?? { name: match.home_team, code: match.home_country_code };
@@ -292,11 +292,11 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const bracket = useMemo(() => deriveBracket(groupMatches, knockoutMatches, results), [groupMatches, knockoutMatches, results]);
   const now = new Date();
   const isCounterClosed = (match: Match) =>
-    match.home_goals != null ||
+    (match.home_goals != null && match.away_goals != null) ||
     match.status === "closed" ||
     match.status === "playing" ||
     isPredictionLocked(match.kickoff_at, match.locked, now);
-  const totalOpen = matches.filter((match) => match.home_goals == null && !isMatchUnavailable(match) && !isCounterClosed(match)).length;
+  const totalOpen = matches.filter((match) => (match.home_goals == null || match.away_goals == null) && !isMatchUnavailable(match) && !isCounterClosed(match)).length;
   const totalBlocked = matches.filter((match) => isMatchUnavailable(match)).length;
   const totalClosed = matches.filter((match) => !isMatchUnavailable(match) && isCounterClosed(match)).length;
   const availableGroups = Object.keys(byGroup).sort();

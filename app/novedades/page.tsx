@@ -11,7 +11,7 @@ export const metadata = {
 };
 
 export default async function NovedadesPage() {
-  const newsItems = await getLatestNotifications(100);
+  const newsItems = await getLatestNotifications(250, { includeExpiredManual: true });
 
   return (
     <div className="grid gap-6">

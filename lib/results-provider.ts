@@ -240,7 +240,6 @@ export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
     const score = match.score?.fullTime ?? match.score?.regularTime;
     if (!homeTeam || !awayTeam) continue;
     if (score?.home == null || score.away == null) {
-      if (match.status !== "FINISHED") continue;
       results.push({
         providerMatchId: String(match.id),
         homeTeam,
@@ -248,7 +247,7 @@ export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
         homeGoals: null,
         awayGoals: null,
         penaltyWinner: null,
-        status: "closed",
+        status: match.status === "FINISHED" ? "closed" : "playing",
         playedAt: match.utcDate,
         statusOnly: true
       });
@@ -269,7 +268,7 @@ export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
 }
 
 function apiFootballHeaders() {
-  const token = process.env.API_FOOTBALL_KEY;
+  const token = process.env.API_FOOTBALL_KEY?.replace(/^\uFEFF/, "").trim();
   if (!token) throw new Error("Missing API_FOOTBALL_KEY");
   return { "x-apisports-key": token };
 }
@@ -371,7 +370,12 @@ export async function fetchProviderResults() {
 }
 
 export async function fetchProviderResultsDetailed(options: { allowLiveProvider?: boolean } = {}): Promise<{ results: ProviderResult[]; provider: string; providerWarning?: string }> {
-  const provider = options.allowLiveProvider === false ? "football-data" : (process.env.LIVE_RESULTS_PROVIDER ?? process.env.RESULTS_PROVIDER ?? "football-data");
+  const provider =
+    options.allowLiveProvider === false
+      ? "football-data"
+      : options.allowLiveProvider === true && process.env.API_FOOTBALL_KEY
+        ? "api-football"
+        : (process.env.LIVE_RESULTS_PROVIDER ?? process.env.RESULTS_PROVIDER ?? "football-data");
   if (provider === "api-football") {
     try {
       return { results: await fetchApiFootballResults(), provider };

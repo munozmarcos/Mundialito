@@ -8,8 +8,9 @@ import type { Match } from "@/lib/types";
 
 export function MatchCard({ match }: { match: Match }) {
   const blocked = isMatchBlockedUntilOfficial(match);
-  const status = blocked ? "locked" : matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
-  const result = match.home_goals == null ? null : `${match.home_goals}-${match.away_goals}`;
+  const hasResult = match.home_goals != null && match.away_goals != null;
+  const status = blocked ? "locked" : matchStatus(match.kickoff_at, match.locked, hasResult, new Date(), match.status);
+  const result = hasResult ? `${match.home_goals}-${match.away_goals}` : null;
 
   return (
     <article className="rounded-lg border border-line bg-white p-3">

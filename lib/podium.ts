@@ -1,5 +1,4 @@
 import { displayNameForTeam } from "@/lib/flags";
-import { isOfficialKnockoutMatchReady } from "@/lib/match-availability";
 import type { Match } from "@/lib/types";
 
 export const PODIUM_POINTS = {
@@ -124,19 +123,12 @@ export async function getPodiumLockState(db: any) {
     .filter((time: number) => Number.isFinite(time))
     .sort((left: number, right: number) => left - right)[0];
   const closesByKickoff = Number.isFinite(firstRoundOf32Kickoff) && firstRoundOf32Kickoff - Date.now() <= 15 * 60 * 1000;
-  const hasEnabledRoundOf32 = r32Matches.some((match: { stage: string; status?: string | null; home_team?: string | null; away_team?: string | null }) => {
-    if (match.status === "locked" || match.status === "scheduled") return false;
-    return isOfficialKnockoutMatchReady(match);
-  });
-
   return {
-    locked: hasEnabledRoundOf32 || closesByKickoff,
-    status: hasEnabledRoundOf32 || closesByKickoff ? "closed" as PodiumStatus : "open" as PodiumStatus,
+    locked: closesByKickoff,
+    status: closesByKickoff ? "closed" as PodiumStatus : "open" as PodiumStatus,
     reason: closesByKickoff
       ? "El podio cerro porque faltan 15 minutos o menos para el primer partido de 16vos."
-      : hasEnabledRoundOf32
-        ? "El podio cerro porque ya se habilitaron los 16vos."
-        : null
+      : null
   };
 }
 

@@ -199,8 +199,8 @@ function lockedDisplay(match: Match, display?: DisplayMatch): DisplayMatch | und
   if (match.stage === "GROUP") return display;
   if (!isMatchUnavailable(match, display)) return display;
   return {
-    home: { name: isPlaceholderTeamName(match.home_team) ? match.home_team : "Por definir" },
-    away: { name: isPlaceholderTeamName(match.away_team) ? match.away_team : "Por definir" }
+    home: { name: match.home_team, code: match.home_country_code },
+    away: { name: match.away_team, code: match.away_country_code }
   };
 }
 
@@ -320,7 +320,7 @@ function PredictionCard({
   paid: boolean;
   onSaved: (prediction: PredictionWithUpdated) => void;
 }) {
-  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
+  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null && match.away_goals != null, new Date(), match.status);
   const safeDisplay = lockedDisplay(match, display);
   const unavailable = isMatchUnavailable(match, safeDisplay);
   const unpaidLocked = loggedIn && !paid;
@@ -542,7 +542,7 @@ function PodiumPicker({
 }
 
 function BracketCard({ match, prediction, display }: { match: Match; prediction?: PredictionWithUpdated; display?: DisplayMatch }) {
-  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
+  const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null && match.away_goals != null, new Date(), match.status);
   const hasResult = match.home_goals != null && match.away_goals != null;
   const realResult = hasResult ? `${match.home_goals}-${match.away_goals}` : "Pendiente";
   const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
@@ -684,7 +684,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
     if (!user.paid) return false;
     const safeDisplay = lockedDisplay(match, display);
     if (isMatchUnavailable(match, safeDisplay)) return false;
-    const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
+    const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null && match.away_goals != null, new Date(), match.status);
     return (status === "open" || status === "closing_soon") && !isPredictionLocked(match.kickoff_at, match.locked);
   }
 
@@ -894,7 +894,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
                 Podio anticipado
               </h2>
               <p className="mt-1 text-sm font-semibold text-ink/60">
-                Elegí tu podio antes de que se habiliten los 16vos.
+                Elegí tu podio antes de que falten 15 minutos para el primer partido de 16vos.
               </p>
             </div>
           </div>

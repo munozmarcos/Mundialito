@@ -167,6 +167,24 @@ function stageLabel(match: ReminderMatch) {
 
 }
 
+function sameKickoff(left?: string | null, right?: string | null) {
+  if (!left || !right) return false;
+  return new Date(left).getTime() === new Date(right).getTime();
+}
+
+function includesFirstRoundOf32(matches: ReminderMatch[], firstRoundOf32Kickoff?: string | null) {
+  return matches.some((match) => match.stage === "R32" && sameKickoff(match.kickoff_at, firstRoundOf32Kickoff));
+}
+
+function podiumClosingNotice(matches: ReminderMatch[], firstRoundOf32Kickoff?: string | null) {
+  if (!includesFirstRoundOf32(matches, firstRoundOf32Kickoff)) return [];
+  return [
+    "🏆 *Podio anticipado*",
+    "También se está por cerrar el podio anticipado: hay *6 pts* en juego.",
+    ""
+  ];
+}
+
 
 
 function isReminderPredictionCandidate(match: ReminderMatch) {
@@ -195,7 +213,9 @@ function reminderMessage(
 
   stats: { loaded: number; available: number; pending: number },
 
-  reminderMatches: ReminderMatch[] = []
+  reminderMatches: ReminderMatch[] = [],
+
+  firstRoundOf32Kickoff?: string | null
 
 ) {
 
@@ -228,6 +248,8 @@ function reminderMessage(
     "",
 
     ...todayBlock,
+
+    ...podiumClosingNotice(reminderMatches, firstRoundOf32Kickoff),
 
     `${user.display_name}, estos son tus pronósticos pendientes a cargar:`,
 
@@ -308,6 +330,17 @@ export async function POST(req: Request) {
 
 
   const rawMatches = (matchRows ?? []) as ReminderMatch[];
+
+  const { data: firstRoundRows, error: firstRoundError } = await db
+    .from("matches")
+    .select("kickoff_at")
+    .eq("stage", "R32")
+    .order("kickoff_at", { ascending: true })
+    .limit(1);
+
+  if (firstRoundError) return NextResponse.json({ error: firstRoundError.message }, { status: 400 });
+
+  const firstRoundOf32Kickoff = firstRoundRows?.[0]?.kickoff_at ?? null;
 
   const reminderWindowMatches = rawMatches.filter((match) => {
 
@@ -555,6 +588,8 @@ export async function POST(req: Request) {
 
         ]),
 
+        ...podiumClosingNotice(upcomingReminderWindowMatches, firstRoundOf32Kickoff),
+
         ...pendingBlock,
         appUrl ? `${appUrl}/` : "/"
       ].join("\n").trim();
@@ -597,7 +632,7 @@ export async function POST(req: Request) {
 
     try {
 
-      await sendWhatsApp(user.phone, reminderMessage(user, pending, appUrl, manual, stats, upcomingReminderWindowMatches));
+      await sendWhatsApp(user.phone, reminderMessage(user, pending, appUrl, manual, stats, upcomingReminderWindowMatches, firstRoundOf32Kickoff));
 
       const push = await sendWebPushToUser(user.id, {
 

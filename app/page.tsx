@@ -63,7 +63,7 @@ function finalized(matches: Awaited<ReturnType<typeof getMatches>>, limit: numbe
   const yesterday = addArgentinaDays(today, -1);
   return matches
     .filter((match) => {
-      const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null, new Date(), match.status);
+      const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null && match.away_goals != null, new Date(), match.status);
       return isBetweenDateKeys(match.kickoff_at, yesterday, today) && status === "closed" && match.home_goals != null && match.away_goals != null;
     })
     .sort((a, b) => new Date(b.kickoff_at).getTime() - new Date(a.kickoff_at).getTime())
@@ -79,13 +79,13 @@ function isHomeCounterBlocked(match: Awaited<ReturnType<typeof getMatches>>[numb
 function homeMatchCounters(matches: Awaited<ReturnType<typeof getMatches>>) {
   const now = new Date();
   const isCounterClosed = (match: Awaited<ReturnType<typeof getMatches>>[number]) =>
-    match.home_goals != null ||
+    (match.home_goals != null && match.away_goals != null) ||
     match.status === "closed" ||
     match.status === "playing" ||
     isPredictionLocked(match.kickoff_at, match.locked, now);
   const blocked = matches.filter((match) => isHomeCounterBlocked(match)).length;
   const closed = matches.filter((match) => !isHomeCounterBlocked(match) && isCounterClosed(match)).length;
-  const open = matches.filter((match) => match.home_goals == null && !isHomeCounterBlocked(match) && !isCounterClosed(match)).length;
+  const open = matches.filter((match) => (match.home_goals == null || match.away_goals == null) && !isHomeCounterBlocked(match) && !isCounterClosed(match)).length;
   return { total: matches.length, open, closed, blocked };
 }
 

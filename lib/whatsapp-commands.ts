@@ -200,7 +200,7 @@ function answerRules() {
     "",
     "ðŸ† *Podio anticipado*",
     "CampeÃ³n = *3 pts*, SubcampeÃ³n = *2 pts*, 3er puesto = *1 pt*.",
-    "Se carga durante la fase de grupos y se cierra cuando se habilitan los 16vos o 15 minutos antes del primer partido de esa fase.",
+    "Se carga hasta 15 minutos antes del primer partido de 16vos.",
     "",
     "âš½ *Ejemplos*",
     "ðŸ‡¦ðŸ‡· Argentina 2-1 ðŸ‡²ðŸ‡½ Mexico",

@@ -28,7 +28,7 @@ function findLocalMatch(matches: any[], result: ProviderResult) {
 }
 
 async function shouldUseLiveProvider(db: ReturnType<typeof supabaseAdmin>, matches: any[]) {
-  if ((process.env.LIVE_RESULTS_PROVIDER ?? process.env.RESULTS_PROVIDER) !== "api-football") return false;
+  if (!process.env.API_FOOTBALL_KEY) return false;
 
   const now = Date.now();
   const hasLiveWindow = matches.some((match) => {
@@ -42,7 +42,7 @@ async function shouldUseLiveProvider(db: ReturnType<typeof supabaseAdmin>, match
   const { data } = await db
     .from("job_runs")
     .select("created_at,payload")
-    .eq("job_path", "/api/jobs/sync-results")
+    .in("job_path", ["/api/jobs/sync-results", "/api/live/pulse"])
     .order("created_at", { ascending: false })
     .limit(10);
 
@@ -187,7 +187,36 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
       continue;
     }
 
-    if ((homeGoals == null || awayGoals == null) && result.statusOnly) {
+    if ((providerHomeGoals == null || providerAwayGoals == null) && result.statusOnly) {
+      if (result.status === "playing" && !localIsFinal) {
+        const { error: updateError } = await db
+          .from("matches")
+          .update({
+            home_goals: null,
+            away_goals: null,
+            penalty_winner: null,
+            locked: true,
+            status: "playing",
+            result_updated_at: new Date().toISOString()
+          })
+          .eq("id", local.id);
+
+        if (updateError) throw updateError;
+        await recalculateMatch(local.id);
+        if (local.status !== "playing") {
+          const notification = await notifyLiveStart(db, {
+            ...local,
+            home_goals: null,
+            away_goals: null,
+            status: "playing"
+          });
+          kickoffNotifications += notification.pushSent;
+          kickoffNotifications += notification.sent ?? 0;
+          if (notification.pushFailed) notificationFailures.push(`${local.home_team} vs ${local.away_team}: ${notification.pushFailed} push fallidos`);
+          notificationFailures.push(...(notification.failures ?? []));
+        }
+        updated += 1;
+      }
       continue;
     }
 
@@ -260,6 +289,7 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
   for (const match of matches ?? []) {
     if (matchedLocalIds.has(match.id)) continue;
     if (match.status === "locked" || match.status === "scheduled") continue;
+    if (match.status === "playing") continue;
     if (match.home_goals != null || match.away_goals != null) continue;
 
     const kickoff = new Date(match.kickoff_at).getTime();
@@ -269,8 +299,6 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
     const { error: updateError } = await db
       .from("matches")
       .update({
-        home_goals: 0,
-        away_goals: 0,
         locked: true,
         status: "playing",
         result_updated_at: new Date().toISOString()
@@ -281,8 +309,8 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
     await recalculateMatch(match.id);
     const notification = await notifyLiveStart(db, {
       ...match,
-      home_goals: 0,
-      away_goals: 0,
+      home_goals: null,
+      away_goals: null,
       status: "playing"
     });
     kickoffNotifications += notification.pushSent;

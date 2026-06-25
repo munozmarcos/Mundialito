@@ -25,7 +25,7 @@ export async function POST() {
     return NextResponse.json({ ok: true, skipped: true, reason: "throttled" });
   }
 
-  const result = await syncResultsFromProvider({ allowLiveProvider: false });
+  const result = await syncResultsFromProvider();
   await recordJobRun({
     jobPath: "/api/live/pulse",
     triggerType: "automatic",
