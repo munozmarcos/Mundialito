@@ -221,8 +221,8 @@ export default async function Home() {
                       <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : match.stage, match.stadium].filter(Boolean).join(" - ")}</p>
                     </div>
                     <HomeMatchControls
-                      actualAwayGoals={match.away_goals}
-                      actualHomeGoals={match.home_goals}
+                      actualAwayGoals={homeMatchStatus(match) === "playing" ? match.away_goals ?? 0 : match.away_goals}
+                      actualHomeGoals={homeMatchStatus(match) === "playing" ? match.home_goals ?? 0 : match.home_goals}
                       disabled={
                         !currentUser ||
                         isMatchBlockedUntilOfficial(match) ||

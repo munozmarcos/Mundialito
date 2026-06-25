@@ -239,7 +239,7 @@ export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
 
   const results: ProviderResult[] = [];
   for (const match of data.matches ?? []) {
-    if (!["IN_PLAY", "PAUSED", "FINISHED"].includes(match.status)) continue;
+    if (!["IN_PLAY", "LIVE", "PAUSED", "FINISHED"].includes(match.status)) continue;
     const homeTeam = match.homeTeam?.name;
     const awayTeam = match.awayTeam?.name;
     const score = match.score?.fullTime ?? match.score?.regularTime;

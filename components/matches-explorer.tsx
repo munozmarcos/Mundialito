@@ -241,6 +241,8 @@ function MatchCard({ match, display }: { match: Match; display?: DisplayMatch })
   const useOfficialPlaceholder = isMatchBlockedUntilOfficial(match);
   const home = useOfficialPlaceholder ? { name: match.home_team, code: match.home_country_code } : display?.home ?? { name: match.home_team, code: match.home_country_code };
   const away = useOfficialPlaceholder ? { name: match.away_team, code: match.away_country_code } : display?.away ?? { name: match.away_team, code: match.away_country_code };
+  const homeGoals = status === "playing" ? match.home_goals ?? 0 : match.home_goals ?? "";
+  const awayGoals = status === "playing" ? match.away_goals ?? 0 : match.away_goals ?? "";
 
   return (
     <article className="rounded-lg border border-line bg-white p-3 shadow-sm">
@@ -266,11 +268,11 @@ function MatchCard({ match, display }: { match: Match; display?: DisplayMatch })
       <div className="grid gap-2">
         <div className="grid grid-cols-[1fr_68px] items-center gap-3 rounded-md border border-line bg-field p-2">
           <TeamOrLock team={home} />
-          <input className="field text-center font-black" disabled value={match.home_goals ?? ""} aria-label={`Goles ${home.name}`} readOnly />
+          <input className="field text-center font-black" disabled value={homeGoals} aria-label={`Goles ${home.name}`} readOnly />
         </div>
         <div className="grid grid-cols-[1fr_68px] items-center gap-3 rounded-md border border-line bg-field p-2">
           <TeamOrLock team={away} />
-          <input className="field text-center font-black" disabled value={match.away_goals ?? ""} aria-label={`Goles ${away.name}`} readOnly />
+          <input className="field text-center font-black" disabled value={awayGoals} aria-label={`Goles ${away.name}`} readOnly />
         </div>
       </div>
       <p className="mt-3 text-xs font-semibold text-ink/55">{match.stadium && match.stadium !== "-" ? match.stadium : "Estadio por confirmar"}</p>

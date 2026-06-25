@@ -381,7 +381,9 @@ function PredictionCard({
   }, [awayGoals, homeGoals, locked, loggedIn, saveDraft]);
 
   const hasResult = match.home_goals != null && match.away_goals != null;
-  const realResult = hasResult ? `${match.home_goals}-${match.away_goals}` : "Pendiente";
+  const visualHomeGoals = status === "playing" ? match.home_goals ?? 0 : match.home_goals;
+  const visualAwayGoals = status === "playing" ? match.away_goals ?? 0 : match.away_goals;
+  const realResult = hasResult || status === "playing" ? `${visualHomeGoals}-${visualAwayGoals}` : "Pendiente";
   const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
   const pointsReady = prediction && hasResult;
   const home = safeDisplay?.home ?? { name: match.home_team, code: match.home_country_code };
@@ -545,7 +547,9 @@ function PodiumPicker({
 function BracketCard({ match, prediction, display }: { match: Match; prediction?: PredictionWithUpdated; display?: DisplayMatch }) {
   const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null && match.away_goals != null, new Date(), match.status);
   const hasResult = match.home_goals != null && match.away_goals != null;
-  const realResult = hasResult ? `${match.home_goals}-${match.away_goals}` : "Pendiente";
+  const visualHomeGoals = status === "playing" ? match.home_goals ?? 0 : match.home_goals;
+  const visualAwayGoals = status === "playing" ? match.away_goals ?? 0 : match.away_goals;
+  const realResult = hasResult || status === "playing" ? `${visualHomeGoals}-${visualAwayGoals}` : "Pendiente";
   const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
   const pointsReady = prediction && hasResult;
   const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
@@ -563,14 +567,14 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
           <TeamOrLock team={home} />
           <span className="flex items-center gap-2 text-xs font-bold text-ink/40">
             {winner?.name === home.name && <span className="badge">Ganador</span>}
-            {match.home_goals ?? ""}
+            {visualHomeGoals ?? ""}
           </span>
         </div>
         <div className={`flex items-center justify-between gap-3 rounded-md p-2 ${winner?.name === away.name ? "bg-mint" : "bg-field"}`}>
           <TeamOrLock team={away} />
           <span className="flex items-center gap-2 text-xs font-bold text-ink/40">
             {winner?.name === away.name && <span className="badge">Ganador</span>}
-            {match.away_goals ?? ""}
+            {visualAwayGoals ?? ""}
           </span>
         </div>
       </div>

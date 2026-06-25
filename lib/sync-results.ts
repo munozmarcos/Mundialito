@@ -167,6 +167,36 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
   const notificationFailures: string[] = [];
   const matchedLocalIds = new Set<string>();
 
+  for (const match of matches ?? []) {
+    if (match.status !== "playing") continue;
+    if (match.home_goals != null && match.away_goals != null) continue;
+
+    const liveHomeGoals = match.home_goals ?? 0;
+    const liveAwayGoals = match.away_goals ?? 0;
+    const { error: liveScoreError } = await db
+      .from("matches")
+      .update({
+        home_goals: liveHomeGoals,
+        away_goals: liveAwayGoals,
+        penalty_winner: null,
+        locked: true,
+        status: "playing",
+        result_updated_at: new Date().toISOString()
+      })
+      .eq("id", match.id);
+    if (liveScoreError) throw liveScoreError;
+
+    Object.assign(match, {
+      home_goals: liveHomeGoals,
+      away_goals: liveAwayGoals,
+      penalty_winner: null,
+      locked: true,
+      status: "playing"
+    });
+    await recalculateMatch(match.id);
+    updated += 1;
+  }
+
   for (const result of providerResults) {
     const local = findLocalMatch(matches ?? [], result);
     if (!local) {
@@ -189,11 +219,13 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
 
     if ((providerHomeGoals == null || providerAwayGoals == null) && result.statusOnly) {
       if (result.status === "playing" && !localIsFinal) {
+        const liveHomeGoals = local.home_goals ?? 0;
+        const liveAwayGoals = local.away_goals ?? 0;
         const { error: updateError } = await db
           .from("matches")
           .update({
-            home_goals: null,
-            away_goals: null,
+            home_goals: liveHomeGoals,
+            away_goals: liveAwayGoals,
             penalty_winner: null,
             locked: true,
             status: "playing",
@@ -206,8 +238,8 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
         if (local.status !== "playing") {
           const notification = await notifyLiveStart(db, {
             ...local,
-            home_goals: null,
-            away_goals: null,
+            home_goals: liveHomeGoals,
+            away_goals: liveAwayGoals,
             status: "playing"
           });
           kickoffNotifications += notification.pushSent;
@@ -299,6 +331,8 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
     const { error: updateError } = await db
       .from("matches")
       .update({
+        home_goals: 0,
+        away_goals: 0,
         locked: true,
         status: "playing",
         result_updated_at: new Date().toISOString()
@@ -309,8 +343,8 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
     await recalculateMatch(match.id);
     const notification = await notifyLiveStart(db, {
       ...match,
-      home_goals: null,
-      away_goals: null,
+      home_goals: 0,
+      away_goals: 0,
       status: "playing"
     });
     kickoffNotifications += notification.pushSent;
