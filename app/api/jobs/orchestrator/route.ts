@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { recordJobRun } from "@/lib/job-runs";
 
 const always = [
+  "/api/jobs/sync-results",
+  "/api/jobs/sync-fixtures",
   "/api/jobs/lock-matches",
   "/api/jobs/notify-kickoff",
-  "/api/jobs/sync-results",
   "/api/jobs/send-reminders",
   "/api/jobs/send-daily-ranking"
 ];
@@ -33,13 +34,8 @@ async function runJob(req: Request, path: string) {
 export async function POST(req: Request) {
   if (!assertCron(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const now = new Date();
-  const minute = now.getUTCMinutes();
-  const hour = now.getUTCHours();
   const due = new Set<string>(always);
 
-  // 03:00 Argentina = 06:00 UTC. The wide window absorbs GitHub schedule delays.
-  if (hour === 6 && minute < 30) due.add("/api/jobs/sync-fixtures");
   const results = [];
   for (const path of due) {
     results.push(await runJob(req, path));

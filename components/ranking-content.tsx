@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PointsPill, pointsInputClass, pointsPillClass } from "@/components/points-pill";
 import { RankingDescription } from "@/components/ranking-description";
 import { TeamLabel } from "@/components/team-label";
-import { formatArgentinaDateTime } from "@/lib/dates";
+import { argentinaDateKey, formatArgentinaDateTime } from "@/lib/dates";
 import { sortedGroupEntries } from "@/lib/group-sort";
 import { matchFitsBasicFilters } from "@/lib/match-filters";
 import { competitionRankMap } from "@/lib/ranking-position";
@@ -225,6 +225,12 @@ export function RankingContent({ ranking, details }: Props) {
     [normalizedRanking]
   );
 
+  function openDetails(userId: string) {
+    setTeamFilter("");
+    setDateFilter(argentinaDateKey(new Date()));
+    setSelectedUserId(userId);
+  }
+
   useEffect(() => {
     if (!selectedRow) return;
     function onKeyDown(event: KeyboardEvent) {
@@ -275,7 +281,7 @@ export function RankingContent({ ranking, details }: Props) {
                     runnerUpPoints={row.podium_runner_up_points}
                     thirdPlacePoints={row.podium_third_place_points}
                   />
-                  <button className="btn secondary min-h-8 w-fit px-3 text-xs" onClick={() => setSelectedUserId(row.user_id)} type="button">
+                  <button className="btn secondary min-h-8 w-fit px-3 text-xs" onClick={() => openDetails(row.user_id)} type="button">
                     <Eye className="h-3.5 w-3.5" />
                     Detalles
                   </button>
