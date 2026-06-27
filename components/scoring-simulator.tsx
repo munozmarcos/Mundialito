@@ -284,6 +284,10 @@ function projectedGroupTable(matches: Match[], results: ResultMap) {
   });
 }
 
+function groupHasCompleteResults(matches: Match[], results: ResultMap) {
+  return matches.length > 0 && matches.every((match) => results[match.id]?.home !== "" && results[match.id]?.away !== "");
+}
+
 function resolveGroupSlot(slot: string, groupTables: Record<string, GroupRow[]>, bestThirds: GroupRow[]) {
   const clean = slot.trim();
   const direct = clean.match(/^([12])([A-L])$/i);
@@ -381,7 +385,13 @@ function resolveBracketSlot(
 function deriveSimulatedBracket(groupMatches: Match[], knockoutMatches: Match[], results: ResultMap) {
   const grouped = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
   const groupTables = Object.fromEntries(Object.entries(grouped).map(([group, items]) => [group, projectedGroupTable(items, results)]));
-  const bestThirds = Object.values(groupTables)
+  const completeGroupTables: Record<string, GroupRow[]> = Object.fromEntries(
+    Object.entries(grouped)
+      .filter(([, items]) => groupHasCompleteResults(items, results))
+      .map(([group, items]) => [group, projectedGroupTable(items, results)])
+  );
+  const allGroupsComplete = Object.keys(grouped).length > 0 && Object.keys(grouped).every((group) => completeGroupTables[group]);
+  const bestThirds = (allGroupsComplete ? Object.values(completeGroupTables) : [])
     .map((table) => table[2])
     .filter(Boolean)
     .sort((a, b) => {
@@ -397,8 +407,8 @@ function deriveSimulatedBracket(groupMatches: Match[], knockoutMatches: Match[],
 
   for (const match of [...knockoutMatches].sort((a, b) => (matchNumber(a) ?? 999) - (matchNumber(b) ?? 999))) {
     const display = {
-      home: resolveBracketSlot(match.home_team, groupTables, bestThirds, winners, losers, thirdAssignments.get(`${match.id}:home`)),
-      away: resolveBracketSlot(match.away_team, groupTables, bestThirds, winners, losers, thirdAssignments.get(`${match.id}:away`))
+      home: resolveBracketSlot(match.home_team, completeGroupTables, bestThirds, winners, losers, thirdAssignments.get(`${match.id}:home`)),
+      away: resolveBracketSlot(match.away_team, completeGroupTables, bestThirds, winners, losers, thirdAssignments.get(`${match.id}:away`))
     };
     displays[match.id] = display;
 
@@ -449,9 +459,6 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
     .filter(([group]) => activeTab === "tablas" || !selectedGroup || group === selectedGroup)
     .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
     .filter(([, items]) => items.length);
-  const groupPhaseComplete =
-    groupMatches.length > 0 &&
-    groupMatches.every((match) => results[match.id]?.home !== "" && results[match.id]?.away !== "");
   const finalMatch = knockoutMatches.find((match) => match.stage === "FINAL");
   const thirdPlaceMatch = knockoutMatches.find((match) => match.stage === "THIRD_PLACE");
   const simulatedFinalDisplay = finalMatch ? simulated.displays[finalMatch.id] : null;
@@ -699,7 +706,7 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
             home: { name: match.home_team, code: match.home_country_code },
             away: { name: match.away_team, code: match.away_country_code }
           };
-    const knockoutBlocked = match.stage !== "GROUP" && (!groupPhaseComplete || isPlaceholderTeam(rawDisplay.home) || isPlaceholderTeam(rawDisplay.away));
+    const knockoutBlocked = match.stage !== "GROUP" && (isPlaceholderTeam(rawDisplay.home) || isPlaceholderTeam(rawDisplay.away));
     const display = knockoutBlocked
       ? { home: { name: "Por definir" }, away: { name: "Por definir" } }
       : rawDisplay;
