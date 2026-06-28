@@ -8,6 +8,7 @@ import { formatArgentinaDateTime } from "@/lib/dates";
 import { compareGroups, sortedGroupEntries } from "@/lib/group-sort";
 import { liveMinuteLabel } from "@/lib/live-minute";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
+import { knockoutMatchNumber } from "@/lib/knockout-match-number";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { matchFitsBasicFilters } from "@/lib/match-filters";
 import { isPredictionLocked, matchStatus } from "@/lib/scoring";
@@ -82,10 +83,7 @@ function groupBy<T>(items: T[], key: (item: T) => string) {
 }
 
 function matchNumber(match: Match) {
-  const source = match.provider_match_id ?? "";
-  const fromProvider = source.match(/fifa-(\d+)/i);
-  if (fromProvider) return Number(fromProvider[1]);
-  return null;
+  return knockoutMatchNumber(match);
 }
 
 function displayFromRow(row?: GroupRow, fallback = "Por definir"): DisplayTeam {

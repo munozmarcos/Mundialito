@@ -14,6 +14,7 @@ import { PointsPill, pointsInputClass, pointsPillClass } from "@/components/poin
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import { RankingDescription } from "@/components/ranking-description";
 import { competitionRankMap } from "@/lib/ranking-position";
+import { knockoutMatchNumber } from "@/lib/knockout-match-number";
 import { Calculator, CircleDot, ClipboardPaste, Eye, GitBranch, ListChecks, Lock, Medal, RotateCcw, Table2, Target, Trophy, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -215,10 +216,7 @@ function teamNameMatches(left?: string | null, right?: string | null) {
 }
 
 function matchNumber(match: Match) {
-  const source = match.provider_match_id ?? "";
-  const fromProvider = source.match(/fifa-(\d+)/i);
-  if (fromProvider) return Number(fromProvider[1]);
-  return null;
+  return knockoutMatchNumber(match);
 }
 
 function displayFromRow(row?: GroupRow, fallback = "Por definir"): DisplayTeam {
@@ -345,20 +343,22 @@ function resolveThirdAssignments(knockoutMatches: Match[], bestThirds: GroupRow[
 }
 
 function winnerFromResult(display: DisplayMatch, result?: { home: number | ""; away: number | ""; winner?: WinnerSide | "" }): DisplayTeam | null {
-  if (!result || result.home === "" || result.away === "") return null;
-  if (result.home > result.away) return display.home;
-  if (result.away > result.home) return display.away;
+  if (!result) return null;
   if (result.winner === "HOME") return display.home;
   if (result.winner === "AWAY") return display.away;
+  if (result.home === "" || result.away === "") return null;
+  if (result.home > result.away) return display.home;
+  if (result.away > result.home) return display.away;
   return null;
 }
 
 function loserFromResult(display: DisplayMatch, result?: { home: number | ""; away: number | ""; winner?: WinnerSide | "" }): DisplayTeam | null {
-  if (!result || result.home === "" || result.away === "") return null;
-  if (result.home > result.away) return display.away;
-  if (result.away > result.home) return display.home;
+  if (!result) return null;
   if (result.winner === "HOME") return display.away;
   if (result.winner === "AWAY") return display.home;
+  if (result.home === "" || result.away === "") return null;
+  if (result.home > result.away) return display.away;
+  if (result.away > result.home) return display.home;
   return null;
 }
 
@@ -428,7 +428,6 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
   const [bulk, setBulk] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"todos" | "cargar" | "tablas" | "llave">("todos");
-  const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [copyMessage, setCopyMessage] = useState("");
   const [activeGroup, setActiveGroup] = useState("");
@@ -443,13 +442,6 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
   const byGroup = groupBy(groupMatches, (match) => match.group_name || "Sin grupo");
   const byStage = groupBy(knockoutMatches, (match) => match.stage);
   const simulated = useMemo(() => deriveSimulatedBracket(groupMatches, knockoutMatches, results), [groupMatches, knockoutMatches, results]);
-  const availableKnockoutStages = knockoutOrder.filter((item) => byStage[item]?.length);
-  const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage)
-    ? activeKnockoutStage
-    : availableKnockoutStages[0];
-  const selectedKnockoutMatches = selectedKnockoutStage
-    ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter))
-    : [];
   const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
   const allFilteredByStage = groupBy(allFilteredMatches, (match) => match.stage);
   const teamOptions = useMemo(() => teamOptionsFromMatches(groupMatches), [groupMatches]);
@@ -777,6 +769,92 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
     );
   }
 
+  function bracketCard(match: Match, stage: MatchStage) {
+    const result = results[match.id];
+    const rawDisplay = simulated.displays[match.id] ?? {
+      home: { name: match.home_team, code: match.home_country_code },
+      away: { name: match.away_team, code: match.away_country_code }
+    };
+    const knockoutBlocked = isPlaceholderTeam(rawDisplay.home) || isPlaceholderTeam(rawDisplay.away);
+    const display = knockoutBlocked ? { home: { name: "Por definir" }, away: { name: "Por definir" } } : rawDisplay;
+    const winner = winnerFromResult(display, result);
+    const selectedWinner = result?.winner === "HOME" ? display.home : result?.winner === "AWAY" ? display.away : winner;
+
+    return (
+      <article className={`sim-bracket-card ${knockoutBlocked ? "is-locked" : ""}`} data-stage={stage} key={match.id}>
+        <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-black uppercase text-ink/45">
+          <span>#{matchNumber(match) ?? "-"}</span>
+          <span>{formatArgentinaDate(match.kickoff_at)}</span>
+        </div>
+        <div className="grid gap-1.5">
+          {(["home", "away"] as const).map((side) => {
+            const team = side === "home" ? display.home : display.away;
+            const selected = selectedWinner?.name === team.name && !knockoutBlocked;
+            return (
+              <button
+                className={`sim-bracket-team-row grid grid-cols-[1fr_34px] items-center gap-2 rounded-md border px-2 py-1 text-left text-xs transition ${selected ? "is-selected border-grass/80 bg-[#063f2a] text-white shadow-[inset_0_0_0_1px_rgba(55,245,118,0.16)]" : "border-line bg-slate-950/25"} ${knockoutBlocked ? "cursor-not-allowed" : "hover:border-grass/35"}`}
+                disabled={knockoutBlocked}
+                key={side}
+                onClick={() => setWinner(match.id, side === "home" ? "HOME" : "AWAY")}
+                type="button"
+              >
+                <TeamOrLock team={team} />
+                <input
+                  aria-label={`Goles ${team.name}`}
+                  className="field h-7 min-h-7 px-1 text-center text-sm font-black"
+                  disabled={knockoutBlocked}
+                  inputMode="numeric"
+                  maxLength={2}
+                  pattern="[0-9]*"
+                  type="text"
+                  value={knockoutBlocked ? "" : result?.[side] ?? ""}
+                  onChange={(event) => {
+                    if (knockoutBlocked) return;
+                    const value = parseGoalInput(event.target.value);
+                    if (value !== null && (value === "" || value <= 30)) setResult(match.id, side, String(value));
+                  }}
+                  onClick={(event) => event.stopPropagation()}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </article>
+    );
+  }
+
+  function sortedStageMatches(stage: MatchStage) {
+    return [...(byStage[stage] ?? [])].sort((a, b) => (matchNumber(a) ?? 999) - (matchNumber(b) ?? 999));
+  }
+
+  function bracketRow(stage: MatchStage, index: number) {
+    const rows: Record<MatchStage, number[]> = {
+      GROUP: [],
+      R32: [1, 3, 5, 7, 9, 11, 13, 15],
+      R16: [2, 6, 10, 14],
+      QF: [4, 12],
+      SF: [8],
+      THIRD_PLACE: [12],
+      FINAL: [8]
+    };
+    return rows[stage]?.[index] ?? index * 2 + 1;
+  }
+
+  function bracketColumn(stage: MatchStage, items: Match[], side: "left" | "right") {
+    return (
+      <section className="sim-diagram-round" data-side={side} data-stage={stage} key={`${side}-${stage}`}>
+        <h3>{stageLabels[stage]}</h3>
+        <div className="sim-diagram-stack">
+          {items.map((match, index) => (
+            <div className="sim-diagram-slot" key={match.id} style={{ gridRow: `${bracketRow(stage, index)} / span 2` }}>
+              {bracketCard(match, stage)}
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <div className="grid gap-6">
       <section className="panel p-5">
@@ -904,27 +982,47 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
 
 
       {activeTab === "llave" && (
-        <section className="grid gap-4">
-          <div className="panel flex flex-wrap gap-2 p-2">
-            {availableKnockoutStages.map((item) => (
-              <button
-                className={`btn ${selectedKnockoutStage === item ? "" : "secondary"}`}
-                key={item}
-                onClick={() => setActiveKnockoutStage(item)}
-                type="button"
-              >
-                <Trophy className="h-4 w-4" />
-                {stageLabels[item]}
-              </button>
-            ))}
+        <section className="panel overflow-hidden">
+          <div className="border-b border-line p-4">
+            <h2 className="flex items-center gap-2 text-2xl font-black">
+              <GitBranch className="h-5 w-5 text-gold" />
+              Mapa de llaves
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-ink/60">Completá cada fase y mirá cómo se libera la siguiente hasta la final.</p>
           </div>
+          <div className="dark-scrollbar overflow-x-auto p-4">
+            <div className="sim-diagram-map">
+              {bracketColumn("R32", sortedStageMatches("R32").slice(0, 8), "left")}
+              {bracketColumn("R16", sortedStageMatches("R16").slice(0, 4), "left")}
+              {bracketColumn("QF", sortedStageMatches("QF").slice(0, 2), "left")}
+              {bracketColumn("SF", sortedStageMatches("SF").slice(0, 1), "left")}
 
-          <div className="flex items-center gap-2 text-lg font-black">
-            <Trophy className="h-4 w-4 text-gold" />
-            <h2>{selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves"}</h2>
-          </div>
-          <div className="match-card-grid">
-            {selectedKnockoutMatches.map((match) => resultCard(match))}
+              <section className="sim-diagram-final">
+                <h3>Final</h3>
+                <div className="sim-diagram-cup">
+                  <Trophy className="h-10 w-10 text-gold" />
+                  <span>2026</span>
+                </div>
+                <div className="sim-diagram-stack">
+                  {sortedStageMatches("FINAL").map((match, index) => (
+                    <div className="sim-diagram-slot" key={match.id} style={{ gridRow: `${bracketRow("FINAL", index)} / span 2` }}>
+                      {bracketCard(match, "FINAL")}
+                    </div>
+                  ))}
+                  {sortedStageMatches("THIRD_PLACE").map((match) => (
+                    <div className="sim-diagram-third" key={match.id} style={{ gridRow: `${bracketRow("THIRD_PLACE", 0)} / span 2` }}>
+                      <h4 className="mb-2 text-center text-xs font-black uppercase text-ink/45">3er puesto</h4>
+                      {bracketCard(match, "THIRD_PLACE")}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {bracketColumn("SF", sortedStageMatches("SF").slice(1, 2), "right")}
+              {bracketColumn("QF", sortedStageMatches("QF").slice(2, 4), "right")}
+              {bracketColumn("R16", sortedStageMatches("R16").slice(4, 8), "right")}
+              {bracketColumn("R32", sortedStageMatches("R32").slice(8, 16), "right")}
+            </div>
           </div>
         </section>
       )}

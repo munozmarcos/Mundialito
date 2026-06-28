@@ -13,6 +13,7 @@ import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-
 import { getLatestNotifications } from "@/lib/notifications";
 import { competitionRankForIndex } from "@/lib/ranking-position";
 import { isPredictionLocked, matchStatus } from "@/lib/scoring";
+import { stageLabel } from "@/lib/stage-labels";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 import { CalendarDays, CheckCircle2, CircleDot, LockKeyhole, Target, Trophy, UnlockKeyhole, UsersRound } from "lucide-react";
 import Link from "next/link";
@@ -218,7 +219,7 @@ export default async function Home() {
                         <span className="text-ink/40">vs</span>
                         <TeamLabel name={match.away_team} code={match.away_country_code} />
                       </h3>
-                      <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : match.stage, match.stadium].filter(Boolean).join(" - ")}</p>
+                      <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : stageLabel(match.stage), match.stadium].filter(Boolean).join(" - ")}</p>
                     </div>
                     <HomeMatchControls
                       actualAwayGoals={homeMatchStatus(match) === "playing" ? match.away_goals ?? 0 : match.away_goals}
@@ -260,7 +261,7 @@ export default async function Home() {
                         <span className="text-ink/40">vs</span>
                         <TeamLabel name={match.away_team} code={match.away_country_code} />
                       </h3>
-                      <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : match.stage, match.stadium].filter(Boolean).join(" - ")}</p>
+                      <p className="text-sm text-ink/70">{[match.group_name ? `Grupo ${match.group_name}` : stageLabel(match.stage), match.stadium].filter(Boolean).join(" - ")}</p>
                     </div>
                     <div className="grid justify-items-start gap-2 sm:justify-items-end">
                       <div className="home-match-status-row flex w-full flex-nowrap items-center justify-end gap-2">

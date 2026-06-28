@@ -8,6 +8,7 @@ import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { ICONS } from "@/lib/message-icons";
 
 import { isPredictionLocked } from "@/lib/scoring";
+import { stageLabel as formatStageLabel } from "@/lib/stage-labels";
 
 import { supabaseAdmin } from "@/lib/supabase";
 
@@ -163,7 +164,7 @@ function stageLabel(match: ReminderMatch) {
 
   if (match.group_name) return `Grupo ${match.group_name}`;
 
-  return match.stage ?? "Partido";
+  return formatStageLabel(match.stage);
 
 }
 

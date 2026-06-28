@@ -5,6 +5,7 @@ import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { getPodiumLockState, recalculateAllPodiumPoints, validatePodiumTeams } from "@/lib/podium";
 import { competitionRankForIndex, rankingPrefix } from "@/lib/ranking-position";
 import { isPredictionLocked } from "@/lib/scoring";
+import { stageLabel } from "@/lib/stage-labels";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 import { ICONS } from "@/lib/message-icons";
 
@@ -628,7 +629,7 @@ async function answerUpcoming(text: string) {
     ...upcoming.map((match) => [
       matchLabel(match),
       `${ICONS.clock} ${formatArgentinaDateTime(match.kickoff_at)}`,
-      match.group_name ? `Grupo ${match.group_name}` : match.stage
+      match.group_name ? `Grupo ${match.group_name}` : stageLabel(match.stage)
     ].join("\n"))
   ].join("\n");
 }

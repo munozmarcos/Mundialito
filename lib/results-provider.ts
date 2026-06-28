@@ -207,11 +207,30 @@ function footballDataHeaders() {
 
 export async function fetchFootballDataFixtures(): Promise<ProviderFixture[]> {
   const url = "https://api.football-data.org/v4/competitions/WC/matches?season=2026";
-  const res = await fetch(url, { headers: footballDataHeaders(), cache: "no-store" });
-  if (!res.ok) throw new Error(`football-data fixtures failed: ${res.status}`);
-  const data = (await res.json()) as { matches?: FootballDataMatch[] };
+  let bestMatches: FootballDataMatch[] = [];
+  let bestKnownKnockoutSides = -1;
+  let lastStatus = 0;
 
-  return (data.matches ?? [])
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const res = await fetch(url, { headers: footballDataHeaders(), cache: "no-store" });
+    lastStatus = res.status;
+    if (!res.ok) throw new Error(`football-data fixtures failed: ${res.status}`);
+    const data = (await res.json()) as { matches?: FootballDataMatch[] };
+    const matches = data.matches ?? [];
+    const knownKnockoutSides = matches
+      .filter((match) => mapFootballDataStage(match.stage) !== "GROUP")
+      .reduce((count, match) => count + (match.homeTeam?.name ? 1 : 0) + (match.awayTeam?.name ? 1 : 0), 0);
+
+    if (knownKnockoutSides > bestKnownKnockoutSides) {
+      bestKnownKnockoutSides = knownKnockoutSides;
+      bestMatches = matches;
+    }
+    if (knownKnockoutSides >= 32) break;
+  }
+
+  if (!bestMatches.length) throw new Error(`football-data fixtures failed: ${lastStatus || "empty response"}`);
+
+  return bestMatches
     .map((match) => {
       const stage = mapFootballDataStage(match.stage);
       const homeTeam = match.homeTeam?.name ?? null;
@@ -228,7 +247,7 @@ export async function fetchFootballDataFixtures(): Promise<ProviderFixture[]> {
         groupName: mapFootballDataGroup(match.group)
       };
     })
-    .filter((match) => (match.stage === "GROUP" ? Boolean(match.homeTeam && match.awayTeam) : Boolean(match.homeTeam || match.awayTeam)));
+    .filter((match) => (match.stage === "GROUP" ? Boolean(match.homeTeam && match.awayTeam) : true));
 }
 
 export async function fetchFootballDataResults(): Promise<ProviderResult[]> {

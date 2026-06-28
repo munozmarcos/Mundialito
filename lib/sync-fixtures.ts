@@ -6,6 +6,7 @@ import { fetchProviderFixtures, teamsMatch, type ProviderFixture } from "@/lib/r
 import { supabaseAdmin, supabaseAdminConfigured } from "@/lib/supabase";
 
 type GroupRow = {
+  group: string;
   team: string;
   code?: string | null;
   order: number;
@@ -53,6 +54,34 @@ function shouldOpenConfirmedFixture(existing: any, fixture: ProviderFixture) {
   return true;
 }
 
+function fixturePlaceholder(fixture: ProviderFixture) {
+  return knockoutPlaceholders.find((placeholder) => placeholder.stage === fixture.stage && kickoffClose(placeholder.kickoffAt, fixture.kickoffAt));
+}
+
+function existingOfficialSide(existingTeam?: string | null, existingCode?: string | null) {
+  if (!existingTeam || isPlaceholderTeamName(existingTeam)) return null;
+  return { team: existingTeam, code: existingCode ?? countryCodeForTeam(existingTeam) ?? null };
+}
+
+function mergeFixtureSide(
+  fixtureTeam: string | null | undefined,
+  fixtureCode: string | null | undefined,
+  existingTeam: string | null | undefined,
+  existingCode: string | null | undefined,
+  placeholderTeam: string | undefined
+) {
+  if (fixtureTeam) {
+    return { team: fixtureTeam, code: fixtureCode ?? existingCode ?? countryCodeForTeam(fixtureTeam) ?? null, fromProvider: true };
+  }
+
+  const officialExisting = existingOfficialSide(existingTeam, existingCode);
+  if (officialExisting) {
+    return { ...officialExisting, fromProvider: false };
+  }
+
+  return { team: placeholderTeam ?? existingTeam ?? null, code: null, fromProvider: false };
+}
+
 function isFinalGroupMatch(match: any) {
   return (match.status === "closed" || match.status === "final") && match.home_goals != null && match.away_goals != null;
 }
@@ -75,6 +104,7 @@ function groupStandings(matches: any[]) {
     const ensure = (team: string, code?: string | null) => {
       if (!rows.has(team)) {
         rows.set(team, {
+          group,
           team,
           code: countryCodeForTeam(team, code),
           order: fifaGroupTeamOrder(group, team, rows.size),
@@ -122,11 +152,90 @@ function resolveDirectGroupSlot(slot: string, tables: Map<string, GroupRow[]>) {
   return tables.get(match[2].toUpperCase())?.[Number(match[1]) - 1] ?? null;
 }
 
+function thirdAllowedGroups(slot: string) {
+  const match = slot.trim().match(/^3([A-L](?:\/[A-L])+)$/i);
+  return match ? new Set(match[1].split("/").map((group) => group.toUpperCase())) : null;
+}
+
+function groupForTeam(tables: Map<string, GroupRow[]>, team: string) {
+  for (const table of tables.values()) {
+    const row = table.find((item) => teamsMatch(item.team, team));
+    if (row) return row;
+  }
+  return null;
+}
+
+function providerFixtureForMatch(match: any, fixtures: ProviderFixture[]) {
+  return fixtures.find((fixture) => sameKnockoutSlot(match, fixture));
+}
+
+function resolveThirdAssignments(knockoutMatches: any[], bestThirds: GroupRow[], tables: Map<string, GroupRow[]>, fixtures: ProviderFixture[]) {
+  const slots = knockoutMatches
+    .flatMap((match) => {
+      const placeholder = placeholderForMatch(match);
+      const providerFixture = providerFixtureForMatch(match, fixtures);
+      return [
+        { matchId: match.id, side: "home" as const, currentTeam: match.home_team, providerConfirmed: Boolean(providerFixture?.homeTeam), slot: placeholder?.homeTeam ?? match.home_team },
+        { matchId: match.id, side: "away" as const, currentTeam: match.away_team, providerConfirmed: Boolean(providerFixture?.awayTeam), slot: placeholder?.awayTeam ?? match.away_team }
+      ];
+    })
+    .map((item) => ({ ...item, allowed: thirdAllowedGroups(item.slot) }))
+    .filter((item): item is typeof item & { allowed: Set<string> } => Boolean(item.allowed));
+
+  const byGroup = new Map(bestThirds.map((row) => [row.group, row]));
+  const assigned = new Map<string, GroupRow>();
+  const used = new Set<string>();
+
+  for (const slot of slots) {
+    if (!slot.providerConfirmed || isPlaceholderTeamName(slot.currentTeam)) continue;
+    const row = groupForTeam(tables, slot.currentTeam);
+    if (!row || !slot.allowed.has(row.group) || !byGroup.has(row.group) || used.has(row.group)) continue;
+    assigned.set(`${slot.matchId}:${slot.side}`, row);
+    used.add(row.group);
+  }
+
+  const sortedSlots = slots
+    .filter((slot) => !assigned.has(`${slot.matchId}:${slot.side}`))
+    .sort((a, b) => a.allowed.size - b.allowed.size);
+
+  function backtrack(index: number): boolean {
+    if (index >= sortedSlots.length) return true;
+    const slot = sortedSlots[index];
+    const candidates = [...slot.allowed]
+      .map((group) => byGroup.get(group))
+      .filter((row): row is GroupRow => Boolean(row && !used.has(row.group)));
+
+    for (const row of candidates) {
+      used.add(row.group);
+      assigned.set(`${slot.matchId}:${slot.side}`, row);
+      if (backtrack(index + 1)) return true;
+      assigned.delete(`${slot.matchId}:${slot.side}`);
+      used.delete(row.group);
+    }
+
+    return false;
+  }
+
+  backtrack(0);
+  return assigned;
+}
+
 function placeholderForMatch(match: any) {
   return knockoutPlaceholders.find((fixture) => fixture.stage === match.stage && kickoffClose(match.kickoff_at, fixture.kickoffAt));
 }
 
-function resolveDirectSide(currentTeam: string, currentCode: string | null | undefined, placeholderTeam: string | undefined, tables: Map<string, GroupRow[]>) {
+function resolveDirectSide(
+  currentTeam: string,
+  currentCode: string | null | undefined,
+  placeholderTeam: string | undefined,
+  tables: Map<string, GroupRow[]>,
+  assignedThird?: GroupRow
+) {
+  if (placeholderTeam?.trim().match(/^3([A-L](?:\/[A-L])+)$/i)) {
+    if (!assignedThird) return { team: placeholderTeam, code: null };
+    return { team: assignedThird.team, code: assignedThird.code ?? null };
+  }
+
   if (!placeholderTeam?.trim().match(/^([12])([A-L])$/i)) {
     return { team: currentTeam, code: currentCode ?? null };
   }
@@ -136,16 +245,41 @@ function resolveDirectSide(currentTeam: string, currentCode: string | null | und
   return { team: resolved.team, code: resolved.code ?? null };
 }
 
-async function resolveDirectKnockoutSlots(db: ReturnType<typeof supabaseAdmin>, matches: any[]) {
+async function resolveDirectKnockoutSlots(db: ReturnType<typeof supabaseAdmin>, matches: any[], fixtures: ProviderFixture[]) {
   const tables = groupStandings(matches);
+  const totalGroups = new Set(matches.filter((match) => match.stage === "GROUP" && match.group_name).map((match) => String(match.group_name).toUpperCase())).size;
+  const allGroupsComplete = totalGroups > 0 && tables.size === totalGroups;
+  const bestThirds = allGroupsComplete
+    ? [...tables.values()]
+        .map((table) => table[2])
+        .filter(Boolean)
+        .sort((a, b) => {
+          const goalDiff = b.goalsFor - b.goalsAgainst - (a.goalsFor - a.goalsAgainst);
+          return b.points - a.points || goalDiff || b.goalsFor - a.goalsFor || a.order - b.order;
+        })
+        .slice(0, 8)
+    : [];
+  const thirdAssignments = resolveThirdAssignments(matches.filter((match) => match.stage === "R32"), bestThirds, tables, fixtures);
 
   let resolved = 0;
   for (const match of matches) {
     if (match.stage === "GROUP" || match.home_goals != null || match.away_goals != null) continue;
 
     const placeholder = placeholderForMatch(match);
-    const nextHome = resolveDirectSide(match.home_team, match.home_country_code, placeholder?.homeTeam ?? match.home_team, tables);
-    const nextAway = resolveDirectSide(match.away_team, match.away_country_code, placeholder?.awayTeam ?? match.away_team, tables);
+    const nextHome = resolveDirectSide(
+      match.home_team,
+      match.home_country_code,
+      placeholder?.homeTeam ?? match.home_team,
+      tables,
+      thirdAssignments.get(`${match.id}:home`)
+    );
+    const nextAway = resolveDirectSide(
+      match.away_team,
+      match.away_country_code,
+      placeholder?.awayTeam ?? match.away_team,
+      tables,
+      thirdAssignments.get(`${match.id}:away`)
+    );
 
     if (
       nextHome.team === match.home_team &&
@@ -197,10 +331,13 @@ async function upsertFixture(db: ReturnType<typeof supabaseAdmin>, fixture: Prov
 
   if (!existing && (!fixture.homeTeam || !fixture.awayTeam)) return;
 
-  const nextHomeTeam = fixture.homeTeam ?? existing?.home_team;
-  const nextAwayTeam = fixture.awayTeam ?? existing?.away_team;
-  const nextHomeCode = fixture.homeCode ?? existing?.home_country_code ?? null;
-  const nextAwayCode = fixture.awayCode ?? existing?.away_country_code ?? null;
+  const placeholder = fixture.stage === "GROUP" ? null : fixturePlaceholder(fixture);
+  const homeSide = mergeFixtureSide(fixture.homeTeam, fixture.homeCode, existing?.home_team, existing?.home_country_code, placeholder?.homeTeam);
+  const awaySide = mergeFixtureSide(fixture.awayTeam, fixture.awayCode, existing?.away_team, existing?.away_country_code, placeholder?.awayTeam);
+  const nextHomeTeam = homeSide.team;
+  const nextAwayTeam = awaySide.team;
+  const nextHomeCode = homeSide.code;
+  const nextAwayCode = awaySide.code;
   const mergedFixture = {
     ...fixture,
     homeTeam: nextHomeTeam,
@@ -220,8 +357,8 @@ async function upsertFixture(db: ReturnType<typeof supabaseAdmin>, fixture: Prov
     stadium: fixture.stadium,
     stage: fixture.stage,
     group_name: fixture.groupName,
-    status: shouldOpen ? "open" : existing?.status ?? "open",
-    locked: shouldOpen ? false : existing?.locked ?? false
+    status: fixture.stage !== "GROUP" && !shouldOpen ? "locked" : shouldOpen ? "open" : existing?.status ?? "open",
+    locked: fixture.stage !== "GROUP" && !shouldOpen ? true : shouldOpen ? false : existing?.locked ?? false
   };
 
   if (existing) {
@@ -261,13 +398,16 @@ export async function syncFixturesFromProvider() {
       matches.find((match) => String(match.provider_match_id ?? "") === String(fixture.providerMatchId)) ??
       matches.find((match) => sameFixture(match, fixture)) ??
       matches.find((match) => sameKnockoutSlot(match, fixture));
+    const fixtureSlot = fixturePlaceholder(fixture);
+    const homeSide = mergeFixtureSide(fixture.homeTeam, fixture.homeCode, existingBefore?.home_team, existingBefore?.home_country_code, fixtureSlot?.homeTeam);
+    const awaySide = mergeFixtureSide(fixture.awayTeam, fixture.awayCode, existingBefore?.away_team, existingBefore?.away_country_code, fixtureSlot?.awayTeam);
     const mergedFixture = existingBefore
       ? {
           ...fixture,
-          homeTeam: fixture.homeTeam ?? existingBefore.home_team,
-          awayTeam: fixture.awayTeam ?? existingBefore.away_team,
-          homeCode: fixture.homeCode ?? existingBefore.home_country_code ?? null,
-          awayCode: fixture.awayCode ?? existingBefore.away_country_code ?? null
+          homeTeam: homeSide.team,
+          awayTeam: awaySide.team,
+          homeCode: homeSide.code,
+          awayCode: awaySide.code
         }
       : fixture;
     if (shouldOpenConfirmedFixture(existingBefore, mergedFixture)) opened += 1;
@@ -304,11 +444,5 @@ export async function syncFixturesFromProvider() {
     placeholders += 1;
   }
 
-  const { data: refreshedMatches, error: refreshedError } = await db
-    .from("matches")
-    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,provider_match_id,stage,group_name,status,locked,home_goals,away_goals");
-  if (refreshedError) throw refreshedError;
-  const resolvedSlots = await resolveDirectKnockoutSlots(db, refreshedMatches ?? matches);
-
-  return { mode: "real", imported, placeholders, opened, resolvedSlots, total: imported + placeholders, provider: process.env.RESULTS_PROVIDER ?? "football-data" };
+  return { mode: "real", imported, placeholders, opened, resolvedSlots: 0, total: imported + placeholders, provider: process.env.RESULTS_PROVIDER ?? "football-data" };
 }
