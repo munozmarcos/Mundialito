@@ -550,74 +550,113 @@ select.field {
 }
 
 .sim-diagram-map {
-  display: grid;
-  min-width: 1780px;
-  grid-template-columns: 218px 198px 198px 198px 238px 198px 198px 198px 218px;
-  gap: 22px;
-  align-items: stretch;
+  position: relative;
+  min-width: 3200px;
+  height: 3250px;
   border: 1px solid rgba(189, 154, 90, 0.22);
   border-radius: 10px;
   background:
     radial-gradient(circle at 50% 42%, rgba(13, 73, 100, 0.34), transparent 34%),
     linear-gradient(90deg, rgba(2, 22, 38, 0.94), rgba(4, 41, 61, 0.9), rgba(2, 22, 38, 0.94));
-  padding: 20px 18px 28px;
+  overflow: hidden;
+  padding: 0;
 }
 
 .sim-diagram-round,
 .sim-diagram-final {
-  display: grid;
-  grid-template-rows: 34px auto;
-  min-height: 1300px;
+  position: static;
 }
 
-.sim-diagram-round h3,
-.sim-diagram-final h3 {
-  min-height: 34px;
+.sim-diagram-heading {
+  position: absolute;
+  top: 24px;
+  z-index: 2;
+  height: 40px;
   border-bottom: 1px solid rgba(189, 154, 90, 0.32);
   color: #d9bd7a;
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 900;
   letter-spacing: 0.02em;
   text-align: center;
 }
 
-.sim-diagram-stack {
-  display: grid;
-  grid-template-rows: repeat(16, 82px);
-  padding-top: 18px;
-}
-
 .sim-diagram-slot,
 .sim-diagram-third {
-  align-self: center;
+  position: absolute;
+  z-index: 2;
 }
 
 .sim-diagram-cup {
-  display: none;
-  height: 0;
+  position: absolute;
+  left: 1485px;
+  top: 1040px;
+  z-index: 1;
+  display: grid;
+  width: 250px;
+  height: 120px;
   place-items: center;
   color: #f4f8ff;
-  font-size: 42px;
+  font-size: 34px;
   font-weight: 1000;
+  opacity: 1;
+  text-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+
+.sim-diagram-third-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -132px;
+  z-index: 1;
+  display: grid;
+  height: 112px;
+  place-items: center;
+  color: #f4c99b;
+  font-size: 34px;
+  font-weight: 1000;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+  text-transform: uppercase;
+}
+
+.sim-diagram-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 3200px;
+  height: 3250px;
+  pointer-events: none;
+}
+
+.sim-diagram-lines path {
+  fill: none;
+  stroke: rgba(189, 154, 90, 0.52);
+  stroke-linecap: square;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+  vector-effect: non-scaling-stroke;
 }
 
 .sim-bracket-card {
   position: relative;
-  height: 124px;
+  height: 210px;
   overflow: hidden;
-  border: 1px solid rgba(97, 139, 184, 0.32);
+  border: 1px solid rgba(97, 139, 184, 0.42);
   border-radius: 8px;
-  background: rgba(13, 31, 55, 0.92);
-  padding: 8px;
+  background: linear-gradient(180deg, rgba(18, 42, 72, 0.96), rgba(9, 24, 45, 0.96));
+  padding: 14px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
 }
 
 .sim-bracket-team-row {
-  min-height: 35px;
+  min-height: 58px;
 }
 
 .sim-bracket-team-row.is-selected {
-  background: #063f2a;
+  border-color: rgba(55, 245, 118, 0.76);
+  background: #064327;
+  box-shadow: inset 0 0 0 1px rgba(55, 245, 118, 0.2), 0 8px 18px rgba(3, 73, 42, 0.18);
 }
 
 .sim-bracket-card .team-label,
@@ -625,42 +664,27 @@ select.field {
   min-width: 0;
 }
 
-.sim-diagram-round .sim-bracket-card::before,
-.sim-diagram-round .sim-bracket-card::after {
-  position: absolute;
-  top: 50%;
-  content: "";
-}
-
-.sim-diagram-round[data-side="left"] .sim-bracket-card::after {
-  right: -25px;
-  width: 24px;
-  height: 1px;
-  background: rgba(189, 154, 90, 0.42);
-}
-
-.sim-diagram-round[data-side="right"] .sim-bracket-card::before {
-  left: -25px;
-  width: 24px;
-  height: 1px;
-  background: rgba(189, 154, 90, 0.42);
-}
-
-.sim-diagram-round[data-stage="R32"] .sim-bracket-card::before,
-.sim-diagram-round[data-stage="SF"] .sim-bracket-card::after,
-.sim-diagram-round[data-side="right"][data-stage="SF"] .sim-bracket-card::before,
-.sim-diagram-round[data-side="right"][data-stage="R32"] .sim-bracket-card::after {
-  display: none;
-}
-
 .sim-bracket-card.is-locked {
   border-color: rgba(100, 116, 139, 0.36);
   background: rgba(15, 23, 42, 0.76);
 }
 
-.sim-bracket-card.is-locked::before,
-.sim-bracket-card.is-locked::after {
-  background: rgba(100, 116, 139, 0.28);
+.sim-bracket-save {
+  display: grid;
+  width: 42px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 7px;
+  border: 1px solid rgba(55, 245, 118, 0.28);
+  background: rgba(9, 149, 54, 0.78);
+  color: #ffffff;
+}
+
+.sim-bracket-save:disabled {
+  border-color: rgba(100, 116, 139, 0.24);
+  background: rgba(15, 23, 42, 0.58);
+  color: rgba(244, 248, 255, 0.44);
 }
 
 @media (max-width: 520px) {

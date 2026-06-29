@@ -1,3 +1,4 @@
+import { formatArgentinaDateTime } from "@/lib/dates";
 import { displayNameForTeam } from "@/lib/flags";
 import type { Match } from "@/lib/types";
 
@@ -91,7 +92,7 @@ export function validatePodiumTeams(championTeam?: string | null, runnerUpTeam?:
 export async function getPodiumLockState(db: any) {
   const { data: settings, error: settingsError } = await db
     .from("podium_settings")
-    .select("status")
+    .select("status,updated_at")
     .eq("id", true)
     .maybeSingle();
   if (settingsError && settingsError.code !== "42P01") throw settingsError;
@@ -100,14 +101,15 @@ export async function getPodiumLockState(db: any) {
     return {
       locked: true,
       status: "locked" as PodiumStatus,
-      reason: "El podio anticipado esta bloqueado por el admin."
+      reason: "El podio anticipado está bloqueado por el admin."
     };
   }
   if (manualStatus === "closed") {
+    const closedAt = settings?.updated_at ? formatArgentinaDateTime(settings.updated_at) : null;
     return {
       locked: true,
       status: "closed" as PodiumStatus,
-      reason: "El podio anticipado esta cerrado por el admin."
+      reason: closedAt ? `El podio anticipado cerró. Cierre: ${closedAt}.` : "El podio anticipado cerró."
     };
   }
 
@@ -123,11 +125,14 @@ export async function getPodiumLockState(db: any) {
     .filter((time: number) => Number.isFinite(time))
     .sort((left: number, right: number) => left - right)[0];
   const closesByKickoff = Number.isFinite(firstRoundOf32Kickoff) && firstRoundOf32Kickoff - Date.now() <= 15 * 60 * 1000;
+  const closesAt = Number.isFinite(firstRoundOf32Kickoff)
+    ? formatArgentinaDateTime(new Date(firstRoundOf32Kickoff - 15 * 60 * 1000))
+    : null;
   return {
     locked: closesByKickoff,
     status: closesByKickoff ? "closed" as PodiumStatus : "open" as PodiumStatus,
     reason: closesByKickoff
-      ? "El podio cerro porque faltan 15 minutos o menos para el primer partido de 16vos."
+      ? `El podio anticipado cerró. Cierre: ${closesAt}.`
       : null
   };
 }

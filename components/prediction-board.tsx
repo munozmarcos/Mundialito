@@ -72,6 +72,44 @@ const stageLabels: Record<MatchStage, string> = {
 };
 
 const knockoutOrder: MatchStage[] = ["R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
+const bracketTree = {
+  left: {
+    R32: [74, 77, 73, 75, 83, 84, 81, 82],
+    R16: [89, 90, 93, 94],
+    QF: [97, 98],
+    SF: [101]
+  },
+  right: {
+    R32: [76, 78, 79, 80, 86, 88, 85, 87],
+    R16: [91, 92, 95, 96],
+    QF: [99, 100],
+    SF: [102]
+  }
+} satisfies Record<"left" | "right", Partial<Record<MatchStage, number[]>>>;
+const diagramWidth = 3200;
+const diagramHeight = 3250;
+const diagramCardHeight = 340;
+const diagramCardWidths = {
+  R32: 320,
+  R16: 320,
+  QF: 320,
+  SF: 320,
+  FINAL: 320,
+  THIRD_PLACE: 320
+} satisfies Partial<Record<MatchStage, number>>;
+const diagramX = {
+  left: { R32: 24, R16: 410, QF: 760, SF: 1110 },
+  center: { FINAL: 1450, THIRD_PLACE: 1450 },
+  right: { SF: 1790, QF: 2140, R16: 2490, R32: 2860 }
+} as const;
+const diagramY = {
+  R32: [230, 630, 1030, 1430, 1830, 2230, 2630, 3030],
+  R16: [430, 1230, 2030, 2830],
+  QF: [830, 2430],
+  SF: [1630],
+  FINAL: [1350],
+  THIRD_PLACE: [1780]
+} satisfies Partial<Record<MatchStage, number[]>>;
 
 function groupBy<T>(items: T[], key: (item: T) => string) {
   return items.reduce<Record<string, T[]>>((acc, item) => {
@@ -597,7 +635,7 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const [predictions, setPredictions] = useState<PredictionWithUpdated[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"todos" | "cargar" | "tablas" | "llave">("todos");
-  const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
+  const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage | "mapa">("mapa");
   const [activeGroup, setActiveGroup] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -619,12 +657,12 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
   const byStage = groupBy(knockoutMatches, (match) => match.stage);
   const bracket = useMemo(() => deriveBracket(groupMatches, knockoutMatches, predictionMap), [groupMatches, knockoutMatches, predictionMap]);
   const availableKnockoutStages = knockoutOrder.filter((stage) => byStage[stage]?.length);
-  const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
+  const selectedKnockoutStage = activeKnockoutStage !== "mapa" && availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
   const selectedKnockoutMatches = selectedKnockoutStage ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter)) : [];
   const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
   const allFilteredByStage = groupBy(allFilteredMatches, (match) => match.stage);
   const teamOptions = useMemo(() => teamOptionsFromMatches(groupMatches), [groupMatches]);
-  const availablePredictionMatches = matches.filter((match) => !isMatchUnavailable(match, match.stage === "GROUP" ? undefined : bracket.displays[match.id]));
+  const availablePredictionMatches = matches.filter((match) => !isMatchUnavailable(match));
   const availablePredictionIds = new Set(availablePredictionMatches.map((match) => match.id));
   const loaded = predictions.filter((prediction) => availablePredictionIds.has(prediction.match_id)).length;
   const availableTotal = availablePredictionMatches.length;
@@ -689,6 +727,186 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
     if (isMatchUnavailable(match, safeDisplay)) return false;
     const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null && match.away_goals != null, new Date(), match.status);
     return (status === "open" || status === "closing_soon") && !isPredictionLocked(match.kickoff_at, match.locked);
+  }
+
+  function sortedMatchesByNumbers(numbers: number[]) {
+    const byNumber = new Map(knockoutMatches.map((match) => [matchNumber(match), match]));
+    return numbers.map((number) => byNumber.get(number)).filter((match): match is Match => Boolean(match));
+  }
+
+  function diagramSlotStyle(stage: MatchStage, side: "left" | "right" | "center", index: number) {
+    const width = diagramCardWidths[stage as keyof typeof diagramCardWidths] ?? 194;
+    const x =
+      side === "center"
+        ? diagramX.center[stage as "FINAL" | "THIRD_PLACE"]
+        : diagramX[side][stage as "R32" | "R16" | "QF" | "SF"];
+    const y = (diagramY[stage as keyof typeof diagramY]?.[index] ?? 120) - diagramCardHeight / 2;
+    return { left: x, top: y, width };
+  }
+
+  function diagramHeader(label: string, left: number, width: number, key: string) {
+    return (
+      <div className="sim-diagram-heading" key={key} style={{ left, width }}>
+        {label}
+      </div>
+    );
+  }
+
+  function linePath(fromX: number, fromY: number, toX: number, toY: number) {
+    const midX = fromX + (toX - fromX) / 2;
+    return `M ${fromX} ${fromY} H ${midX} V ${toY} H ${toX}`;
+  }
+
+  function bracketGuideLines() {
+    const paths: string[] = [];
+    const leftEdge = (stage: MatchStage, side: "left" | "right" | "center") => diagramSlotStyle(stage, side, 0).left;
+    const rightEdge = (stage: MatchStage, side: "left" | "right" | "center") => leftEdge(stage, side) + (diagramCardWidths[stage as keyof typeof diagramCardWidths] ?? 194);
+    const y = (stage: MatchStage, index: number) => diagramY[stage as keyof typeof diagramY]?.[index] ?? 120;
+    const connectPairs = (side: "left" | "right", fromStage: "R32" | "R16" | "QF", toStage: "R16" | "QF" | "SF") => {
+      const count = diagramY[toStage]?.length ?? 0;
+      for (let index = 0; index < count; index += 1) {
+        const fromA = index * 2;
+        const fromB = fromA + 1;
+        const targetY = y(toStage, index);
+        if (side === "left") {
+          const fromX = rightEdge(fromStage, side);
+          const toX = leftEdge(toStage, side);
+          const elbowX = fromX + (toX - fromX) / 2;
+          paths.push(`M ${fromX} ${y(fromStage, fromA)} H ${elbowX} V ${y(fromStage, fromB)} H ${fromX}`);
+          paths.push(linePath(elbowX, targetY, toX, targetY));
+        } else {
+          const fromX = leftEdge(fromStage, side);
+          const toX = rightEdge(toStage, side);
+          const elbowX = fromX + (toX - fromX) / 2;
+          paths.push(`M ${fromX} ${y(fromStage, fromA)} H ${elbowX} V ${y(fromStage, fromB)} H ${fromX}`);
+          paths.push(linePath(elbowX, targetY, toX, targetY));
+        }
+      }
+    };
+    connectPairs("left", "R32", "R16");
+    connectPairs("left", "R16", "QF");
+    connectPairs("left", "QF", "SF");
+    connectPairs("right", "R32", "R16");
+    connectPairs("right", "R16", "QF");
+    connectPairs("right", "QF", "SF");
+    paths.push(linePath(rightEdge("SF", "left"), y("SF", 0), leftEdge("FINAL", "center"), y("FINAL", 0)));
+    paths.push(linePath(leftEdge("SF", "right"), y("SF", 0), rightEdge("FINAL", "center"), y("FINAL", 0)));
+
+    return (
+      <svg className="sim-diagram-lines" viewBox={`0 0 ${diagramWidth} ${diagramHeight}`} aria-hidden="true">
+        {paths.map((path, index) => (
+          <path d={path} key={index} />
+        ))}
+      </svg>
+    );
+  }
+
+  function predictedWinner(display: DisplayMatch, prediction?: PredictionWithUpdated) {
+    if (!prediction || prediction.home_goals == null || prediction.away_goals == null) return null;
+    if (prediction.home_goals > prediction.away_goals) return display.home;
+    if (prediction.away_goals > prediction.home_goals) return display.away;
+    return null;
+  }
+
+  function BracketPredictionCard({ match, display }: { match: Match; display?: DisplayMatch }) {
+    const safeDisplay = lockedDisplay(match, display);
+    const unavailable = isMatchUnavailable(match, safeDisplay);
+    const locked = !matchIsEditable(match, display);
+    const prediction = predictionMap[match.id];
+    const home = safeDisplay?.home ?? { name: match.home_team, code: match.home_country_code };
+    const away = safeDisplay?.away ?? { name: match.away_team, code: match.away_country_code };
+    const winner = predictedWinner({ home, away }, prediction);
+    const [homeGoals, setHomeGoals] = useState<number | "">(prediction?.home_goals ?? "");
+    const [awayGoals, setAwayGoals] = useState<number | "">(prediction?.away_goals ?? "");
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+
+    useEffect(() => {
+      setHomeGoals(prediction?.home_goals ?? "");
+      setAwayGoals(prediction?.away_goals ?? "");
+    }, [prediction?.home_goals, prediction?.away_goals]);
+
+    const saveDraft = useCallback(async () => {
+      if (!user || locked || homeGoals === "" || awayGoals === "" || saving) return;
+      if (prediction?.home_goals === homeGoals && prediction?.away_goals === awayGoals) return;
+      setSaving(true);
+      const res = await fetch("/api/predictions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ matchId: match.id, homeGoals, awayGoals, penaltyWinner: null })
+      });
+      const data = await res.json();
+      setSaving(false);
+      if (!res.ok) return;
+      upsertSaved(data.prediction);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 1200);
+    }, [awayGoals, homeGoals, locked, match.id, prediction?.away_goals, prediction?.home_goals, saving]);
+
+    return (
+      <article className={`sim-bracket-card ${unavailable ? "is-locked" : ""}`} data-stage={match.stage}>
+        <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-black uppercase text-ink/45">
+          <span>#{matchNumber(match) ?? "-"}</span>
+          <span>{formatKickoff(match.kickoff_at)}</span>
+        </div>
+        <div className="grid gap-1.5">
+          {(["home", "away"] as const).map((side) => {
+            const team = side === "home" ? home : away;
+            const selected = winner?.name === team.name && !unavailable;
+            const value = side === "home" ? homeGoals : awayGoals;
+            const setter = side === "home" ? setHomeGoals : setAwayGoals;
+            return (
+              <div className={`sim-bracket-team-row grid grid-cols-[minmax(0,1fr)_50px] items-center gap-3 rounded-md border px-3 py-2 text-left text-sm transition ${selected ? "is-selected border-grass/80 bg-[#05381f] text-white shadow-[inset_0_0_0_1px_rgba(55,245,118,0.18)]" : "border-line bg-slate-950/25"}`} key={side}>
+                <TeamOrLock team={team} />
+                <input
+                  aria-label={`Goles ${team.name}`}
+                  className="field h-10 min-h-10 px-1 text-center text-base font-black"
+                  disabled={locked}
+                  inputMode="numeric"
+                  maxLength={2}
+                  pattern="[0-9]*"
+                  type="text"
+                  value={unavailable ? "" : value}
+                  onBlur={() => void saveDraft()}
+                  onChange={(event) => {
+                    const next = parseGoalInput(event.target.value);
+                    if (next !== null && (next === "" || next <= 30)) setter(next);
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-2 flex justify-end">
+          <button className="sim-bracket-save" disabled={locked || saving} onClick={() => void saveDraft()} title="Guardar predicción" type="button">
+            {saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+          </button>
+        </div>
+      </article>
+    );
+  }
+
+  function bracketColumn(stage: "R32" | "R16" | "QF" | "SF", side: "left" | "right") {
+    const items = sortedMatchesByNumbers(bracketTree[side][stage] ?? []);
+    return (
+      <>
+        {diagramHeader(stageLabels[stage], diagramX[side][stage], diagramCardWidths[stage] ?? 194, `pred-${side}-${stage}-header`)}
+        <div className="sim-diagram-round" data-side={side} data-stage={stage} key={`pred-${side}-${stage}`}>
+          {items.map((match, index) => (
+            <div className="sim-diagram-slot" key={match.id} style={diagramSlotStyle(stage, side, index)}>
+              <PredictionCard
+                display={bracket.displays[match.id]}
+                loggedIn={Boolean(user)}
+                paid={paid}
+                match={match}
+                onSaved={upsertSaved}
+                prediction={predictionMap[match.id]}
+              />
+            </div>
+          ))}
+        </div>
+      </>
+    );
   }
 
   async function applyBulk() {
@@ -950,13 +1168,15 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
         ))}
       </section>
 
-      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(280px,1fr)_224px_auto] lg:grid-cols-[320px_224px_44px] lg:items-center">
-        <CountryFilterPicker className="min-w-[260px]" value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
-        <DateFilter value={dateFilter} onChange={setDateFilter} />
-        <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
-          <X className="h-4 w-4" />
-        </button>
-      </section>
+      {!(activeTab === "llave" && activeKnockoutStage === "mapa") && (
+        <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(280px,1fr)_224px_auto] lg:grid-cols-[320px_224px_44px] lg:items-center">
+          <CountryFilterPicker className="min-w-[260px]" value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
+          <DateFilter value={dateFilter} onChange={setDateFilter} />
+          <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
+            <X className="h-4 w-4" />
+          </button>
+        </section>
+      )}
       {activeTab === "todos" && (
         <section className="grid gap-4">
           <div>
@@ -1073,9 +1293,17 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
           {knockoutMatches.length ? (
             <div className="grid gap-4">
               <div className="panel flex flex-wrap gap-2 p-2">
+                <button
+                  className={`btn ${activeKnockoutStage === "mapa" ? "" : "secondary"}`}
+                  onClick={() => setActiveKnockoutStage("mapa")}
+                  type="button"
+                >
+                  <GitBranch className="h-4 w-4" />
+                  Mapa
+                </button>
                 {availableKnockoutStages.map((stage) => (
                   <button
-                    className={`btn ${selectedKnockoutStage === stage ? "" : "secondary"}`}
+                    className={`btn ${activeKnockoutStage === stage ? "" : "secondary"}`}
                     key={stage}
                     onClick={() => setActiveKnockoutStage(stage)}
                     type="button"
@@ -1085,26 +1313,88 @@ export function PredictionBoard({ matches, demoMode }: BoardProps) {
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-2 text-lg font-black">
-                <Trophy className="h-4 w-4 text-gold" />
-                <h3>{selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves"}</h3>
-              </div>
-              <div className="match-card-grid">
-                {selectedKnockoutMatches.map((match) => (
-                  <PredictionCard
-                    match={match}
-                    loggedIn={Boolean(user)}
-                    paid={paid}
-                    onSaved={upsertSaved}
-                    prediction={predictionMap[match.id]}
-                    key={match.id}
-                  />
-                ))}
-              </div>
+              {activeKnockoutStage === "mapa" ? (
+                <section className="panel overflow-hidden">
+                  <div className="border-b border-line p-4">
+                    <h3 className="flex items-center gap-2 text-xl font-black">
+                      <GitBranch className="h-5 w-5 text-gold" />
+                      Mapa de llaves
+                    </h3>
+                    <p className="mt-1 text-sm font-semibold text-ink/60">Cargá tus pronósticos de cruces sobre el mapa completo.</p>
+                  </div>
+                  <div className="dark-scrollbar overflow-x-auto p-4">
+                    <div className="sim-diagram-map">
+                      {bracketGuideLines()}
+                      {bracketColumn("R32", "left")}
+                      {bracketColumn("R16", "left")}
+                      {bracketColumn("QF", "left")}
+                      {bracketColumn("SF", "left")}
+                      <section className="sim-diagram-final">
+                        {diagramHeader("Final", diagramX.center.FINAL, diagramCardWidths.FINAL, "pred-final-header")}
+                        <div className="sim-diagram-cup">
+                          <Trophy className="h-12 w-12 text-gold" />
+                          <span>Final</span>
+                        </div>
+                        {sortedMatchesByNumbers([104]).map((match, index) => (
+                          <div className="sim-diagram-slot" key={match.id} style={diagramSlotStyle("FINAL", "center", index)}>
+                            <PredictionCard
+                              display={bracket.displays[match.id]}
+                              loggedIn={Boolean(user)}
+                              paid={paid}
+                              match={match}
+                              onSaved={upsertSaved}
+                              prediction={predictionMap[match.id]}
+                            />
+                          </div>
+                        ))}
+                        {sortedMatchesByNumbers([103]).map((match) => (
+                          <div className="sim-diagram-third" key={match.id} style={diagramSlotStyle("THIRD_PLACE", "center", 0)}>
+                            <h4 className="sim-diagram-third-title">
+                              <Trophy className="h-12 w-12 text-orange-200" />
+                              <span>3ros</span>
+                            </h4>
+                            <PredictionCard
+                              display={bracket.displays[match.id]}
+                              loggedIn={Boolean(user)}
+                              paid={paid}
+                              match={match}
+                              onSaved={upsertSaved}
+                              prediction={predictionMap[match.id]}
+                            />
+                          </div>
+                        ))}
+                      </section>
+                      {bracketColumn("SF", "right")}
+                      {bracketColumn("QF", "right")}
+                      {bracketColumn("R16", "right")}
+                      {bracketColumn("R32", "right")}
+                    </div>
+                  </div>
+                </section>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 text-lg font-black">
+                    <Trophy className="h-4 w-4 text-gold" />
+                    <h3>{selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves"}</h3>
+                  </div>
+                  <div className="match-card-grid">
+                    {selectedKnockoutMatches.map((match) => (
+                      <PredictionCard
+                        match={match}
+                        loggedIn={Boolean(user)}
+                        paid={paid}
+                        onSaved={upsertSaved}
+                        prediction={predictionMap[match.id]}
+                        key={match.id}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="panel p-6 text-sm text-ink/70">
-              Las llaves aparecen cuando esten disponibles los cruces de cada fase.
+              Las llaves aparecen cuando estén disponibles los cruces de cada fase.
             </div>
           )}
         </div>

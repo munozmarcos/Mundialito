@@ -53,6 +53,45 @@ const stageLabels: Record<string, string> = {
 };
 
 const knockoutOrder: MatchStage[] = ["R32", "R16", "QF", "SF", "THIRD_PLACE", "FINAL"];
+const bracketTree = {
+  left: {
+    R32: [74, 77, 73, 75, 83, 84, 81, 82],
+    R16: [89, 90, 93, 94],
+    QF: [97, 98],
+    SF: [101]
+  },
+  right: {
+    R32: [76, 78, 79, 80, 86, 88, 85, 87],
+    R16: [91, 92, 95, 96],
+    QF: [99, 100],
+    SF: [102]
+  }
+} satisfies Record<"left" | "right", Partial<Record<MatchStage, number[]>>>;
+const diagramWidth = 3200;
+const diagramHeight = 3250;
+const diagramCardHeight = 340;
+const diagramCardWidths = {
+  R32: 320,
+  R16: 320,
+  QF: 320,
+  SF: 320,
+  FINAL: 320,
+  THIRD_PLACE: 320
+} satisfies Partial<Record<MatchStage, number>>;
+const diagramX = {
+  left: { R32: 24, R16: 410, QF: 760, SF: 1110 },
+  center: { FINAL: 1450, THIRD_PLACE: 1450 },
+  right: { SF: 1790, QF: 2140, R16: 2490, R32: 2860 }
+} as const;
+const diagramY = {
+  R32: [230, 630, 1030, 1430, 1830, 2230, 2630, 3030],
+  R16: [430, 1230, 2030, 2830],
+  QF: [830, 2430],
+  SF: [1630],
+  FINAL: [1350],
+  THIRD_PLACE: [1780]
+} satisfies Partial<Record<MatchStage, number[]>>;
+
 function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string) {
   return matchFitsBasicFilters(match, teamFilter, dateFilter);
 }
@@ -282,7 +321,7 @@ function MatchCard({ match, display }: { match: Match; display?: DisplayMatch })
 export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const [activeTab, setActiveTab] = useState<"todos" | "grupos" | "tablas" | "llaves">("todos");
   const [activeGroup, setActiveGroup] = useState("");
-  const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage>("R32");
+  const [activeKnockoutStage, setActiveKnockoutStage] = useState<MatchStage | "mapa">("mapa");
   const [teamFilter, setTeamFilter] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const results = useMemo(() => initialResults(matches), [matches]);
@@ -303,7 +342,7 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
   const availableGroups = Object.keys(byGroup).sort(compareGroups);
   const selectedGroup = activeGroup && availableGroups.includes(activeGroup) ? activeGroup : availableGroups[0];
   const availableKnockoutStages = knockoutOrder.filter((stage) => byStage[stage]?.length);
-  const selectedKnockoutStage = availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
+  const selectedKnockoutStage = activeKnockoutStage !== "mapa" && availableKnockoutStages.includes(activeKnockoutStage) ? activeKnockoutStage : availableKnockoutStages[0];
   const selectedKnockoutMatches = selectedKnockoutStage ? (byStage[selectedKnockoutStage] ?? []).filter((match) => matchFitsFilters(match, teamFilter, dateFilter)) : [];
   const allFilteredMatches = matches.filter((match) => matchFitsFilters(match, teamFilter, dateFilter));
   const allFilteredByStage = groupBy(allFilteredMatches, (match) => match.stage);
@@ -312,6 +351,128 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
     .filter(([group]) => activeTab === "tablas" || !selectedGroup || group === selectedGroup)
     .map(([group, items]) => [group, items.filter((match) => matchFitsFilters(match, teamFilter, dateFilter))] as const)
     .filter(([, items]) => items.length);
+
+  function sortedMatchesByNumbers(numbers: number[]) {
+    const byNumber = new Map(knockoutMatches.map((match) => [matchNumber(match), match]));
+    return numbers.map((number) => byNumber.get(number)).filter((match): match is Match => Boolean(match));
+  }
+
+  function diagramSlotStyle(stage: MatchStage, side: "left" | "right" | "center", index: number) {
+    const width = diagramCardWidths[stage as keyof typeof diagramCardWidths] ?? 194;
+    const x =
+      side === "center"
+        ? diagramX.center[stage as "FINAL" | "THIRD_PLACE"]
+        : diagramX[side][stage as "R32" | "R16" | "QF" | "SF"];
+    const y = (diagramY[stage as keyof typeof diagramY]?.[index] ?? 120) - diagramCardHeight / 2;
+    return { left: x, top: y, width };
+  }
+
+  function diagramHeader(label: string, left: number, width: number, key: string) {
+    return (
+      <div className="sim-diagram-heading" key={key} style={{ left, width }}>
+        {label}
+      </div>
+    );
+  }
+
+  function linePath(fromX: number, fromY: number, toX: number, toY: number) {
+    const midX = fromX + (toX - fromX) / 2;
+    return `M ${fromX} ${fromY} H ${midX} V ${toY} H ${toX}`;
+  }
+
+  function bracketGuideLines() {
+    const paths: string[] = [];
+    const leftEdge = (stage: MatchStage, side: "left" | "right" | "center") => diagramSlotStyle(stage, side, 0).left;
+    const rightEdge = (stage: MatchStage, side: "left" | "right" | "center") => leftEdge(stage, side) + (diagramCardWidths[stage as keyof typeof diagramCardWidths] ?? 194);
+    const y = (stage: MatchStage, index: number) => diagramY[stage as keyof typeof diagramY]?.[index] ?? 120;
+    const connectPairs = (side: "left" | "right", fromStage: "R32" | "R16" | "QF", toStage: "R16" | "QF" | "SF") => {
+      const count = diagramY[toStage]?.length ?? 0;
+      for (let index = 0; index < count; index += 1) {
+        const fromA = index * 2;
+        const fromB = fromA + 1;
+        const targetY = y(toStage, index);
+        if (side === "left") {
+          const fromX = rightEdge(fromStage, side);
+          const toX = leftEdge(toStage, side);
+          const elbowX = fromX + (toX - fromX) / 2;
+          paths.push(`M ${fromX} ${y(fromStage, fromA)} H ${elbowX} V ${y(fromStage, fromB)} H ${fromX}`);
+          paths.push(linePath(elbowX, targetY, toX, targetY));
+        } else {
+          const fromX = leftEdge(fromStage, side);
+          const toX = rightEdge(toStage, side);
+          const elbowX = fromX + (toX - fromX) / 2;
+          paths.push(`M ${fromX} ${y(fromStage, fromA)} H ${elbowX} V ${y(fromStage, fromB)} H ${fromX}`);
+          paths.push(linePath(elbowX, targetY, toX, targetY));
+        }
+      }
+    };
+
+    connectPairs("left", "R32", "R16");
+    connectPairs("left", "R16", "QF");
+    connectPairs("left", "QF", "SF");
+    connectPairs("right", "R32", "R16");
+    connectPairs("right", "R16", "QF");
+    connectPairs("right", "QF", "SF");
+    paths.push(linePath(rightEdge("SF", "left"), y("SF", 0), leftEdge("FINAL", "center"), y("FINAL", 0)));
+    paths.push(linePath(leftEdge("SF", "right"), y("SF", 0), rightEdge("FINAL", "center"), y("FINAL", 0)));
+
+    return (
+      <svg className="sim-diagram-lines" viewBox={`0 0 ${diagramWidth} ${diagramHeight}`} aria-hidden="true">
+        {paths.map((path, index) => (
+          <path d={path} key={index} />
+        ))}
+      </svg>
+    );
+  }
+
+  function BracketMatchCard({ match, display }: { match: Match; display?: DisplayMatch }) {
+    const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null && match.away_goals != null, new Date(), match.status);
+    const unavailable = isMatchUnavailable(match, display);
+    const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
+    const away = display?.away ?? { name: match.away_team, code: match.away_country_code };
+    const result = results[match.id];
+    const winner = winnerFromResult({ home, away }, result);
+    return (
+      <article className={`sim-bracket-card ${unavailable ? "is-locked" : ""}`} data-stage={match.stage}>
+        <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-black uppercase text-ink/45">
+          <span>#{matchNumber(match) ?? "-"}</span>
+          <span>{formatArgentinaDateTime(match.kickoff_at)}</span>
+        </div>
+        <div className="grid gap-1.5">
+          {(["home", "away"] as const).map((side) => {
+            const team = side === "home" ? home : away;
+            const selected = winner?.name === team.name && !unavailable;
+            const goals = side === "home" ? match.home_goals : match.away_goals;
+            return (
+              <div
+                className={`sim-bracket-team-row grid grid-cols-[minmax(0,1fr)_50px] items-center gap-3 rounded-md border px-3 py-2 text-left text-sm transition ${selected ? "is-selected border-grass/80 bg-[#05381f] text-white shadow-[inset_0_0_0_1px_rgba(55,245,118,0.18)]" : "border-line bg-slate-950/25"}`}
+                key={side}
+              >
+                <TeamOrLock team={team} />
+                <input className="field h-10 min-h-10 px-1 text-center text-base font-black" disabled readOnly value={unavailable ? "" : goals ?? ""} aria-label={`Goles ${team.name}`} />
+              </div>
+            );
+          })}
+        </div>
+      </article>
+    );
+  }
+
+  function bracketColumn(stage: "R32" | "R16" | "QF" | "SF", side: "left" | "right") {
+    const items = sortedMatchesByNumbers(bracketTree[side][stage] ?? []);
+    return (
+      <>
+        {diagramHeader(stageLabels[stage], diagramX[side][stage], diagramCardWidths[stage] ?? 194, `matches-${side}-${stage}-header`)}
+        <div className="sim-diagram-round" data-side={side} data-stage={stage} key={`matches-${side}-${stage}`}>
+          {items.map((match, index) => (
+            <div className="sim-diagram-slot" key={match.id} style={diagramSlotStyle(stage, side, index)}>
+              <MatchCard key={match.id} match={match} display={bracket.displays[match.id]} />
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
 
   return (
     <div className="grid gap-6">
@@ -353,13 +514,15 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
         ))}
       </section>
 
-      <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(280px,1fr)_224px_auto] lg:grid-cols-[320px_224px_44px] lg:items-center">
-        <CountryFilterPicker className="min-w-[260px]" value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
-        <DateFilter value={dateFilter} onChange={setDateFilter} />
-        <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
-          <X className="h-4 w-4" />
-        </button>
-      </section>
+      {!(activeTab === "llaves" && activeKnockoutStage === "mapa") && (
+        <section className="panel grid gap-2 p-3 sm:grid-cols-[minmax(280px,1fr)_224px_auto] lg:grid-cols-[320px_224px_44px] lg:items-center">
+          <CountryFilterPicker className="min-w-[260px]" value={teamFilter} options={teamOptions} onChange={setTeamFilter} />
+          <DateFilter value={dateFilter} onChange={setDateFilter} />
+          <button className="btn secondary h-11 w-11 justify-self-center px-0" type="button" title="Limpiar filtros" onClick={() => { setTeamFilter(""); setDateFilter(""); }}>
+            <X className="h-4 w-4" />
+          </button>
+        </section>
+      )}
 
       {activeTab === "todos" && (
         <section className="grid gap-4">
@@ -482,14 +645,22 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
         <section className="grid gap-4">
           <div>
             <h2 className="text-2xl font-black">Llaves reales</h2>
-            <p className="mt-1 text-sm font-semibold text-ink/60">Los cruces se muestran cuando esten confirmados oficialmente.</p>
+            <p className="mt-1 text-sm font-semibold text-ink/60">Los cruces se muestran cuando estén confirmados oficialmente.</p>
           </div>
           {knockoutMatches.length ? (
             <div className="grid gap-4">
               <div className="panel flex flex-wrap gap-2 p-2">
+                <button
+                  className={`btn ${activeKnockoutStage === "mapa" ? "" : "secondary"}`}
+                  onClick={() => setActiveKnockoutStage("mapa")}
+                  type="button"
+                >
+                  <GitBranch className="h-4 w-4" />
+                  Mapa
+                </button>
                 {availableKnockoutStages.map((stage) => (
                   <button
-                    className={`btn ${selectedKnockoutStage === stage ? "" : "secondary"}`}
+                    className={`btn ${activeKnockoutStage === stage ? "" : "secondary"}`}
                     key={stage}
                     onClick={() => setActiveKnockoutStage(stage)}
                     type="button"
@@ -499,18 +670,66 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-2 text-lg font-black">
-                <Trophy className="h-4 w-4 text-gold" />
-                <h3>{selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves"}</h3>
-              </div>
-              <div className="match-card-grid">
-                {selectedKnockoutMatches.map((match) => (
-                  <MatchCard key={match.id} match={match} display={bracket.displays[match.id]} />
-                ))}
-              </div>
+              {activeKnockoutStage === "mapa" ? (
+                <section className="panel overflow-hidden">
+                  <div className="border-b border-line p-4">
+                    <h3 className="flex items-center gap-2 text-xl font-black">
+                      <GitBranch className="h-5 w-5 text-gold" />
+                      Mapa de llaves
+                    </h3>
+                    <p className="mt-1 text-sm font-semibold text-ink/60">Cruces oficiales confirmados y avance real del Mundial.</p>
+                  </div>
+                  <div className="dark-scrollbar overflow-x-auto p-4">
+                    <div className="sim-diagram-map">
+                      {bracketGuideLines()}
+                      {bracketColumn("R32", "left")}
+                      {bracketColumn("R16", "left")}
+                      {bracketColumn("QF", "left")}
+                      {bracketColumn("SF", "left")}
+                      <section className="sim-diagram-final">
+                        {diagramHeader("Final", diagramX.center.FINAL, diagramCardWidths.FINAL, "matches-final-header")}
+                        <div className="sim-diagram-cup">
+                          <Trophy className="h-12 w-12 text-gold" />
+                          <span>Final</span>
+                        </div>
+                        {sortedMatchesByNumbers([104]).map((match, index) => (
+                          <div className="sim-diagram-slot" key={match.id} style={diagramSlotStyle("FINAL", "center", index)}>
+                            <MatchCard key={match.id} match={match} display={bracket.displays[match.id]} />
+                          </div>
+                        ))}
+                        {sortedMatchesByNumbers([103]).map((match) => (
+                          <div className="sim-diagram-third" key={match.id} style={diagramSlotStyle("THIRD_PLACE", "center", 0)}>
+                            <h4 className="sim-diagram-third-title">
+                              <Trophy className="h-12 w-12 text-orange-200" />
+                              <span>3ros</span>
+                            </h4>
+                            <MatchCard key={match.id} match={match} display={bracket.displays[match.id]} />
+                          </div>
+                        ))}
+                      </section>
+                      {bracketColumn("SF", "right")}
+                      {bracketColumn("QF", "right")}
+                      {bracketColumn("R16", "right")}
+                      {bracketColumn("R32", "right")}
+                    </div>
+                  </div>
+                </section>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 text-lg font-black">
+                    <Trophy className="h-4 w-4 text-gold" />
+                    <h3>{selectedKnockoutStage ? stageLabels[selectedKnockoutStage] : "Llaves"}</h3>
+                  </div>
+                  <div className="match-card-grid">
+                    {selectedKnockoutMatches.map((match) => (
+                      <MatchCard key={match.id} match={match} display={bracket.displays[match.id]} />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           ) : (
-            <div className="panel p-6 text-sm text-ink/70">Las llaves aparecen cuando esten disponibles los cruces de cada fase.</div>
+            <div className="panel p-6 text-sm text-ink/70">Las llaves aparecen cuando estén disponibles los cruces de cada fase.</div>
           )}
         </section>
       )}

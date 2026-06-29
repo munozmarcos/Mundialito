@@ -68,7 +68,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ignored: true, reason: "not_a_command" });
   }
 
-  const participantPhone = groupChat && !isOutgoing ? firstPhoneLike(payload.author, payload.sender, body.author, body.sender) || from : isOutgoing ? to || from : from;
+  const participantPhone = groupChat
+    ? firstPhoneLike(payload.author, payload.sender, body.author, body.sender, isOutgoing ? payload.from ?? body.from : undefined) || from
+    : isOutgoing
+      ? to || from
+      : from;
   const replyTo = groupChat || (isOutgoing ? to || from : from);
   const answer = await answerWhatsAppCommand(textValue, String(participantPhone));
 
