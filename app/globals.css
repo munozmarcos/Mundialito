@@ -611,13 +611,13 @@ select.field {
   display: grid;
   height: 112px;
   place-items: center;
-  color: #f4c99b;
+  color: #f4f8ff;
   font-size: 34px;
   font-weight: 1000;
   line-height: 1;
   text-align: center;
   text-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .sim-diagram-lines {

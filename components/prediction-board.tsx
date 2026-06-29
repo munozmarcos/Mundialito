@@ -234,8 +234,7 @@ function isMatchUnavailable(match: Match, display?: DisplayMatch) {
 
 function lockedDisplay(match: Match, display?: DisplayMatch): DisplayMatch | undefined {
   if (match.stage === "GROUP") return display;
-  if (!isMatchUnavailable(match, display)) return display;
-  return {
+  return display ?? {
     home: { name: match.home_team, code: match.home_country_code },
     away: { name: match.away_team, code: match.away_country_code }
   };
@@ -269,6 +268,10 @@ function loserFromPrediction(display: DisplayMatch, prediction?: PredictionWithU
   if (prediction.penalty_winner === "HOME" || prediction.penalty_winner === display.home.name) return display.away;
   if (prediction.penalty_winner === "AWAY" || prediction.penalty_winner === display.away.name) return display.home;
   return null;
+}
+
+function hasOfficialResult(match: Match) {
+  return match.home_goals != null && match.away_goals != null;
 }
 
 function resolveGroupSlot(slot: string, groupTables: Record<string, GroupRow[]>, bestThirds: GroupRow[]) {
@@ -332,6 +335,7 @@ function deriveBracket(
 
     const number = matchNumber(match);
     if (!number) continue;
+    if (!hasOfficialResult(match)) continue;
     const prediction = predictions[match.id];
     const winner = winnerFromPrediction(display, prediction);
     const loser = loserFromPrediction(display, prediction);

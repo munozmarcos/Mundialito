@@ -837,7 +837,7 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
       away: { name: match.away_team, code: match.away_country_code }
     };
     const knockoutBlocked = isPlaceholderTeam(rawDisplay.home) || isPlaceholderTeam(rawDisplay.away);
-    const display = knockoutBlocked ? { home: { name: "Por definir" }, away: { name: "Por definir" } } : rawDisplay;
+    const display = rawDisplay;
     const winner = winnerFromResult(display, result);
     const selectedWinner = winner;
 

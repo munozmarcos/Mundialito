@@ -221,6 +221,10 @@ function loserFromResult(display: DisplayMatch, result?: { home: number | ""; aw
   return null;
 }
 
+function hasOfficialResult(match: Match) {
+  return match.home_goals != null && match.away_goals != null;
+}
+
 function resolveBracketSlot(
   slot: string,
   groupTables: Record<string, GroupRow[]>,
@@ -263,6 +267,7 @@ function deriveBracket(groupMatches: Match[], knockoutMatches: Match[], results:
 
     const number = matchNumber(match);
     if (!number) continue;
+    if (!hasOfficialResult(match)) continue;
     const winner = winnerFromResult(display, results[match.id]);
     const loser = loserFromResult(display, results[match.id]);
     if (winner) winners[number] = winner;
@@ -275,9 +280,8 @@ function deriveBracket(groupMatches: Match[], knockoutMatches: Match[], results:
 function MatchCard({ match, display }: { match: Match; display?: DisplayMatch }) {
   const status = matchStatus(match.kickoff_at, match.locked, match.home_goals != null && match.away_goals != null, new Date(), match.status);
   const unavailable = isMatchUnavailable(match, display);
-  const useOfficialPlaceholder = isMatchBlockedUntilOfficial(match);
-  const home = useOfficialPlaceholder ? { name: match.home_team, code: match.home_country_code } : display?.home ?? { name: match.home_team, code: match.home_country_code };
-  const away = useOfficialPlaceholder ? { name: match.away_team, code: match.away_country_code } : display?.away ?? { name: match.away_team, code: match.away_country_code };
+  const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
+  const away = display?.away ?? { name: match.away_team, code: match.away_country_code };
   const homeGoals = status === "playing" ? match.home_goals ?? 0 : match.home_goals ?? "";
   const awayGoals = status === "playing" ? match.away_goals ?? 0 : match.away_goals ?? "";
 
