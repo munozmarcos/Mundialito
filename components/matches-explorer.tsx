@@ -222,7 +222,7 @@ function loserFromResult(display: DisplayMatch, result?: { home: number | ""; aw
 }
 
 function hasOfficialResult(match: Match) {
-  return match.home_goals != null && match.away_goals != null;
+  return match.status === "closed" && match.home_goals != null && match.away_goals != null;
 }
 
 function resolveBracketSlot(
