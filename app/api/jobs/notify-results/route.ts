@@ -1,4 +1,5 @@
 import { displayNameForTeam } from "@/lib/flags";
+import { formatScoreWithPenalties } from "@/lib/match-score";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendWebPushToAll } from "@/lib/web-push";
 import { NextResponse } from "next/server";
@@ -23,11 +24,12 @@ async function notifyMatch(matchId: string) {
 
   const homeName = displayNameForTeam(match.home_team);
   const awayName = displayNameForTeam(match.away_team);
+  const resultLabel = formatScoreWithPenalties(match) ?? `${match.home_goals}-${match.away_goals}`;
 
   const push = await sendWebPushToAll({
-    dedupeKey: `result-final:${match.id}:${match.home_goals}-${match.away_goals}`,
+    dedupeKey: `result-final:${match.id}:${resultLabel}`,
     title: "Resultado final",
-    body: `${homeName} ${match.home_goals}-${match.away_goals} ${awayName}`,
+    body: `${homeName} ${resultLabel} ${awayName}`,
     url: "/ranking",
     tag: `result-final:${match.id}`
   });

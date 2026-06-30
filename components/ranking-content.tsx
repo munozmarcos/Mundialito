@@ -32,6 +32,8 @@ type DetailMatch = {
   group_name?: string | null;
   home_goals?: number | null;
   away_goals?: number | null;
+  home_penalty_goals?: number | null;
+  away_penalty_goals?: number | null;
   penalty_winner?: string | null;
 };
 
@@ -75,11 +77,24 @@ function groupBy<T>(items: T[], key: (item: T) => string) {
 function ScoreBox({ value, className = "" }: { value: number | string | null | undefined; className?: string }) {
   return (
     <input
-      className={`field min-h-10 px-2 text-center font-black leading-none disabled:opacity-100 ${className}`}
+      className={`field min-h-10 w-full min-w-0 px-2 text-center font-black leading-none disabled:opacity-100 ${className}`}
       disabled
       readOnly
       value={value ?? ""}
     />
+  );
+}
+
+function ResultScoreBox({ value, penalty, className = "" }: { value: number | string | null | undefined; penalty?: number | null; className?: string }) {
+  return (
+    <div className="relative w-[72px] min-w-0">
+      {penalty != null && (
+        <span className="absolute -left-1 top-1/2 z-10 -translate-x-full -translate-y-1/2 text-[11px] font-black text-ink/45">
+          ({penalty})
+        </span>
+      )}
+      <ScoreBox className={className} value={value} />
+    </div>
   );
 }
 
@@ -98,20 +113,20 @@ function DetailCard({ detail }: { detail: RankingPredictionDetail }) {
         <PointsPill points={detail.points} className="min-h-8 rounded-full py-1" />
       </div>
       <div className="grid gap-2">
-        <div className="grid grid-cols-[1fr_72px_72px] gap-2 px-2 text-[11px] font-black uppercase text-ink/45">
+        <div className="grid grid-cols-[minmax(0,1fr)_56px_72px] gap-2 px-2 text-[11px] font-black uppercase text-ink/45">
           <span />
           <span />
           <span className="rounded-full border border-line bg-field px-2 py-1 text-center text-ink/55">Final</span>
         </div>
-        <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_56px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
           <TeamLabel name={match.home_team} code={match.home_country_code} />
           <ScoreBox value={detail.home_goals} />
-          <ScoreBox className={resultInputTone} value={match.home_goals} />
+          <ResultScoreBox className={resultInputTone} penalty={match.home_penalty_goals} value={match.home_goals} />
         </div>
-        <div className="grid grid-cols-[1fr_72px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
+        <div className="grid grid-cols-[minmax(0,1fr)_56px_72px] items-center gap-2 rounded-md border border-line bg-slate-950/25 p-2">
           <TeamLabel name={match.away_team} code={match.away_country_code} />
           <ScoreBox value={detail.away_goals} />
-          <ScoreBox className={resultInputTone} value={match.away_goals} />
+          <ResultScoreBox className={resultInputTone} penalty={match.away_penalty_goals} value={match.away_goals} />
         </div>
       </div>
       <p className="mt-3 text-xs font-semibold text-ink/60">

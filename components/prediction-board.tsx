@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/empty-state";
 import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { DateFilter } from "@/components/date-filter";
 import { StatusPill } from "@/components/status-pill";
+import { ScoreWithPenalty } from "@/components/score-with-penalty";
 import { TeamLabel } from "@/components/team-label";
 import { PointsPill } from "@/components/points-pill";
 import { formatArgentinaDateTime } from "@/lib/dates";
@@ -14,6 +15,7 @@ import { knockoutMatchNumber } from "@/lib/knockout-match-number";
 import { liveMinuteLabel } from "@/lib/live-minute";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { dateKey, matchFitsBasicFilters } from "@/lib/match-filters";
+import { formatScoreWithPenalties } from "@/lib/match-score";
 import { isPredictionLocked, matchStatus } from "@/lib/scoring";
 import { teamOptionsFromMatches, type TeamOption } from "@/lib/team-options";
 import type { Match, MatchStage, Prediction } from "@/lib/types";
@@ -220,6 +222,12 @@ function displayFromRow(row?: GroupRow, fallback = "Por definir"): DisplayTeam {
   return row ? { name: row.team, code: row.code } : { name: fallback };
 }
 
+function sameTeamName(a?: string | null, b?: string | null) {
+  if (!a || !b) return false;
+  const normalize = (value: string) => displayNameForTeam(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  return normalize(a) === normalize(b);
+}
+
 function isPlaceholderTeam(team: DisplayTeam) {
   return isPlaceholderTeamName(team.name);
 }
@@ -258,6 +266,8 @@ function winnerFromPrediction(display: DisplayMatch, prediction?: PredictionWith
   if (prediction.away_goals > prediction.home_goals) return display.away;
   if (prediction.penalty_winner === "HOME" || prediction.penalty_winner === display.home.name) return display.home;
   if (prediction.penalty_winner === "AWAY" || prediction.penalty_winner === display.away.name) return display.away;
+  if (sameTeamName(prediction.penalty_winner, display.home.name)) return display.home;
+  if (sameTeamName(prediction.penalty_winner, display.away.name)) return display.away;
   return null;
 }
 
@@ -267,6 +277,8 @@ function loserFromPrediction(display: DisplayMatch, prediction?: PredictionWithU
   if (prediction.away_goals > prediction.home_goals) return display.home;
   if (prediction.penalty_winner === "HOME" || prediction.penalty_winner === display.home.name) return display.away;
   if (prediction.penalty_winner === "AWAY" || prediction.penalty_winner === display.away.name) return display.home;
+  if (sameTeamName(prediction.penalty_winner, display.home.name)) return display.away;
+  if (sameTeamName(prediction.penalty_winner, display.away.name)) return display.home;
   return null;
 }
 
@@ -423,7 +435,7 @@ function PredictionCard({
   const hasResult = match.home_goals != null && match.away_goals != null;
   const visualHomeGoals = status === "playing" ? match.home_goals ?? 0 : match.home_goals;
   const visualAwayGoals = status === "playing" ? match.away_goals ?? 0 : match.away_goals;
-  const realResult = hasResult || status === "playing" ? `${visualHomeGoals}-${visualAwayGoals}` : "Pendiente";
+  const realResult = hasResult || status === "playing" ? formatScoreWithPenalties(match) ?? `${visualHomeGoals}-${visualAwayGoals}` : "Pendiente";
   const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
   const pointsReady = prediction && hasResult;
   const home = safeDisplay?.home ?? { name: match.home_team, code: match.home_country_code };
@@ -589,7 +601,7 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
   const hasResult = match.home_goals != null && match.away_goals != null;
   const visualHomeGoals = status === "playing" ? match.home_goals ?? 0 : match.home_goals;
   const visualAwayGoals = status === "playing" ? match.away_goals ?? 0 : match.away_goals;
-  const realResult = hasResult || status === "playing" ? `${visualHomeGoals}-${visualAwayGoals}` : "Pendiente";
+  const realResult = hasResult || status === "playing" ? formatScoreWithPenalties(match) ?? `${visualHomeGoals}-${visualAwayGoals}` : "Pendiente";
   const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
   const pointsReady = prediction && hasResult;
   const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
@@ -607,14 +619,14 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
           <TeamOrLock team={home} />
           <span className="flex items-center gap-2 text-xs font-bold text-ink/40">
             {winner?.name === home.name && <span className="badge">Ganador</span>}
-            {visualHomeGoals ?? ""}
+            <ScoreWithPenalty penalty={match.home_penalty_goals} score={visualHomeGoals ?? ""} />
           </span>
         </div>
         <div className={`flex items-center justify-between gap-3 rounded-md p-2 ${winner?.name === away.name ? "bg-mint" : "bg-field"}`}>
           <TeamOrLock team={away} />
           <span className="flex items-center gap-2 text-xs font-bold text-ink/40">
             {winner?.name === away.name && <span className="badge">Ganador</span>}
-            {visualAwayGoals ?? ""}
+            <ScoreWithPenalty penalty={match.away_penalty_goals} score={visualAwayGoals ?? ""} />
           </span>
         </div>
       </div>

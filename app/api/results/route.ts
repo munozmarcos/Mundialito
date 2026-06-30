@@ -36,6 +36,8 @@ export async function POST(req: Request) {
     .update({
       home_goals: body.homeGoals,
       away_goals: body.awayGoals,
+      home_penalty_goals: null,
+      away_penalty_goals: null,
       penalty_winner: body.penaltyWinner ?? null,
       status: "closed",
       locked: true,
@@ -63,7 +65,16 @@ export async function PATCH(req: Request) {
         ? { locked: true, status: "locked" }
         : body.action === "open"
           ? { locked: false, status: "open" }
-          : { locked: false, status: "open", home_goals: null, away_goals: null, penalty_winner: null, result_updated_at: null };
+          : {
+              locked: false,
+              status: "open",
+              home_goals: null,
+              away_goals: null,
+              home_penalty_goals: null,
+              away_penalty_goals: null,
+              penalty_winner: null,
+              result_updated_at: null
+            };
 
   const { error } = await db.from("matches").update(update).eq("id", body.matchId);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { ScoreWithPenalty } from "@/components/score-with-penalty";
 import { Check, Save } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
@@ -16,7 +17,9 @@ type Props = {
   initialPrediction?: Prediction;
   disabled: boolean;
   actualHomeGoals?: number | null;
+  actualHomePenaltyGoals?: number | null;
   actualAwayGoals?: number | null;
+  actualAwayPenaltyGoals?: number | null;
   showActualScore?: boolean;
   realScoreTone?: boolean;
   onSavedAt?: (value: string) => void;
@@ -45,7 +48,9 @@ export function HomePredictionEditor({
   initialPrediction,
   disabled,
   actualHomeGoals,
+  actualHomePenaltyGoals,
   actualAwayGoals,
+  actualAwayPenaltyGoals,
   showActualScore = true,
   realScoreTone = false,
   onSavedAt
@@ -71,7 +76,7 @@ export function HomePredictionEditor({
           <ScoreBox value={hasPrediction ? initialPrediction.home_goals : null} muted={!hasPrediction} />
           <ScoreBox value={hasPrediction ? initialPrediction.away_goals : null} muted={!hasPrediction} />
           <span className="mx-1 text-xs font-black text-ink/35">|</span>
-          <ActualScoreGroup awayGoals={actualAwayGoals} homeGoals={actualHomeGoals} realScoreTone />
+          <ActualScoreGroup awayGoals={actualAwayGoals} awayPenaltyGoals={actualAwayPenaltyGoals} homeGoals={actualHomeGoals} homePenaltyGoals={actualHomePenaltyGoals} realScoreTone />
         </div>
       );
     }
@@ -80,7 +85,7 @@ export function HomePredictionEditor({
       <div className="flex items-center justify-end gap-2">
         {showActualScore && (
           <>
-            <ActualScoreGroup awayGoals={actualAwayGoals} homeGoals={actualHomeGoals} realScoreTone={realScoreTone} />
+            <ActualScoreGroup awayGoals={actualAwayGoals} awayPenaltyGoals={actualAwayPenaltyGoals} homeGoals={actualHomeGoals} homePenaltyGoals={actualHomePenaltyGoals} realScoreTone={realScoreTone} />
             <span className="mx-1 text-xs font-black text-ink/35">|</span>
           </>
         )}
@@ -140,7 +145,7 @@ export function HomePredictionEditor({
     <form className="flex items-center justify-end gap-2" onSubmit={save}>
       {showActualScore && (
         <>
-          <ActualScoreGroup awayGoals={actualAwayGoals} homeGoals={actualHomeGoals} realScoreTone={realScoreTone} />
+          <ActualScoreGroup awayGoals={actualAwayGoals} awayPenaltyGoals={actualAwayPenaltyGoals} homeGoals={actualHomeGoals} homePenaltyGoals={actualHomePenaltyGoals} realScoreTone={realScoreTone} />
           <span className="mx-1 text-xs font-black text-ink/35">|</span>
         </>
       )}
@@ -193,17 +198,33 @@ function predictionKey(homeGoals: number | "" | null | undefined, awayGoals: num
 
 function ActualScoreGroup({
   awayGoals,
+  awayPenaltyGoals,
   homeGoals,
+  homePenaltyGoals,
   realScoreTone
 }: {
   awayGoals: number | null | undefined;
+  awayPenaltyGoals?: number | null;
   homeGoals: number | null | undefined;
+  homePenaltyGoals?: number | null;
   realScoreTone: boolean;
 }) {
   return (
     <div className="flex items-center gap-2">
-      <ScoreBox value={homeGoals} real={realScoreTone} />
-      <ScoreBox value={awayGoals} real={realScoreTone} />
+      <div
+        className={`grid h-10 w-12 place-items-center rounded-lg border text-sm font-black ${
+          realScoreTone ? "border-red-400/70 bg-[#7f1020] text-white" : "border-line bg-field text-ink"
+        }`}
+      >
+        <ScoreWithPenalty penalty={homePenaltyGoals} score={homeGoals} />
+      </div>
+      <div
+        className={`grid h-10 w-12 place-items-center rounded-lg border text-sm font-black ${
+          realScoreTone ? "border-red-400/70 bg-[#7f1020] text-white" : "border-line bg-field text-ink"
+        }`}
+      >
+        <ScoreWithPenalty penalty={awayPenaltyGoals} score={awayGoals} />
+      </div>
     </div>
   );
 }

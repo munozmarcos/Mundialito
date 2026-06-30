@@ -4,6 +4,8 @@ export type ProviderResult = {
   awayTeam: string;
   homeGoals: number | null;
   awayGoals: number | null;
+  homePenaltyGoals?: number | null;
+  awayPenaltyGoals?: number | null;
   penaltyWinner?: string | null;
   status: "playing" | "closed";
   playedAt?: string | null;
@@ -103,6 +105,7 @@ function normalizeWorldCupApiMatch(match: WorldCupApiMatch): ProviderResult | nu
   const homeTeam = match.home?.name;
   const awayTeam = match.away?.name;
   const score = parseScore(match.scores?.et_score || match.scores?.ft_score || match.scores?.score);
+  const penalties = parseScore(match.scores?.ps_score);
   if (!homeTeam || !awayTeam || !score) return null;
 
   let penaltyWinner: string | null = null;
@@ -115,6 +118,8 @@ function normalizeWorldCupApiMatch(match: WorldCupApiMatch): ProviderResult | nu
     awayTeam,
     homeGoals: score.home,
     awayGoals: score.away,
+    homePenaltyGoals: penalties?.home ?? null,
+    awayPenaltyGoals: penalties?.away ?? null,
     penaltyWinner,
     status: "closed",
     playedAt: match.date ?? null
@@ -146,8 +151,10 @@ type FootballDataMatch = {
   awayTeam?: { name?: string; tla?: string };
   score?: {
     winner?: string;
+    duration?: string;
     fullTime?: { home: number | null; away: number | null };
     regularTime?: { home: number | null; away: number | null };
+    extraTime?: { home: number | null; away: number | null };
     penalties?: { home: number | null; away: number | null };
   };
 };
@@ -203,6 +210,38 @@ function footballDataHeaders() {
   const token = process.env.FOOTBALL_DATA_API_KEY;
   if (!token) throw new Error("Missing FOOTBALL_DATA_API_KEY");
   return { "X-Auth-Token": token };
+}
+
+export function footballDataScore(match: FootballDataMatch) {
+  const score = match.score;
+  if (!score) return { score: null, penalties: null };
+  if (score.duration === "PENALTY_SHOOTOUT") {
+    const regular = score.regularTime;
+    const extra = score.extraTime;
+    const hasRegular = regular?.home != null && regular.away != null;
+    const hasExtra = extra?.home != null && extra.away != null;
+    const main =
+      hasRegular && hasExtra
+        ? { home: regular.home! + extra.home!, away: regular.away! + extra.away! }
+        : hasRegular
+          ? { home: regular.home!, away: regular.away! }
+          : null;
+    const full = score.fullTime;
+    const penaltiesFromFull =
+      full?.home != null &&
+      full.away != null &&
+      main &&
+      (full.home !== main.home || full.away !== main.away) &&
+      full.home >= main.home &&
+      full.away >= main.away
+        ? { home: full.home - main.home, away: full.away - main.away }
+        : null;
+    return {
+      score: main,
+      penalties: penaltiesFromFull ?? score.penalties ?? null
+    };
+  }
+  return { score: score.fullTime ?? score.regularTime ?? null, penalties: score.penalties ?? null };
 }
 
 export async function fetchFootballDataFixtures(): Promise<ProviderFixture[]> {
@@ -261,7 +300,7 @@ export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
     if (!["IN_PLAY", "LIVE", "PAUSED", "FINISHED"].includes(match.status)) continue;
     const homeTeam = match.homeTeam?.name;
     const awayTeam = match.awayTeam?.name;
-    const score = match.score?.fullTime ?? match.score?.regularTime;
+    const { score, penalties } = footballDataScore(match);
     if (!homeTeam || !awayTeam) continue;
     if (score?.home == null || score.away == null) {
       results.push({
@@ -270,6 +309,8 @@ export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
         awayTeam,
         homeGoals: null,
         awayGoals: null,
+        homePenaltyGoals: null,
+        awayPenaltyGoals: null,
         penaltyWinner: null,
         status: match.status === "FINISHED" ? "closed" : "playing",
         playedAt: match.utcDate,
@@ -283,7 +324,14 @@ export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
       awayTeam,
       homeGoals: score.home,
       awayGoals: score.away,
-      penaltyWinner: null,
+      homePenaltyGoals: penalties?.home ?? null,
+      awayPenaltyGoals: penalties?.away ?? null,
+      penaltyWinner:
+        penalties?.home != null && penalties.away != null && penalties.home !== penalties.away
+          ? penalties.home > penalties.away
+            ? homeTeam
+            : awayTeam
+          : null,
       status: match.status === "FINISHED" ? "closed" : "playing",
       playedAt: match.utcDate
     });
@@ -321,6 +369,12 @@ function apiFootballPenaltyWinner(match: ApiFootballFixture, homeTeam: string, a
   return penalty.home > penalty.away ? homeTeam : awayTeam;
 }
 
+function apiFootballPenaltyGoals(match: ApiFootballFixture) {
+  const penalty = match.score?.penalty;
+  if (penalty?.home == null || penalty.away == null) return { home: null, away: null };
+  return { home: penalty.home, away: penalty.away };
+}
+
 function isApiFootballWorldCupFixture(match: ApiFootballFixture) {
   const configuredLeagueId = process.env.API_FOOTBALL_WORLD_CUP_LEAGUE_ID;
   const configuredSeason = process.env.API_FOOTBALL_SEASON ?? "2026";
@@ -343,6 +397,7 @@ function normalizeApiFootballFixture(match: ApiFootballFixture): ProviderResult 
   if (!homeTeam || !awayTeam) return null;
   const goals = apiFootballGoals(match, status);
   if (!goals) return null;
+  const penaltyGoals = apiFootballPenaltyGoals(match);
 
   return {
     providerMatchId: String(match.fixture?.id ?? `${homeTeam}-${awayTeam}-${match.fixture?.date ?? ""}`),
@@ -350,6 +405,8 @@ function normalizeApiFootballFixture(match: ApiFootballFixture): ProviderResult 
     awayTeam,
     homeGoals: goals.home,
     awayGoals: goals.away,
+    homePenaltyGoals: penaltyGoals.home,
+    awayPenaltyGoals: penaltyGoals.away,
     penaltyWinner: apiFootballPenaltyWinner(match, homeTeam, awayTeam),
     status,
     playedAt: match.fixture?.date ?? null

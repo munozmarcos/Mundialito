@@ -31,6 +31,8 @@ create table if not exists matches (
   locked boolean not null default false,
   home_goals integer,
   away_goals integer,
+  home_penalty_goals integer,
+  away_penalty_goals integer,
   penalty_winner text,
   created_at timestamptz not null default now()
 );

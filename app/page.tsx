@@ -3,6 +3,7 @@ import { HomeMatchControls } from "@/components/home-match-controls";
 import { HomePrimaryAction } from "@/components/home-primary-action";
 import { NotificationBody } from "@/components/notification-body";
 import { RankingDescription } from "@/components/ranking-description";
+import { ScoreWithPenalty } from "@/components/score-with-penalty";
 import { StatusPill } from "@/components/status-pill";
 import { TeamLabel } from "@/components/team-label";
 import { getAppUserFromServerCookies } from "@/lib/app-auth";
@@ -223,7 +224,9 @@ export default async function Home() {
                     </div>
                     <HomeMatchControls
                       actualAwayGoals={homeMatchStatus(match) === "playing" ? match.away_goals ?? 0 : match.away_goals}
+                      actualAwayPenaltyGoals={match.away_penalty_goals}
                       actualHomeGoals={homeMatchStatus(match) === "playing" ? match.home_goals ?? 0 : match.home_goals}
+                      actualHomePenaltyGoals={match.home_penalty_goals}
                       disabled={
                         !currentUser ||
                         isMatchBlockedUntilOfficial(match) ||
@@ -269,10 +272,10 @@ export default async function Home() {
                       </div>
                       <div className="grid grid-cols-[52px_52px] gap-2">
                         <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black text-ink" aria-label={`Goles ${match.home_team}`}>
-                          {match.home_goals ?? ""}
+                          <ScoreWithPenalty penalty={match.home_penalty_goals} score={match.home_goals ?? ""} />
                         </div>
                         <div className="grid h-10 place-items-center rounded-lg border border-line bg-field text-sm font-black text-ink" aria-label={`Goles ${match.away_team}`}>
-                          {match.away_goals ?? ""}
+                          <ScoreWithPenalty penalty={match.away_penalty_goals} score={match.away_goals ?? ""} />
                         </div>
                       </div>
                     </div>

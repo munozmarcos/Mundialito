@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { StatusPill } from "@/components/status-pill";
+import { ScoreWithPenalty } from "@/components/score-with-penalty";
 import { DateFilter } from "@/components/date-filter";
 import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { TeamLabel } from "@/components/team-label";
@@ -96,15 +97,21 @@ function matchFitsFilters(match: Match, teamFilter: string, dateFilter: string) 
   return matchFitsBasicFilters(match, teamFilter, dateFilter);
 }
 
+function sameTeamName(a?: string | null, b?: string | null) {
+  if (!a || !b) return false;
+  const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  return normalize(a) === normalize(b);
+}
+
 function initialResults(matches: Match[]): ResultMap {
   return matches.reduce<ResultMap>((acc, match) => {
     acc[match.id] = {
       home: match.home_goals ?? "",
       away: match.away_goals ?? "",
       winner:
-        match.penalty_winner === match.home_team
+        sameTeamName(match.penalty_winner, match.home_team)
           ? "HOME"
-          : match.penalty_winner === match.away_team
+          : sameTeamName(match.penalty_winner, match.away_team)
             ? "AWAY"
             : ""
     };
@@ -309,11 +316,15 @@ function MatchCard({ match, display }: { match: Match; display?: DisplayMatch })
       <div className="grid gap-2">
         <div className="grid grid-cols-[1fr_68px] items-center gap-3 rounded-md border border-line bg-field p-2">
           <TeamOrLock team={home} />
-          <input className="field text-center font-black" disabled value={homeGoals} aria-label={`Goles ${home.name}`} readOnly />
+          <div className="field grid min-h-10 place-items-center text-center font-black" aria-label={`Goles ${home.name}`}>
+            <ScoreWithPenalty penalty={match.home_penalty_goals} score={homeGoals} />
+          </div>
         </div>
         <div className="grid grid-cols-[1fr_68px] items-center gap-3 rounded-md border border-line bg-field p-2">
           <TeamOrLock team={away} />
-          <input className="field text-center font-black" disabled value={awayGoals} aria-label={`Goles ${away.name}`} readOnly />
+          <div className="field grid min-h-10 place-items-center text-center font-black" aria-label={`Goles ${away.name}`}>
+            <ScoreWithPenalty penalty={match.away_penalty_goals} score={awayGoals} />
+          </div>
         </div>
       </div>
       <p className="mt-3 text-xs font-semibold text-ink/55">{match.stadium && match.stadium !== "-" ? match.stadium : "Estadio por confirmar"}</p>
@@ -447,13 +458,16 @@ export function MatchesExplorer({ matches }: { matches: Match[] }) {
             const team = side === "home" ? home : away;
             const selected = winner?.name === team.name && !unavailable;
             const goals = side === "home" ? match.home_goals : match.away_goals;
+            const penaltyGoals = side === "home" ? match.home_penalty_goals : match.away_penalty_goals;
             return (
               <div
                 className={`sim-bracket-team-row grid grid-cols-[minmax(0,1fr)_50px] items-center gap-3 rounded-md border px-3 py-2 text-left text-sm transition ${selected ? "is-selected border-grass/80 bg-[#05381f] text-white shadow-[inset_0_0_0_1px_rgba(55,245,118,0.18)]" : "border-line bg-slate-950/25"}`}
                 key={side}
               >
                 <TeamOrLock team={team} />
-                <input className="field h-10 min-h-10 px-1 text-center text-base font-black" disabled readOnly value={unavailable ? "" : goals ?? ""} aria-label={`Goles ${team.name}`} />
+                <div className="field grid h-10 min-h-10 place-items-center px-1 text-base font-black">
+                  <ScoreWithPenalty penalty={unavailable ? null : penaltyGoals} score={unavailable ? "" : goals ?? ""} />
+                </div>
               </div>
             );
           })}

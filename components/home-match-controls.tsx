@@ -15,7 +15,9 @@ type Prediction = {
 
 type Props = {
   actualAwayGoals?: number | null;
+  actualAwayPenaltyGoals?: number | null;
   actualHomeGoals?: number | null;
+  actualHomePenaltyGoals?: number | null;
   disabled: boolean;
   initialPrediction?: Prediction;
   isPlaying: boolean;
@@ -28,7 +30,9 @@ type Props = {
 
 export function HomeMatchControls({
   actualAwayGoals,
+  actualAwayPenaltyGoals,
   actualHomeGoals,
+  actualHomePenaltyGoals,
   disabled,
   initialPrediction,
   isPlaying,
@@ -54,7 +58,9 @@ export function HomeMatchControls({
       </div>
       <HomePredictionEditor
         actualAwayGoals={actualAwayGoals}
+        actualAwayPenaltyGoals={actualAwayPenaltyGoals}
         actualHomeGoals={actualHomeGoals}
+        actualHomePenaltyGoals={actualHomePenaltyGoals}
         disabled={disabled}
         initialPrediction={initialPrediction}
         matchId={matchId}

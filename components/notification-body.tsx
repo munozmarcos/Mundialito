@@ -1,4 +1,5 @@
 import { TeamLabel } from "@/components/team-label";
+import { formatScoreWithPenalties } from "@/lib/match-score";
 import type { LatestNotification } from "@/lib/notifications";
 
 function pointClass(points: number) {
@@ -23,7 +24,7 @@ export function NotificationBody({ item, compact = false }: { item: LatestNotifi
           <TeamLabel name={item.match.home_team} code={item.match.home_country_code} />
           {item.match.home_goals != null && item.match.away_goals != null && (
             <span className="rounded-lg border border-line bg-field px-3 py-1 text-lg font-black leading-none text-ink">
-              {item.match.home_goals}-{item.match.away_goals}
+              {formatScoreWithPenalties(item.match)}
             </span>
           )}
           {!(item.match.home_goals != null && item.match.away_goals != null) && <span className="text-ink/40">vs</span>}

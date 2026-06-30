@@ -2,6 +2,7 @@
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { displayNameForTeam, flagEmojiForTeam, searchKeysForTeam } from "@/lib/flags";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
+import { formatScoreWithPenalties } from "@/lib/match-score";
 import { getPodiumLockState, recalculateAllPodiumPoints, validatePodiumTeams } from "@/lib/podium";
 import { competitionRankForIndex, rankingPrefix } from "@/lib/ranking-position";
 import { isPredictionLocked } from "@/lib/scoring";
@@ -40,6 +41,8 @@ type PendingMatch = {
   group_name?: string | null;
   home_goals?: number | null;
   away_goals?: number | null;
+  home_penalty_goals?: number | null;
+  away_penalty_goals?: number | null;
   locked?: boolean | null;
   status?: string | null;
 };
@@ -620,7 +623,7 @@ async function answerUpcoming(text: string) {
     return [
       `${ICONS.calendar} *Próximos partidos*`,
       "No quedan pendientes. Últimos resultados:",
-      ...recent.map((match) => `${matchLabel(match)}\nMarcador: *${match.home_goals}-${match.away_goals}*`)
+      ...recent.map((match) => `${matchLabel(match)}\nMarcador: *${formatScoreWithPenalties(match)}*`)
     ].join("\n");
   }
 
@@ -651,7 +654,7 @@ async function answerResults(text: string) {
       lines.push(`*${date}*`);
       currentDate = date;
     }
-    lines.push(`${flagEmoji(match.home_team, match.home_country_code)} ${displayNameForTeam(match.home_team)} *${match.home_goals}-${match.away_goals}* ${flagEmoji(match.away_team, match.away_country_code)} ${displayNameForTeam(match.away_team)}`);
+    lines.push(`${flagEmoji(match.home_team, match.home_country_code)} ${displayNameForTeam(match.home_team)} *${formatScoreWithPenalties(match)}* ${flagEmoji(match.away_team, match.away_country_code)} ${displayNameForTeam(match.away_team)}`);
   }
 
   return [

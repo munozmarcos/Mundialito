@@ -35,6 +35,8 @@ export type Match = {
   locked: boolean;
   home_goals?: number | null;
   away_goals?: number | null;
+  home_penalty_goals?: number | null;
+  away_penalty_goals?: number | null;
   penalty_winner?: string | null;
   result_updated_at?: string | null;
 };

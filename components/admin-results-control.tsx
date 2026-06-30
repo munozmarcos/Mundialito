@@ -330,7 +330,16 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
     setMessage("");
     try {
       const data = await request("/api/results", "POST", { matchId: match.id, homeGoals: score.home, awayGoals: score.away, penaltyWinner: score.penaltyWinner ?? null });
-      const savedMatch = data.match ?? { ...match, home_goals: score.home, away_goals: score.away, penalty_winner: score.penaltyWinner ?? null, locked: true, status: "closed" };
+      const savedMatch = data.match ?? {
+        ...match,
+        home_goals: score.home,
+        away_goals: score.away,
+        home_penalty_goals: null,
+        away_penalty_goals: null,
+        penalty_winner: score.penaltyWinner ?? null,
+        locked: true,
+        status: "closed"
+      };
       updateLocalMatch(match.id, savedMatch);
       setScores((current) => ({
         ...current,
@@ -359,7 +368,17 @@ export function AdminResultsControl({ initialMatches, profiles, predictions, pod
         if (action === "lock") updateLocalMatch(match.id, { locked: true, status: "closed" });
         if (action === "block") updateLocalMatch(match.id, { locked: true, status: "locked" });
         if (action === "open") updateLocalMatch(match.id, { locked: false, status: "open" });
-        if (action === "clear") updateLocalMatch(match.id, { locked: false, status: "open", home_goals: null, away_goals: null, penalty_winner: null });
+        if (action === "clear") {
+          updateLocalMatch(match.id, {
+            locked: false,
+            status: "open",
+            home_goals: null,
+            away_goals: null,
+            home_penalty_goals: null,
+            away_penalty_goals: null,
+            penalty_winner: null
+          });
+        }
       }
       if (action === "clear") setScores((current) => ({ ...current, [match.id]: { home: "", away: "", penaltyWinner: null } }));
       setMessage(action === "lock" ? "Partido cerrado." : action === "block" ? "Partido bloqueado." : action === "open" ? "Partido abierto." : "Resultado eliminado.");

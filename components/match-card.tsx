@@ -1,8 +1,10 @@
 import { StatusPill } from "@/components/status-pill";
+import { ScoreWithPenalty } from "@/components/score-with-penalty";
 import { TeamLabel } from "@/components/team-label";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { liveMinuteLabel } from "@/lib/live-minute";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
+import { formatScoreWithPenalties } from "@/lib/match-score";
 import { matchStatus } from "@/lib/scoring";
 import type { Match } from "@/lib/types";
 
@@ -10,7 +12,7 @@ export function MatchCard({ match }: { match: Match }) {
   const blocked = isMatchBlockedUntilOfficial(match);
   const hasResult = match.home_goals != null && match.away_goals != null;
   const status = blocked ? "locked" : matchStatus(match.kickoff_at, match.locked, hasResult, new Date(), match.status);
-  const result = hasResult ? `${match.home_goals}-${match.away_goals}` : null;
+  const result = formatScoreWithPenalties(match);
 
   return (
     <article className="rounded-lg border border-line bg-white p-3">
@@ -34,11 +36,11 @@ export function MatchCard({ match }: { match: Match }) {
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-3">
           <TeamLabel name={match.home_team} code={match.home_country_code} />
-          <span className="min-w-8 text-right font-black">{match.home_goals ?? "-"}</span>
+          <ScoreWithPenalty penalty={match.home_penalty_goals} score={match.home_goals ?? "-"} />
         </div>
         <div className="flex items-center justify-between gap-3">
           <TeamLabel name={match.away_team} code={match.away_country_code} />
-          <span className="min-w-8 text-right font-black">{match.away_goals ?? "-"}</span>
+          <ScoreWithPenalty penalty={match.away_penalty_goals} score={match.away_goals ?? "-"} />
         </div>
       </div>
 

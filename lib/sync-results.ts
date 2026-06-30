@@ -56,12 +56,16 @@ async function notifyFinalResult(db: ReturnType<typeof supabaseAdmin>, match: an
 
   const homeName = displayNameForTeam(match.home_team);
   const awayName = displayNameForTeam(match.away_team);
-  const label = `${flagEmojiForTeam(match.home_team, match.home_country_code)} ${homeName} ${match.home_goals}-${match.away_goals} ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${awayName}`;
+  const resultLabel =
+    match.home_penalty_goals != null && match.away_penalty_goals != null
+      ? `(${match.home_penalty_goals}) ${match.home_goals}-${match.away_goals} (${match.away_penalty_goals})`
+      : `${match.home_goals}-${match.away_goals}`;
+  const label = `${flagEmojiForTeam(match.home_team, match.home_country_code)} ${homeName} ${resultLabel} ${flagEmojiForTeam(match.away_team, match.away_country_code)} ${awayName}`;
 
   const push = await sendWebPushToAll({
-    dedupeKey: `result-final:${match.id}:${match.home_goals}-${match.away_goals}`,
+    dedupeKey: `result-final:${match.id}:${match.home_goals}-${match.away_goals}:${match.home_penalty_goals ?? "x"}-${match.away_penalty_goals ?? "x"}`,
     title: "Partido finalizado",
-    body: `${homeName} ${match.home_goals}-${match.away_goals} ${awayName}`,
+    body: `${homeName} ${resultLabel} ${awayName}`,
     url: "/ranking",
     tag: `result-final:${match.id}`
   });
@@ -208,10 +212,18 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
     const reversed = teamsMatch(local.home_team, result.awayTeam) && teamsMatch(local.away_team, result.homeTeam);
     const providerHomeGoals = reversed ? result.awayGoals : result.homeGoals;
     const providerAwayGoals = reversed ? result.homeGoals : result.awayGoals;
+    const providerHomePenaltyGoals = reversed ? result.awayPenaltyGoals : result.homePenaltyGoals;
+    const providerAwayPenaltyGoals = reversed ? result.homePenaltyGoals : result.awayPenaltyGoals;
     const homeGoals = providerHomeGoals ?? local.home_goals;
     const awayGoals = providerAwayGoals ?? local.away_goals;
+    const homePenaltyGoals = providerHomePenaltyGoals ?? null;
+    const awayPenaltyGoals = providerAwayPenaltyGoals ?? null;
     const penaltyWinner = result.penaltyWinner ?? null;
-    const localIsFinal = local.status === "closed" && local.home_goals != null && local.away_goals != null;
+    const localIsFinal =
+      local.status === "closed" &&
+      local.home_goals != null &&
+      local.away_goals != null &&
+      !(providerHomeGoals != null && providerAwayGoals != null && (local.home_goals !== providerHomeGoals || local.away_goals !== providerAwayGoals));
 
     if (localIsFinal && result.status === "playing") {
       continue;
@@ -255,12 +267,10 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
     const sameResult =
       local.home_goals === homeGoals &&
       local.away_goals === awayGoals &&
+      (local.home_penalty_goals ?? null) === homePenaltyGoals &&
+      (local.away_penalty_goals ?? null) === awayPenaltyGoals &&
       (local.penalty_winner ?? null) === penaltyWinner &&
       local.status === result.status;
-
-    if (result.status === "closed" && local.status === "closed") {
-      continue;
-    }
 
     if (sameResult && result.status === "playing") {
       const { error: heartbeatError } = await db
@@ -281,6 +291,8 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
       .update({
         home_goals: homeGoals,
         away_goals: awayGoals,
+        home_penalty_goals: homePenaltyGoals,
+        away_penalty_goals: awayPenaltyGoals,
         penalty_winner: penaltyWinner,
         locked: true,
         status: result.status,
@@ -295,6 +307,8 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
         ...local,
         home_goals: homeGoals,
         away_goals: awayGoals,
+        home_penalty_goals: homePenaltyGoals,
+        away_penalty_goals: awayPenaltyGoals,
         status: "playing"
       });
       kickoffNotifications += notification.pushSent;
@@ -307,6 +321,8 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
         ...local,
         home_goals: homeGoals,
         away_goals: awayGoals,
+        home_penalty_goals: homePenaltyGoals,
+        away_penalty_goals: awayPenaltyGoals,
         penalty_winner: penaltyWinner,
         status: "closed"
       });

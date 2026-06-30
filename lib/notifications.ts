@@ -1,5 +1,6 @@
 import { getNewsItems } from "@/lib/data";
 import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
+import { formatScoreWithPenalties } from "@/lib/match-score";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 import { fetchAllSupabaseRows } from "@/lib/supabase-pagination";
 
@@ -17,6 +18,8 @@ export type LatestNotification = {
     away_country_code?: string | null;
     home_goals?: number | null;
     away_goals?: number | null;
+    home_penalty_goals?: number | null;
+    away_penalty_goals?: number | null;
   };
 };
 
@@ -31,6 +34,8 @@ type MatchNoticeRow = {
   status: "open" | "locked" | "closed" | "playing";
   home_goals: number | null;
   away_goals: number | null;
+  home_penalty_goals?: number | null;
+  away_penalty_goals?: number | null;
 };
 
 type ParticipantNoticeRow = {
@@ -47,6 +52,8 @@ type PointMatchRow = {
   away_country_code?: string | null;
   home_goals: number | null;
   away_goals: number | null;
+  home_penalty_goals?: number | null;
+  away_penalty_goals?: number | null;
   status?: string | null;
 };
 
@@ -94,7 +101,7 @@ async function getPointMatchNotifications(limit: number): Promise<LatestNotifica
     data = await fetchAllSupabaseRows<PointActivityRow>((from, to) =>
       db
         .from("predictions")
-        .select("id,user_id,points,updated_at,profiles(display_name),matches(id,home_team,away_team,home_country_code,away_country_code,home_goals,away_goals,status)")
+        .select("id,user_id,points,updated_at,profiles(display_name),matches(id,home_team,away_team,home_country_code,away_country_code,home_goals,away_goals,home_penalty_goals,away_penalty_goals,status)")
         .gt("points", 0)
         .order("updated_at", { ascending: false })
         .range(from, to)
@@ -123,7 +130,7 @@ async function getPointMatchNotifications(limit: number): Promise<LatestNotifica
         .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name, "es"))
         .map((player) => ({ name: player.name, points: player.points }));
       return {
-        id: `points-match:${matchId}:${group.match.home_goals ?? "x"}-${group.match.away_goals ?? "x"}`,
+        id: `points-match:${matchId}:${formatScoreWithPenalties(group.match) ?? "x"}`,
         title: "Puntos obtenidos",
         body: "",
         created_at: group.updatedAt,
@@ -144,7 +151,7 @@ async function getClosingMatchNotifications(limit: number): Promise<LatestNotifi
   const db = supabaseAdmin();
   const { data, error } = await db
     .from("matches")
-    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,result_updated_at,status,home_goals,away_goals")
+    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,result_updated_at,status,home_goals,away_goals,home_penalty_goals,away_penalty_goals")
     .eq("status", "open")
     .gte("kickoff_at", now.toISOString())
     .lte("kickoff_at", closesUntil.toISOString())
@@ -182,7 +189,7 @@ async function getClosedMatchNotifications(limit: number): Promise<LatestNotific
   const db = supabaseAdmin();
   const { data, error } = await db
     .from("matches")
-    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,result_updated_at,status,home_goals,away_goals")
+    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,result_updated_at,status,home_goals,away_goals,home_penalty_goals,away_penalty_goals")
     .or("status.eq.closed,home_goals.not.is.null")
     .gte("kickoff_at", todayStart.toISOString())
     .order("kickoff_at", { ascending: false })
@@ -197,7 +204,7 @@ async function getClosedMatchNotifications(limit: number): Promise<LatestNotific
     const hasResult = match.home_goals != null && match.away_goals != null;
     const isLive = match.status === "playing";
     return {
-      id: `closed:${match.id}:${match.home_goals ?? "x"}-${match.away_goals ?? "x"}`,
+      id: `closed:${match.id}:${formatScoreWithPenalties(match) ?? "x"}`,
       title: isLive ? "Partido en vivo" : hasResult ? "Partido cerrado" : "Pronósticos cerrados",
       body: isLive
         ? "Está en vivo."

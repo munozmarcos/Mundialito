@@ -38,6 +38,8 @@ export type RankingPredictionDetail = {
     group_name?: string | null;
     home_goals?: number | null;
     away_goals?: number | null;
+    home_penalty_goals?: number | null;
+    away_penalty_goals?: number | null;
     penalty_winner?: string | null;
   } | {
     id: string;
@@ -50,6 +52,8 @@ export type RankingPredictionDetail = {
     group_name?: string | null;
     home_goals?: number | null;
     away_goals?: number | null;
+    home_penalty_goals?: number | null;
+    away_penalty_goals?: number | null;
     penalty_winner?: string | null;
   }[] | null;
 };
@@ -221,7 +225,7 @@ export async function getRankingDetails(): Promise<RankingDetails> {
       fetchAllSupabaseRows<any>((from, to) =>
         db
           .from("predictions")
-          .select("id,user_id,points,exact_hit,trend_hit,home_goals,away_goals,penalty_winner,updated_at,matches(id,home_team,away_team,home_country_code,away_country_code,kickoff_at,stage,group_name,home_goals,away_goals,penalty_winner)")
+          .select("id,user_id,points,exact_hit,trend_hit,home_goals,away_goals,penalty_winner,updated_at,matches(id,home_team,away_team,home_country_code,away_country_code,kickoff_at,stage,group_name,home_goals,away_goals,home_penalty_goals,away_penalty_goals,penalty_winner)")
           .not("home_goals", "is", null)
           .not("away_goals", "is", null)
           .gt("points", 0)
