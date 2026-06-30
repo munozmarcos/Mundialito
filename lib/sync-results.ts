@@ -27,6 +27,12 @@ function findLocalMatch(matches: any[], result: ProviderResult) {
   });
 }
 
+function isInLiveWindow(match: any, now = Date.now()) {
+  const kickoff = new Date(match.kickoff_at).getTime();
+  if (!Number.isFinite(kickoff)) return false;
+  return now >= kickoff && now <= kickoff + 150 * 60 * 1000;
+}
+
 async function shouldUseLiveProvider(db: ReturnType<typeof supabaseAdmin>, matches: any[]) {
   if (!process.env.API_FOOTBALL_KEY) return false;
 
@@ -207,6 +213,9 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
       unmatched.push(result);
       continue;
     }
+    if (matchedLocalIds.has(local.id)) {
+      continue;
+    }
     matchedLocalIds.add(local.id);
 
     const reversed = teamsMatch(local.home_team, result.awayTeam) && teamsMatch(local.away_team, result.homeTeam);
@@ -223,6 +232,7 @@ export async function syncResultsFromProvider(options: { allowLiveProvider?: boo
       local.status === "closed" &&
       local.home_goals != null &&
       local.away_goals != null &&
+      !(result.status === "playing" && isInLiveWindow(local)) &&
       !(providerHomeGoals != null && providerAwayGoals != null && (local.home_goals !== providerHomeGoals || local.away_goals !== providerAwayGoals));
 
     if (localIsFinal && result.status === "playing") {

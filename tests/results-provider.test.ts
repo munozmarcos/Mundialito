@@ -24,4 +24,5 @@ describe("result provider matching", () => {
     expect(result.score).toEqual({ home: 1, away: 1 });
     expect(result.penalties).toEqual({ home: 3, away: 4 });
   });
+
 });

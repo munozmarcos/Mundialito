@@ -96,6 +96,12 @@ function footballDataCodeToFlagCode(tla: string | null | undefined) {
   return footballDataTlaToIso2[tla.toUpperCase()] ?? null;
 }
 
+function footballDataPenaltyOverride(match: FootballDataMatch) {
+  // football-data reports Netherlands-Morocco as fullTime 4-3, but the shootout was 2-3.
+  if (String(match.id) === "537418") return { home: 2, away: 3 };
+  return null;
+}
+
 export function teamsMatch(a: string, b: string) {
   return normalizeName(a) === normalizeName(b);
 }
@@ -318,17 +324,19 @@ export async function fetchFootballDataResults(): Promise<ProviderResult[]> {
       });
       continue;
     }
+    const penaltyOverride = footballDataPenaltyOverride(match);
+    const finalPenalties = penaltyOverride ?? penalties;
     results.push({
       providerMatchId: String(match.id),
       homeTeam,
       awayTeam,
       homeGoals: score.home,
       awayGoals: score.away,
-      homePenaltyGoals: penalties?.home ?? null,
-      awayPenaltyGoals: penalties?.away ?? null,
+      homePenaltyGoals: finalPenalties?.home ?? null,
+      awayPenaltyGoals: finalPenalties?.away ?? null,
       penaltyWinner:
-        penalties?.home != null && penalties.away != null && penalties.home !== penalties.away
-          ? penalties.home > penalties.away
+        finalPenalties?.home != null && finalPenalties.away != null && finalPenalties.home !== finalPenalties.away
+          ? finalPenalties.home > finalPenalties.away
             ? homeTeam
             : awayTeam
           : null,

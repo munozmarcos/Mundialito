@@ -95,7 +95,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await db
     .from("matches")
-    .update({ locked: true, status: "closed" })
+    .update({ locked: true })
     .lte("kickoff_at", lockBefore)
     .eq("locked", false)
     .is("home_goals", null)
