@@ -55,6 +55,28 @@ function shouldOpenConfirmedFixture(existing: any, fixture: ProviderFixture) {
   return true;
 }
 
+function fixtureState(existing: any, fixture: ProviderFixture) {
+  if (fixture.stage === "GROUP") {
+    return {
+      status: existing?.status ?? "open",
+      locked: existing?.locked ?? false
+    };
+  }
+
+  if (!isFixtureOfficialKnockout(fixture)) {
+    return { status: "locked", locked: true };
+  }
+
+  if (existing?.status === "closed" || existing?.status === "final" || existing?.status === "playing" || existing?.home_goals != null || existing?.away_goals != null) {
+    return {
+      status: existing?.status ?? "closed",
+      locked: true
+    };
+  }
+
+  return { status: "open", locked: false };
+}
+
 function fixturePlaceholder(fixture: ProviderFixture) {
   return knockoutPlaceholders.find((placeholder) => placeholder.stage === fixture.stage && kickoffClose(placeholder.kickoffAt, fixture.kickoffAt));
 }
@@ -225,6 +247,111 @@ function placeholderForMatch(match: any) {
   return knockoutPlaceholders.find((fixture) => fixture.stage === match.stage && kickoffClose(match.kickoff_at, fixture.kickoffAt));
 }
 
+function matchNumberForMatch(match: any) {
+  const placeholder = placeholderForMatch(match);
+  if (placeholder) return placeholder.matchNumber;
+  const provider = String(match.provider_match_id ?? "");
+  const providerMatch = provider.match(/(?:fifa-)?(\d+)$/i);
+  return providerMatch ? Number(providerMatch[1]) : null;
+}
+
+function completedKnockoutMatch(match: any) {
+  return match?.stage !== "GROUP" && (match?.status === "closed" || match?.status === "final") && match.home_goals != null && match.away_goals != null;
+}
+
+function knockoutWinner(match: any) {
+  if (!completedKnockoutMatch(match)) return null;
+  if (match.home_goals > match.away_goals) return { team: match.home_team, code: match.home_country_code ?? countryCodeForTeam(match.home_team) ?? null };
+  if (match.away_goals > match.home_goals) return { team: match.away_team, code: match.away_country_code ?? countryCodeForTeam(match.away_team) ?? null };
+  if (match.penalty_winner === "HOME" || teamsMatch(match.penalty_winner, match.home_team)) return { team: match.home_team, code: match.home_country_code ?? countryCodeForTeam(match.home_team) ?? null };
+  if (match.penalty_winner === "AWAY" || teamsMatch(match.penalty_winner, match.away_team)) return { team: match.away_team, code: match.away_country_code ?? countryCodeForTeam(match.away_team) ?? null };
+  return null;
+}
+
+function knockoutLoser(match: any) {
+  const winner = knockoutWinner(match);
+  if (!winner) return null;
+  if (teamsMatch(winner.team, match.home_team)) return { team: match.away_team, code: match.away_country_code ?? countryCodeForTeam(match.away_team) ?? null };
+  return { team: match.home_team, code: match.home_country_code ?? countryCodeForTeam(match.home_team) ?? null };
+}
+
+function resolveProgressionSide(currentTeam: string, currentCode: string | null | undefined, placeholderTeam: string | undefined, matchesByNumber: Map<number, any>) {
+  const clean = (placeholderTeam ?? currentTeam ?? "").trim();
+  const winner = clean.match(/^Ganador\s+(\d+)$/i);
+  if (winner) return knockoutWinner(matchesByNumber.get(Number(winner[1]))) ?? { team: currentTeam, code: currentCode ?? null };
+
+  const loser = clean.match(/^Perdedor\s+(\d+)$/i);
+  if (loser) return knockoutLoser(matchesByNumber.get(Number(loser[1]))) ?? { team: currentTeam, code: currentCode ?? null };
+
+  return { team: currentTeam, code: currentCode ?? null };
+}
+
+async function resolveProgressionKnockoutSlots(db: ReturnType<typeof supabaseAdmin>, matches: any[]) {
+  let resolved = 0;
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+    const matchesByNumber = new Map<number, any>();
+    for (const match of matches) {
+      const number = matchNumberForMatch(match);
+      if (number) matchesByNumber.set(number, match);
+    }
+
+    for (const match of matches) {
+      if (match.stage === "GROUP" || match.home_goals != null || match.away_goals != null || match.status === "closed" || match.status === "final" || match.status === "playing") continue;
+      const placeholder = placeholderForMatch(match);
+      if (!placeholder) continue;
+
+      const nextHome = resolveProgressionSide(match.home_team, match.home_country_code, placeholder.homeTeam, matchesByNumber);
+      const nextAway = resolveProgressionSide(match.away_team, match.away_country_code, placeholder.awayTeam, matchesByNumber);
+      const ready = isOfficialKnockoutMatchReady({
+        stage: match.stage,
+        status: "open",
+        home_team: nextHome.team,
+        away_team: nextAway.team
+      });
+      const shouldOpenExisting = ready && match.status === "locked" && match.home_goals == null && match.away_goals == null;
+
+      if (
+        !shouldOpenExisting &&
+        nextHome.team === match.home_team &&
+        nextAway.team === match.away_team &&
+        (nextHome.code ?? null) === (match.home_country_code ?? null) &&
+        (nextAway.code ?? null) === (match.away_country_code ?? null)
+      ) {
+        continue;
+      }
+
+      const { error } = await db
+        .from("matches")
+        .update({
+          home_team: nextHome.team,
+          away_team: nextAway.team,
+          home_country_code: nextHome.code,
+          away_country_code: nextAway.code,
+          status: ready ? "open" : "locked",
+          locked: !ready
+        })
+        .eq("id", match.id);
+      if (error) throw error;
+
+      Object.assign(match, {
+        home_team: nextHome.team,
+        away_team: nextAway.team,
+        home_country_code: nextHome.code,
+        away_country_code: nextAway.code,
+        status: ready ? "open" : "locked",
+        locked: !ready
+      });
+      resolved += 1;
+      changed = true;
+    }
+  }
+
+  return resolved;
+}
+
 function resolveDirectSide(
   currentTeam: string,
   currentCode: string | null | undefined,
@@ -282,7 +409,16 @@ async function resolveDirectKnockoutSlots(db: ReturnType<typeof supabaseAdmin>, 
       thirdAssignments.get(`${match.id}:away`)
     );
 
+    const ready = isOfficialKnockoutMatchReady({
+      stage: match.stage,
+      status: "open",
+      home_team: nextHome.team,
+      away_team: nextAway.team
+    });
+    const shouldOpenExisting = ready && match.status === "locked" && match.home_goals == null && match.away_goals == null;
+
     if (
+      !shouldOpenExisting &&
       nextHome.team === match.home_team &&
       nextAway.team === match.away_team &&
       (nextHome.code ?? null) === (match.home_country_code ?? null) &&
@@ -290,13 +426,6 @@ async function resolveDirectKnockoutSlots(db: ReturnType<typeof supabaseAdmin>, 
     ) {
       continue;
     }
-
-    const ready = isOfficialKnockoutMatchReady({
-      stage: match.stage,
-      status: "open",
-      home_team: nextHome.team,
-      away_team: nextAway.team
-    });
 
     const { error } = await db
       .from("matches")
@@ -346,7 +475,7 @@ async function upsertFixture(db: ReturnType<typeof supabaseAdmin>, fixture: Prov
     homeCode: nextHomeCode,
     awayCode: nextAwayCode
   };
-  const shouldOpen = shouldOpenConfirmedFixture(existing, mergedFixture);
+  const state = fixtureState(existing, mergedFixture);
 
   const row = {
     provider_match_id: fixture.providerMatchId,
@@ -358,8 +487,8 @@ async function upsertFixture(db: ReturnType<typeof supabaseAdmin>, fixture: Prov
     stadium: venueForFixture(fixture.stage, fixture.kickoffAt, nextHomeTeam, nextAwayTeam) ?? fixture.stadium,
     stage: fixture.stage,
     group_name: fixture.groupName,
-    status: fixture.stage !== "GROUP" && !shouldOpen ? "locked" : shouldOpen ? "open" : existing?.status ?? "open",
-    locked: fixture.stage !== "GROUP" && !shouldOpen ? true : shouldOpen ? false : existing?.locked ?? false
+    status: state.status,
+    locked: state.locked
   };
 
   if (existing) {
@@ -445,5 +574,21 @@ export async function syncFixturesFromProvider() {
     placeholders += 1;
   }
 
-  return { mode: "real", imported, placeholders, opened, resolvedSlots: 0, total: imported + placeholders, provider: process.env.RESULTS_PROVIDER ?? "football-data" };
+  const { data: refreshedMatches, error: refreshError } = await db
+    .from("matches")
+    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,provider_match_id,stage,group_name,status,locked,home_goals,away_goals,penalty_winner");
+  if (refreshError) throw refreshError;
+  const fresh = refreshedMatches ?? [];
+  const directResolved = await resolveDirectKnockoutSlots(db, fresh, fixtures);
+  const progressionResolved = await resolveProgressionKnockoutSlots(db, fresh);
+
+  return {
+    mode: "real",
+    imported,
+    placeholders,
+    opened,
+    resolvedSlots: directResolved + progressionResolved,
+    total: imported + placeholders,
+    provider: process.env.RESULTS_PROVIDER ?? "football-data"
+  };
 }
