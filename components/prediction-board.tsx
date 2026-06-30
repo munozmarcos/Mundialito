@@ -455,7 +455,7 @@ function PredictionCard({
   const hasResult = match.home_goals != null && match.away_goals != null;
   const visualHomeGoals = status === "playing" ? match.home_goals ?? 0 : match.home_goals;
   const visualAwayGoals = status === "playing" ? match.away_goals ?? 0 : match.away_goals;
-  const realResult = hasResult || status === "playing" ? formatScoreWithPenalties(match) ?? `${visualHomeGoals}-${visualAwayGoals}` : "Pendiente";
+  const realResult = hasResult || status === "playing" ? formatScoreWithPenalties(match) ?? `${visualHomeGoals}-${visualAwayGoals}` : "";
   const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
   const pointsReady = prediction && hasResult;
   const home = safeDisplay?.home ?? { name: match.home_team, code: match.home_country_code };
@@ -526,12 +526,12 @@ function PredictionCard({
 
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <div className="rounded-md bg-field p-2 text-xs">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <span className="block font-semibold text-ink/55">{match.stadium || "Sede por confirmar"}</span>
-                <span className="block font-black">Resultado: {realResult}</span>
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+              <div className="flex min-h-10 min-w-0 flex-col justify-center">
+                <span className="block truncate whitespace-nowrap font-semibold text-ink/55">{match.stadium || "Sede por confirmar"}</span>
+                <span className="block truncate whitespace-nowrap font-black">{realResult ? `Resultado: ${realResult}` : "\u00A0"}</span>
               </div>
-              <div className="text-right">
+              <div className="shrink-0 text-right">
                 {pointsReady ? <PointsPill points={prediction?.points ?? 0} /> : <PointsPill points={0} label={pointsText} />}
               </div>
             </div>
@@ -621,7 +621,7 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
   const hasResult = match.home_goals != null && match.away_goals != null;
   const visualHomeGoals = status === "playing" ? match.home_goals ?? 0 : match.home_goals;
   const visualAwayGoals = status === "playing" ? match.away_goals ?? 0 : match.away_goals;
-  const realResult = hasResult || status === "playing" ? formatScoreWithPenalties(match) ?? `${visualHomeGoals}-${visualAwayGoals}` : "Pendiente";
+  const realResult = hasResult || status === "playing" ? formatScoreWithPenalties(match) ?? `${visualHomeGoals}-${visualAwayGoals}` : "";
   const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
   const pointsReady = prediction && hasResult;
   const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
@@ -650,14 +650,14 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
           </span>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded-md bg-field p-2">
-          <span className="block font-semibold text-ink/55">{match.stadium || "Sede por confirmar"}</span>
-          <span className="block font-black">Resultado: {realResult}</span>
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-stretch gap-2 text-xs">
+        <div className="flex min-h-14 min-w-0 flex-col justify-center rounded-md bg-field p-2">
+          <span className="block truncate whitespace-nowrap font-semibold text-ink/55">{match.stadium || "Sede por confirmar"}</span>
+          <span className="block truncate whitespace-nowrap font-black">{realResult ? `Resultado: ${realResult}` : "\u00A0"}</span>
           {prediction && <span className="block text-ink/55">Apuesta: {prediction.home_goals}-{prediction.away_goals}</span>}
           {winner && prediction?.home_goals === prediction?.away_goals && <span className="block font-black text-grass">Ganador: {winner.name}</span>}
         </div>
-        <div className="rounded-md bg-field p-2 text-right">
+        <div className="flex items-center justify-end rounded-md bg-field p-2 text-right">
           {pointsReady ? <PointsPill points={prediction?.points ?? 0} /> : <PointsPill points={0} label={pointsText} />}
         </div>
       </div>
