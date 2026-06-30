@@ -6,7 +6,7 @@ import { DateFilter } from "@/components/date-filter";
 import { StatusPill } from "@/components/status-pill";
 import { ScoreWithPenalty } from "@/components/score-with-penalty";
 import { TeamLabel } from "@/components/team-label";
-import { PointsPill } from "@/components/points-pill";
+import { PointsPill, pointsInputClass } from "@/components/points-pill";
 import { formatArgentinaDateTime } from "@/lib/dates";
 import { displayNameForTeam } from "@/lib/flags";
 import { compareGroups, sortedGroupEntries } from "@/lib/group-sort";
@@ -15,7 +15,6 @@ import { knockoutMatchNumber } from "@/lib/knockout-match-number";
 import { liveMinuteLabel } from "@/lib/live-minute";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { dateKey, matchFitsBasicFilters } from "@/lib/match-filters";
-import { formatScoreWithPenalties } from "@/lib/match-score";
 import { isPredictionLocked, matchStatus } from "@/lib/scoring";
 import { teamOptionsFromMatches, type TeamOption } from "@/lib/team-options";
 import type { Match, MatchStage, Prediction } from "@/lib/types";
@@ -171,6 +170,14 @@ function norm(value: string) {
 function teamMatchesBulk(team: string, query: string) {
   const normalizedQuery = norm(query);
   return norm(team) === normalizedQuery || norm(displayNameForTeam(team)) === normalizedQuery;
+}
+
+function ResultScoreBox({ value, penalty, className = "" }: { value: number | string | null | undefined; penalty?: number | null; className?: string }) {
+  return (
+    <div className={`field grid min-h-10 w-full min-w-0 place-items-center px-2 text-center font-black leading-none ${className}`}>
+      <ScoreWithPenalty penalty={penalty} score={value} />
+    </div>
+  );
 }
 
 function podiumKey(podium?: PodiumDraft | null) {
@@ -455,11 +462,12 @@ function PredictionCard({
   const hasResult = match.home_goals != null && match.away_goals != null;
   const visualHomeGoals = status === "playing" ? match.home_goals ?? 0 : match.home_goals;
   const visualAwayGoals = status === "playing" ? match.away_goals ?? 0 : match.away_goals;
-  const realResult = hasResult || status === "playing" ? formatScoreWithPenalties(match) ?? `${visualHomeGoals}-${visualAwayGoals}` : "";
   const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
   const pointsReady = prediction && hasResult;
+  const resultInputTone = pointsInputClass(pointsReady ? prediction?.points ?? 0 : 0);
   const home = safeDisplay?.home ?? { name: match.home_team, code: match.home_country_code };
   const away = safeDisplay?.away ?? { name: match.away_team, code: match.away_country_code };
+  const showRealScore = hasResult || status === "playing";
   return (
     <article className="rounded-lg border border-line bg-white p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -480,7 +488,14 @@ function PredictionCard({
 
       <form className="grid gap-3" onSubmit={save}>
         <div className="grid gap-2">
-          <div className="grid grid-cols-[1fr_68px] items-center gap-3">
+          {showRealScore && (
+            <div className="grid grid-cols-[minmax(0,1fr)_68px_72px] gap-2 px-1 text-[11px] font-black uppercase text-ink/45">
+              <span />
+              <span />
+              <span className="rounded-full border border-line bg-field px-2 py-1 text-center text-ink/55">Final</span>
+            </div>
+          )}
+          <div className={`grid items-center gap-3 ${showRealScore ? "grid-cols-[1fr_68px_72px]" : "grid-cols-[1fr_68px]"}`}>
             <TeamOrLock team={home} />
             <input
               aria-label={`Goles ${home.name}`}
@@ -500,8 +515,9 @@ function PredictionCard({
                 }
               }}
             />
+            {showRealScore && <ResultScoreBox className={resultInputTone} penalty={match.home_penalty_goals} value={visualHomeGoals ?? ""} />}
           </div>
-          <div className="grid grid-cols-[1fr_68px] items-center gap-3">
+          <div className={`grid items-center gap-3 ${showRealScore ? "grid-cols-[1fr_68px_72px]" : "grid-cols-[1fr_68px]"}`}>
             <TeamOrLock team={away} />
             <input
               aria-label={`Goles ${away.name}`}
@@ -521,6 +537,7 @@ function PredictionCard({
                 }
               }}
             />
+            {showRealScore && <ResultScoreBox className={resultInputTone} penalty={match.away_penalty_goals} value={visualAwayGoals ?? ""} />}
           </div>
         </div>
 
@@ -529,7 +546,6 @@ function PredictionCard({
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
               <div className="flex min-h-10 min-w-0 flex-col justify-center">
                 <span className="block truncate whitespace-nowrap font-semibold text-ink/55">{match.stadium || "Sede por confirmar"}</span>
-                <span className="block truncate whitespace-nowrap font-black">Resultado: {realResult || "TBD"}</span>
               </div>
               <div className="shrink-0 text-right">
                 {pointsReady ? <PointsPill points={prediction?.points ?? 0} /> : <PointsPill points={0} label={pointsText} />}
@@ -621,12 +637,13 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
   const hasResult = match.home_goals != null && match.away_goals != null;
   const visualHomeGoals = status === "playing" ? match.home_goals ?? 0 : match.home_goals;
   const visualAwayGoals = status === "playing" ? match.away_goals ?? 0 : match.away_goals;
-  const realResult = hasResult || status === "playing" ? formatScoreWithPenalties(match) ?? `${visualHomeGoals}-${visualAwayGoals}` : "";
   const pointsText = prediction && hasResult ? `${prediction.points} Pts` : hasResult ? "Sin apuesta" : "0 Pts";
   const pointsReady = prediction && hasResult;
+  const resultInputTone = pointsInputClass(pointsReady ? prediction?.points ?? 0 : 0);
   const home = display?.home ?? { name: match.home_team, code: match.home_country_code };
   const away = display?.away ?? { name: match.away_team, code: match.away_country_code };
   const winner = winnerFromPrediction({ home, away }, prediction);
+  const showRealScore = hasResult || status === "playing";
 
   return (
     <article className="rounded-lg border border-line bg-white p-3">
@@ -635,26 +652,27 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
         <StatusPill status={status} />
       </div>
       <div className="grid gap-2">
-        <div className={`flex items-center justify-between gap-3 rounded-md p-2 ${winner?.name === home.name ? "bg-mint" : "bg-field"}`}>
+        {showRealScore && (
+          <div className="grid grid-cols-[minmax(0,1fr)_56px_72px] gap-2 px-1 text-[11px] font-black uppercase text-ink/45">
+            <span />
+            <span />
+            <span className="rounded-full border border-line bg-field px-2 py-1 text-center text-ink/55">Final</span>
+          </div>
+        )}
+        <div className={`grid items-center gap-2 rounded-md p-2 ${showRealScore ? "grid-cols-[minmax(0,1fr)_56px_72px]" : "grid-cols-[minmax(0,1fr)_56px]"} ${winner?.name === home.name ? "bg-mint" : "bg-field"}`}>
           <TeamOrLock team={home} />
-          <span className="flex items-center gap-2 text-xs font-bold text-ink/40">
-            {winner?.name === home.name && <span className="badge">Ganador</span>}
-            <ScoreWithPenalty penalty={match.home_penalty_goals} score={visualHomeGoals ?? ""} />
-          </span>
+          <ResultScoreBox value={prediction?.home_goals ?? ""} />
+          {showRealScore && <ResultScoreBox className={resultInputTone} penalty={match.home_penalty_goals} value={visualHomeGoals ?? ""} />}
         </div>
-        <div className={`flex items-center justify-between gap-3 rounded-md p-2 ${winner?.name === away.name ? "bg-mint" : "bg-field"}`}>
+        <div className={`grid items-center gap-2 rounded-md p-2 ${showRealScore ? "grid-cols-[minmax(0,1fr)_56px_72px]" : "grid-cols-[minmax(0,1fr)_56px]"} ${winner?.name === away.name ? "bg-mint" : "bg-field"}`}>
           <TeamOrLock team={away} />
-          <span className="flex items-center gap-2 text-xs font-bold text-ink/40">
-            {winner?.name === away.name && <span className="badge">Ganador</span>}
-            <ScoreWithPenalty penalty={match.away_penalty_goals} score={visualAwayGoals ?? ""} />
-          </span>
+          <ResultScoreBox value={prediction?.away_goals ?? ""} />
+          {showRealScore && <ResultScoreBox className={resultInputTone} penalty={match.away_penalty_goals} value={visualAwayGoals ?? ""} />}
         </div>
       </div>
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-stretch gap-2 text-xs">
         <div className="flex min-h-14 min-w-0 flex-col justify-center rounded-md bg-field p-2">
           <span className="block truncate whitespace-nowrap font-semibold text-ink/55">{match.stadium || "Sede por confirmar"}</span>
-          <span className="block truncate whitespace-nowrap font-black">Resultado: {realResult || "TBD"}</span>
-          {prediction && <span className="block text-ink/55">Apuesta: {prediction.home_goals}-{prediction.away_goals}</span>}
           {winner && prediction?.home_goals === prediction?.away_goals && <span className="block font-black text-grass">Ganador: {winner.name}</span>}
         </div>
         <div className="flex items-center justify-end rounded-md bg-field p-2 text-right">
