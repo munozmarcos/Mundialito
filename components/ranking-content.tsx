@@ -88,7 +88,7 @@ function ScoreBox({ value, className = "" }: { value: number | string | null | u
 
 function ResultScoreBox({ value, penalty, className = "" }: { value: number | string | null | undefined; penalty?: number | null; className?: string }) {
   return (
-    <div className={`field min-h-10 w-full min-w-0 px-2 text-center font-black leading-none ${className}`}>
+    <div className={`field grid min-h-10 w-full min-w-0 place-items-center px-2 text-center font-black leading-none ${className}`}>
       <ScoreWithPenalty penalty={penalty} score={value} />
     </div>
   );
