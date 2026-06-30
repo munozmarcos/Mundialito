@@ -529,7 +529,7 @@ function PredictionCard({
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
               <div className="flex min-h-10 min-w-0 flex-col justify-center">
                 <span className="block truncate whitespace-nowrap font-semibold text-ink/55">{match.stadium || "Sede por confirmar"}</span>
-                <span className="block truncate whitespace-nowrap font-black">{realResult ? `Resultado: ${realResult}` : "\u00A0"}</span>
+                <span className="block truncate whitespace-nowrap font-black">Resultado: {realResult || "TBD"}</span>
               </div>
               <div className="shrink-0 text-right">
                 {pointsReady ? <PointsPill points={prediction?.points ?? 0} /> : <PointsPill points={0} label={pointsText} />}
@@ -653,7 +653,7 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-stretch gap-2 text-xs">
         <div className="flex min-h-14 min-w-0 flex-col justify-center rounded-md bg-field p-2">
           <span className="block truncate whitespace-nowrap font-semibold text-ink/55">{match.stadium || "Sede por confirmar"}</span>
-          <span className="block truncate whitespace-nowrap font-black">{realResult ? `Resultado: ${realResult}` : "\u00A0"}</span>
+          <span className="block truncate whitespace-nowrap font-black">Resultado: {realResult || "TBD"}</span>
           {prediction && <span className="block text-ink/55">Apuesta: {prediction.home_goals}-{prediction.away_goals}</span>}
           {winner && prediction?.home_goals === prediction?.away_goals && <span className="block font-black text-grass">Ganador: {winner.name}</span>}
         </div>
