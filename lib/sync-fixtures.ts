@@ -1,4 +1,5 @@
 import { knockoutPlaceholders } from "@/data/knockout-placeholders";
+import { venueForFixture } from "@/data/match-venues";
 import { countryCodeForTeam } from "@/lib/flags";
 import { fifaGroupTeamOrder } from "@/lib/group-order";
 import { isOfficialKnockoutMatchReady, isPlaceholderTeamName } from "@/lib/match-availability";
@@ -354,7 +355,7 @@ async function upsertFixture(db: ReturnType<typeof supabaseAdmin>, fixture: Prov
     home_country_code: nextHomeCode,
     away_country_code: nextAwayCode,
     kickoff_at: fixture.kickoffAt,
-    stadium: fixture.stadium,
+    stadium: venueForFixture(fixture.stage, fixture.kickoffAt, nextHomeTeam, nextAwayTeam) ?? fixture.stadium,
     stage: fixture.stage,
     group_name: fixture.groupName,
     status: fixture.stage !== "GROUP" && !shouldOpen ? "locked" : shouldOpen ? "open" : existing?.status ?? "open",
@@ -432,7 +433,7 @@ export async function syncFixturesFromProvider() {
         home_country_code: null,
         away_country_code: null,
         kickoff_at: fixture.kickoffAt,
-        stadium: fixture.stadium,
+        stadium: venueForFixture(fixture.stage, fixture.kickoffAt, fixture.homeTeam, fixture.awayTeam) ?? fixture.stadium,
         stage: fixture.stage,
         group_name: null,
         status: "locked",

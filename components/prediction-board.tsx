@@ -528,8 +528,8 @@ function PredictionCard({
           <div className="rounded-md bg-field p-2 text-xs">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <span className="block font-bold text-ink/60">Resultado</span>
-                <span className="font-black">{realResult}</span>
+                <span className="block font-semibold text-ink/55">{match.stadium || "Sede por confirmar"}</span>
+                <span className="block font-black">Resultado: {realResult}</span>
               </div>
               <div className="text-right">
                 {pointsReady ? <PointsPill points={prediction?.points ?? 0} /> : <PointsPill points={0} label={pointsText} />}
@@ -652,8 +652,8 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-md bg-field p-2">
-          <span className="block font-bold text-ink/60">Resultado</span>
-          <span className="font-black">{realResult}</span>
+          <span className="block font-semibold text-ink/55">{match.stadium || "Sede por confirmar"}</span>
+          <span className="block font-black">Resultado: {realResult}</span>
           {prediction && <span className="block text-ink/55">Apuesta: {prediction.home_goals}-{prediction.away_goals}</span>}
           {winner && prediction?.home_goals === prediction?.away_goals && <span className="block font-black text-grass">Ganador: {winner.name}</span>}
         </div>
@@ -661,7 +661,6 @@ function BracketCard({ match, prediction, display }: { match: Match; prediction?
           {pointsReady ? <PointsPill points={prediction?.points ?? 0} /> : <PointsPill points={0} label={pointsText} />}
         </div>
       </div>
-      {match.stadium && <p className="mt-2 text-xs font-semibold text-ink/55">{match.stadium}</p>}
     </article>
   );
 }

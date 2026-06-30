@@ -10,7 +10,7 @@ export function ScoreWithPenalty({
   return (
     <span className={`inline-flex h-full w-full items-center justify-center gap-2 text-center font-black ${className}`}>
       <span className="leading-none">{score ?? ""}</span>
-      {penalty != null && <span className="leading-none text-ink/55">({penalty})</span>}
+      {penalty != null && <span className="font-normal leading-none">({penalty})</span>}
     </span>
   );
 }
