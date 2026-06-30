@@ -282,6 +282,27 @@ function loserFromPrediction(display: DisplayMatch, prediction?: PredictionWithU
   return null;
 }
 
+function winnerFromOfficialResult(display: DisplayMatch, match: Match): DisplayTeam | null {
+  if (match.home_goals == null || match.away_goals == null) return null;
+  if (match.home_goals > match.away_goals) return display.home;
+  if (match.away_goals > match.home_goals) return display.away;
+  if (sameTeamName(match.penalty_winner, match.home_team) || sameTeamName(match.penalty_winner, display.home.name)) {
+    return display.home;
+  }
+  if (sameTeamName(match.penalty_winner, match.away_team) || sameTeamName(match.penalty_winner, display.away.name)) {
+    return display.away;
+  }
+  return null;
+}
+
+function loserFromOfficialResult(display: DisplayMatch, match: Match): DisplayTeam | null {
+  const winner = winnerFromOfficialResult(display, match);
+  if (!winner) return null;
+  if (sameTeamName(winner.name, display.home.name)) return display.away;
+  if (sameTeamName(winner.name, display.away.name)) return display.home;
+  return null;
+}
+
 function hasOfficialResult(match: Match) {
   return match.status === "closed" && match.home_goals != null && match.away_goals != null;
 }
@@ -348,9 +369,8 @@ function deriveBracket(
     const number = matchNumber(match);
     if (!number) continue;
     if (!hasOfficialResult(match)) continue;
-    const prediction = predictions[match.id];
-    const winner = winnerFromPrediction(display, prediction);
-    const loser = loserFromPrediction(display, prediction);
+    const winner = winnerFromOfficialResult(display, match);
+    const loser = loserFromOfficialResult(display, match);
     if (winner) winners[number] = winner;
     if (loser) losers[number] = loser;
   }

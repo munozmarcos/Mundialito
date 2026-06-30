@@ -5,6 +5,7 @@ import { DateFilter } from "@/components/date-filter";
 import { EmptyState } from "@/components/empty-state";
 import { PointsPill, pointsInputClass, pointsPillClass } from "@/components/points-pill";
 import { RankingDescription } from "@/components/ranking-description";
+import { ScoreWithPenalty } from "@/components/score-with-penalty";
 import { TeamLabel } from "@/components/team-label";
 import { argentinaDateKey, formatArgentinaDateTime } from "@/lib/dates";
 import { sortedGroupEntries } from "@/lib/group-sort";
@@ -87,13 +88,8 @@ function ScoreBox({ value, className = "" }: { value: number | string | null | u
 
 function ResultScoreBox({ value, penalty, className = "" }: { value: number | string | null | undefined; penalty?: number | null; className?: string }) {
   return (
-    <div className="relative w-[72px] min-w-0">
-      {penalty != null && (
-        <span className="absolute -left-1 top-1/2 z-10 -translate-x-full -translate-y-1/2 text-[11px] font-black text-ink/45">
-          ({penalty})
-        </span>
-      )}
-      <ScoreBox className={className} value={value} />
+    <div className={`field min-h-10 w-full min-w-0 px-2 text-center font-black leading-none ${className}`}>
+      <ScoreWithPenalty penalty={penalty} score={value} />
     </div>
   );
 }
