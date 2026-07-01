@@ -1,53 +1,36 @@
 "use client";
 
-import { Volume2, VolumeX } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Music2, X } from "lucide-react";
+import { useState } from "react";
 
-const audioSrc = "/audio/no-payne-no-gain.mp3";
+const spotifyEmbedUrl = "https://open.spotify.com/embed/track/40qwbrvCXsiOPh9xOupCMp?utm_source=generator&theme=0";
 
 export function SoundToggle() {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem("mundialito-music-enabled") === "true";
-    setEnabled(saved);
-  }, []);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.volume = 0.75;
-    if (enabled) {
-      audio.play().catch(() => {
-        setEnabled(false);
-        window.localStorage.setItem("mundialito-music-enabled", "false");
-      });
-    } else {
-      audio.pause();
-    }
-  }, [enabled]);
-
-  function toggle() {
-    const next = !enabled;
-    setEnabled(next);
-    window.localStorage.setItem("mundialito-music-enabled", String(next));
-    window.dispatchEvent(new CustomEvent("mundialito:mute", { detail: { muted: !next } }));
-  }
+  const [open, setOpen] = useState(false);
 
   return (
     <>
       <button
-        aria-label={enabled ? "Mutear musica" : "Activar musica"}
+        aria-label={open ? "Cerrar musica oficial" : "Abrir musica oficial"}
         className="btn secondary header-icon-btn min-h-9 px-3"
-        onClick={toggle}
-        title={enabled ? "Mutear musica" : "Activar musica"}
+        onClick={() => setOpen((current) => !current)}
+        title="DNA"
         type="button"
       >
-        {enabled ? <Volume2 className="header-action-icon header-action-icon-large" /> : <VolumeX className="header-action-icon header-action-icon-large" />}
+        {open ? <X className="header-action-icon header-action-icon-large" /> : <Music2 className="header-action-icon header-action-icon-large" />}
       </button>
-      <audio ref={audioRef} loop preload="auto" src={audioSrc} />
+
+      {open && (
+        <div className="fixed right-3 top-24 z-[90] w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-xl border border-line bg-slate-950 shadow-2xl shadow-black/45">
+          <iframe
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            className="block h-[152px] w-full border-0"
+            loading="lazy"
+            src={spotifyEmbedUrl}
+            title="DNA - musica oficial"
+          />
+        </div>
+      )}
     </>
   );
 }
