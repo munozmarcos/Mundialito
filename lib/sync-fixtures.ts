@@ -468,6 +468,7 @@ async function upsertFixture(db: ReturnType<typeof supabaseAdmin>, fixture: Prov
   const nextAwayTeam = awaySide.team;
   const nextHomeCode = homeSide.code;
   const nextAwayCode = awaySide.code;
+  const nextStadium = venueForFixture(fixture.stage, fixture.kickoffAt, nextHomeTeam, nextAwayTeam) ?? fixture.stadium ?? existing?.stadium ?? null;
   const mergedFixture = {
     ...fixture,
     homeTeam: nextHomeTeam,
@@ -484,7 +485,7 @@ async function upsertFixture(db: ReturnType<typeof supabaseAdmin>, fixture: Prov
     home_country_code: nextHomeCode,
     away_country_code: nextAwayCode,
     kickoff_at: fixture.kickoffAt,
-    stadium: venueForFixture(fixture.stage, fixture.kickoffAt, nextHomeTeam, nextAwayTeam) ?? fixture.stadium,
+    stadium: nextStadium,
     stage: fixture.stage,
     group_name: fixture.groupName,
     status: state.status,
@@ -516,7 +517,7 @@ export async function syncFixturesFromProvider() {
   const fixtures = await fetchProviderFixtures();
   const { data: existingMatches, error: existingError } = await db
     .from("matches")
-    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,provider_match_id,stage,group_name,status,locked,home_goals,away_goals");
+    .select("id,home_team,away_team,home_country_code,away_country_code,kickoff_at,provider_match_id,stage,group_name,status,locked,home_goals,away_goals,stadium");
   if (existingError) throw existingError;
   const matches = existingMatches ?? [];
   let imported = 0;

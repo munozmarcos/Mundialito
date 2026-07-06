@@ -131,6 +131,7 @@ function venueKey(stage: MatchStage, kickoffAt: string, home?: string | null, aw
 }
 
 const fixtureVenueMap = new Map(fixtureVenues.map((fixture) => [venueKey(fixture.stage, fixture.kickoffAt, fixture.home, fixture.away), fixture.venue]));
+const fixtureVenueByTeamsMap = new Map(fixtureVenues.map((fixture) => [`${fixture.stage}:${normalizeVenueTeam(fixture.home)}:${normalizeVenueTeam(fixture.away)}`, fixture.venue]));
 const knockoutVenueByTimeMap = new Map(
   fixtureVenues
     .filter((fixture) => fixture.stage !== "GROUP")
@@ -138,5 +139,18 @@ const knockoutVenueByTimeMap = new Map(
 );
 
 export function venueForFixture(stage: MatchStage, kickoffAt: string, home?: string | null, away?: string | null) {
-  return fixtureVenueMap.get(venueKey(stage, kickoffAt, home, away)) ?? knockoutVenueByTimeMap.get(`${stage}:${new Date(kickoffAt).toISOString()}`) ?? null;
+  const kickoffTime = new Date(kickoffAt).getTime();
+  const nearbyFixture = fixtureVenues
+    .filter((fixture) => fixture.stage === stage)
+    .map((fixture) => ({ fixture, diff: Math.abs(new Date(fixture.kickoffAt).getTime() - kickoffTime) }))
+    .filter((item) => Number.isFinite(item.diff) && item.diff <= 3 * 60 * 60 * 1000)
+    .sort((a, b) => a.diff - b.diff)[0]?.fixture;
+
+  return (
+    fixtureVenueMap.get(venueKey(stage, kickoffAt, home, away)) ??
+    fixtureVenueByTeamsMap.get(`${stage}:${normalizeVenueTeam(home)}:${normalizeVenueTeam(away)}`) ??
+    knockoutVenueByTimeMap.get(`${stage}:${new Date(kickoffAt).toISOString()}`) ??
+    nearbyFixture?.venue ??
+    null
+  );
 }
