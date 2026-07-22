@@ -1,6 +1,7 @@
-import { getNewsItems } from "@/lib/data";
+import { getNewsItems, getPaymentSummary, getRanking } from "@/lib/data";
 import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { formatScoreWithPenalties } from "@/lib/match-score";
+import { competitionRankForIndex, rankingPrefix } from "@/lib/ranking-position";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 import { fetchAllSupabaseRows } from "@/lib/supabase-pagination";
 
@@ -9,7 +10,7 @@ export type LatestNotification = {
   title: string;
   body: string;
   created_at: string;
-  type: "admin" | "points" | "closing" | "closed" | "participant";
+  type: "admin" | "points" | "podium" | "champions" | "closing" | "closed" | "participant";
   point_players?: { name: string; points: number }[];
   match?: {
     home_team: string;
@@ -66,9 +67,30 @@ type PointActivityRow = {
   matches?: PointMatchRow | PointMatchRow[] | null;
 };
 
+type PodiumPointRow = {
+  user_id: string;
+  champion_team?: string | null;
+  runner_up_team?: string | null;
+  third_place_team?: string | null;
+  champion_points: number;
+  runner_up_points: number;
+  third_place_points: number;
+  points: number;
+  updated_at?: string | null;
+  profiles?: { display_name: string } | { display_name: string }[] | null;
+};
+
 function firstRelation<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
   return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function money(value: number) {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0
+  }).format(value);
 }
 
 function matchLabel(match: Pick<MatchNoticeRow, "home_team" | "away_team" | "home_country_code" | "away_country_code">) {
@@ -141,6 +163,117 @@ async function getPointMatchNotifications(limit: number): Promise<LatestNotifica
     })
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, limit);
+}
+
+async function getPodiumPointNotifications(limit: number): Promise<LatestNotification[]> {
+  if (!supabaseConfigured()) return [];
+
+  const db = supabaseAdmin();
+  let data: PodiumPointRow[];
+  try {
+    data = await fetchAllSupabaseRows<PodiumPointRow>((from, to) =>
+      db
+        .from("podium_predictions")
+        .select("user_id,champion_team,runner_up_team,third_place_team,champion_points,runner_up_points,third_place_points,points,updated_at,profiles(display_name)")
+        .gt("points", 0)
+        .order("updated_at", { ascending: false })
+        .range(from, to)
+    );
+  } catch (error) {
+    console.warn("[notifications:podium-points]", error);
+    return [];
+  }
+
+  const groups = [
+    {
+      key: "champion",
+      title: "Podio anticipado: Campeón",
+      pointsField: "champion_points" as const,
+      teamField: "champion_team" as const
+    },
+    {
+      key: "runner-up",
+      title: "Podio anticipado: Subcampeón",
+      pointsField: "runner_up_points" as const,
+      teamField: "runner_up_team" as const
+    },
+    {
+      key: "third-place",
+      title: "Podio anticipado: 3er puesto",
+      pointsField: "third_place_points" as const,
+      teamField: "third_place_team" as const
+    }
+  ].map((definition) => {
+    const winners = data
+      .filter((row) => (row[definition.pointsField] ?? 0) > 0)
+      .map((row) => {
+        const profile = firstRelation(row.profiles);
+        return {
+          name: profile?.display_name ?? "Un participante",
+          points: row[definition.pointsField] ?? 0,
+          team: row[definition.teamField] ?? null,
+          updatedAt: row.updated_at ?? new Date().toISOString()
+        };
+      });
+    const firstWinner = winners[0];
+    const team = firstWinner?.team;
+    return {
+      id: `podium:${definition.key}:${team ?? "pending"}`,
+      title: definition.title,
+      body: team ? `${flagEmojiForTeam(team)} ${displayNameForTeam(team)}` : "",
+      created_at: winners.reduce((latest, winner) => (new Date(winner.updatedAt).getTime() > new Date(latest).getTime() ? winner.updatedAt : latest), firstWinner?.updatedAt ?? new Date(0).toISOString()),
+      type: "podium" as const,
+      point_players: winners
+        .sort((a, b) => a.name.localeCompare(b.name, "es"))
+        .map((winner) => ({ name: winner.name, points: winner.points }))
+    };
+  });
+
+  return groups
+    .filter((item) => item.point_players.length > 0)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, limit);
+}
+
+async function getChampionsNotification(): Promise<LatestNotification[]> {
+  if (!supabaseConfigured()) return [];
+
+  try {
+    const db = supabaseAdmin();
+    const { data: finalMatch, error } = await db
+      .from("matches")
+      .select("id,result_updated_at,kickoff_at,status,home_goals,away_goals,home_penalty_goals,away_penalty_goals")
+      .eq("stage", "FINAL")
+      .maybeSingle();
+    if (error) throw error;
+    if (!finalMatch || finalMatch.status !== "closed" || finalMatch.home_goals == null || finalMatch.away_goals == null) return [];
+
+    const [ranking, payments] = await Promise.all([getRanking(), getPaymentSummary()]);
+    const prizeByRank: Record<number, number> = {
+      1: payments.firstPrize,
+      2: payments.secondPrize,
+      3: payments.thirdPrize
+    };
+    const podiumRows = ranking
+      .map((row, index) => ({ ...row, rank: competitionRankForIndex(ranking, index, (item) => item.total_points) }))
+      .filter((row) => row.rank <= 3);
+    if (!podiumRows.length) return [];
+
+    return [
+      {
+        id: `champions:${finalMatch.id}:${formatScoreWithPenalties(finalMatch) ?? "final"}`,
+        title: "Campeones del prode",
+        body: podiumRows
+          .map((row) => `${rankingPrefix(row.rank)} ${row.display_name} - ${row.total_points} pts - ${money(prizeByRank[row.rank] ?? 0)}`)
+          .join("\n"),
+        created_at: finalMatch.result_updated_at ?? finalMatch.kickoff_at ?? new Date().toISOString(),
+        type: "champions" as const
+      }
+    ];
+  } catch (error) {
+    console.warn("[notifications:champions]", error);
+    return [];
+  }
 }
 
 async function getClosingMatchNotifications(limit: number): Promise<LatestNotification[]> {
@@ -243,9 +376,11 @@ async function getParticipantNotifications(limit: number): Promise<LatestNotific
 }
 
 export async function getLatestNotifications(limit = 10, options?: { includeExpiredManual?: boolean }): Promise<LatestNotification[]> {
-  const [manualNews, pointMatches, closingMatches, closedMatches, participants, hiddenIds] = await Promise.all([
+  const [manualNews, pointMatches, podiumPoints, champions, closingMatches, closedMatches, participants, hiddenIds] = await Promise.all([
     getNewsItems(limit, { includeExpired: options?.includeExpiredManual }),
     getPointMatchNotifications(limit),
+    getPodiumPointNotifications(limit),
+    getChampionsNotification(),
     getClosingMatchNotifications(limit),
     getClosedMatchNotifications(limit),
     getParticipantNotifications(limit),
@@ -261,6 +396,8 @@ export async function getLatestNotifications(limit = 10, options?: { includeExpi
       type: "admin" as const
     })),
     ...pointMatches,
+    ...podiumPoints,
+    ...champions,
     ...closingMatches,
     ...closedMatches,
     ...participants

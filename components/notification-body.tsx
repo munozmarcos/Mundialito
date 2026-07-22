@@ -31,6 +31,7 @@ export function NotificationBody({ item, compact = false }: { item: LatestNotifi
           <TeamLabel name={item.match.away_team} code={item.match.away_country_code} />
         </div>
       )}
+      {item.body && <p className="whitespace-pre-wrap">{item.body}</p>}
       {item.point_players?.length ? (
         <div className="grid gap-2">
           {groupedPointPlayers(item.point_players).map(([points, names]) => (
@@ -44,9 +45,7 @@ export function NotificationBody({ item, compact = false }: { item: LatestNotifi
             </span>
           ))}
         </div>
-      ) : (
-        item.body && <p className="whitespace-pre-wrap">{item.body}</p>
-      )}
+      ) : null}
     </div>
   );
 }

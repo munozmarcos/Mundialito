@@ -35,12 +35,12 @@ function isBetweenDateKeys(value: string, from: string, to: string) {
 function upcoming(matches: Awaited<ReturnType<typeof getMatches>>, limit: number) {
   const now = Date.now();
   const today = argentinaDateKey(new Date());
-  const until = addArgentinaDays(today, 2);
+  const until = addArgentinaDays(today, 3);
   return matches
     .filter((match) => {
       const status = homeMatchStatus(match);
-      const isOpenOrLive = status === "open" || status === "closing_soon" || status === "playing";
-      return isOpenOrLive && (status === "playing" || (isBetweenDateKeys(match.kickoff_at, today, until) && new Date(match.kickoff_at).getTime() >= now));
+      const isOpenSoonOrLive = status === "open" || status === "closing_soon" || status === "playing";
+      return isOpenSoonOrLive && (status === "playing" || (isBetweenDateKeys(match.kickoff_at, today, until) && new Date(match.kickoff_at).getTime() >= now));
     })
     .sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime())
     .slice(0, limit);
