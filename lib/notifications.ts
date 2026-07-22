@@ -1,7 +1,7 @@
 import { getNewsItems, getPaymentSummary, getRanking } from "@/lib/data";
-import { displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
+import { countryCodeForTeam, displayNameForTeam, flagEmojiForTeam } from "@/lib/flags";
 import { formatScoreWithPenalties } from "@/lib/match-score";
-import { competitionRankForIndex, rankingPrefix } from "@/lib/ranking-position";
+import { rankingRankForIndex, rankingPrefix } from "@/lib/ranking-position";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 import { fetchAllSupabaseRows } from "@/lib/supabase-pagination";
 
@@ -12,6 +12,10 @@ export type LatestNotification = {
   created_at: string;
   type: "admin" | "points" | "podium" | "champions" | "closing" | "closed" | "participant";
   point_players?: { name: string; points: number }[];
+  podium_team?: {
+    team: string;
+    code?: string | null;
+  };
   match?: {
     home_team: string;
     away_team: string;
@@ -187,19 +191,19 @@ async function getPodiumPointNotifications(limit: number): Promise<LatestNotific
   const groups = [
     {
       key: "champion",
-      title: "Podio anticipado: Campeón",
+      title: "🥇 Podio anticipado: Campeón",
       pointsField: "champion_points" as const,
       teamField: "champion_team" as const
     },
     {
       key: "runner-up",
-      title: "Podio anticipado: Subcampeón",
+      title: "🥈 Podio anticipado: Subcampeón",
       pointsField: "runner_up_points" as const,
       teamField: "runner_up_team" as const
     },
     {
       key: "third-place",
-      title: "Podio anticipado: 3er puesto",
+      title: "🥉 Podio anticipado: 3er puesto",
       pointsField: "third_place_points" as const,
       teamField: "third_place_team" as const
     }
@@ -220,9 +224,10 @@ async function getPodiumPointNotifications(limit: number): Promise<LatestNotific
     return {
       id: `podium:${definition.key}:${team ?? "pending"}`,
       title: definition.title,
-      body: team ? `${flagEmojiForTeam(team)} ${displayNameForTeam(team)}` : "",
+      body: "",
       created_at: winners.reduce((latest, winner) => (new Date(winner.updatedAt).getTime() > new Date(latest).getTime() ? winner.updatedAt : latest), firstWinner?.updatedAt ?? new Date(0).toISOString()),
       type: "podium" as const,
+      podium_team: team ? { team, code: countryCodeForTeam(team) } : undefined,
       point_players: winners
         .sort((a, b) => a.name.localeCompare(b.name, "es"))
         .map((winner) => ({ name: winner.name, points: winner.points }))
@@ -255,7 +260,7 @@ async function getChampionsNotification(): Promise<LatestNotification[]> {
       3: payments.thirdPrize
     };
     const podiumRows = ranking
-      .map((row, index) => ({ ...row, rank: competitionRankForIndex(ranking, index, (item) => item.total_points) }))
+      .map((row, index) => ({ ...row, rank: rankingRankForIndex(ranking, index) }))
       .filter((row) => row.rank <= 3);
     if (!podiumRows.length) return [];
 

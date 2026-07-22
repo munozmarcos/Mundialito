@@ -31,6 +31,11 @@ export function NotificationBody({ item, compact = false }: { item: LatestNotifi
           <TeamLabel name={item.match.away_team} code={item.match.away_country_code} />
         </div>
       )}
+      {item.podium_team && (
+        <div className="flex flex-wrap items-center gap-3">
+          <TeamLabel name={item.podium_team.team} code={item.podium_team.code} />
+        </div>
+      )}
       {item.body && <p className="whitespace-pre-wrap">{item.body}</p>}
       {item.point_players?.length ? (
         <div className="grid gap-2">

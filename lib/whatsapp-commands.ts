@@ -4,7 +4,7 @@ import { displayNameForTeam, flagEmojiForTeam, searchKeysForTeam } from "@/lib/f
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
 import { formatScoreWithPenalties } from "@/lib/match-score";
 import { getPodiumLockState, recalculateAllPodiumPoints, validatePodiumTeams } from "@/lib/podium";
-import { competitionRankForIndex, rankingPrefix } from "@/lib/ranking-position";
+import { rankingRankForIndex, rankingPrefix } from "@/lib/ranking-position";
 import { isPredictionLocked } from "@/lib/scoring";
 import { stageLabel } from "@/lib/stage-labels";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
@@ -439,23 +439,23 @@ async function answerPodio(text: string, from?: string) {
 }
 
 function rankingLine(
-  ranking: Pick<RankingRow, "user_id" | "display_name" | "total_points">[],
-  row: Pick<RankingRow, "user_id" | "display_name" | "total_points">,
+  ranking: Pick<RankingRow, "user_id" | "display_name" | "total_points" | "exact_hits" | "trend_hits">[],
+  row: Pick<RankingRow, "user_id" | "display_name" | "total_points" | "exact_hits" | "trend_hits">,
   index: number,
   highlightedUserId?: string | null
 ) {
-  const rank = competitionRankForIndex(ranking, index, (item) => item.total_points);
+  const rank = rankingRankForIndex(ranking, index);
   const prefix = rankingPrefix(rank);
   if (highlightedUserId && row.user_id === highlightedUserId) return `*${prefix} ${row.display_name} - ${row.total_points} pts*`;
   return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
 }
 
 function rankingLineForGroupCommand(
-  ranking: Pick<RankingRow, "user_id" | "display_name" | "total_points">[],
-  row: Pick<RankingRow, "user_id" | "display_name" | "total_points">,
+  ranking: Pick<RankingRow, "user_id" | "display_name" | "total_points" | "exact_hits" | "trend_hits">[],
+  row: Pick<RankingRow, "user_id" | "display_name" | "total_points" | "exact_hits" | "trend_hits">,
   index: number
 ) {
-  const rank = competitionRankForIndex(ranking, index, (item) => item.total_points);
+  const rank = rankingRankForIndex(ranking, index);
   const prefix = rankingPrefix(rank);
   if (rank <= 3) return `*${prefix} ${row.display_name} - ${row.total_points} pts*`;
   return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
@@ -780,7 +780,7 @@ export async function answerWhatsAppCommand(text: string, from?: string) {
     const podium: string[] = [];
     const others: string[] = [];
     ranking.forEach((row, index) => {
-      const rank = competitionRankForIndex(ranking, index, (item) => item.total_points);
+      const rank = rankingRankForIndex(ranking, index);
       const prefix = rankingPrefix(rank);
       const isHighlighted = profile?.id && row.user_id === profile.id;
       const line = rank <= 3 || isHighlighted

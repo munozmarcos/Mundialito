@@ -1,7 +1,7 @@
 ﻿import { getRanking } from "@/lib/data";
 import { ICONS } from "@/lib/message-icons";
 import { recordJobRun, summarizeJob } from "@/lib/job-runs";
-import { competitionRankForIndex, rankingPrefix } from "@/lib/ranking-position";
+import { rankingRankForIndex, rankingPrefix } from "@/lib/ranking-position";
 import { supabaseAdmin } from "@/lib/supabase";
 import { hasWhatsAppGroup, sendWhatsApp, sendWhatsAppGroup } from "@/lib/whatsapp";
 import { sendWebPushToUser } from "@/lib/web-push";
@@ -84,30 +84,30 @@ async function findCompletedMatchDay(db: ReturnType<typeof supabaseAdmin>, now =
 }
 
 function rankingLine(
-  ranking: { user_id: string; display_name: string; total_points: number }[],
-  row: { user_id: string; display_name: string; total_points: number },
+  ranking: { user_id: string; display_name: string; total_points: number; exact_hits: number; trend_hits: number }[],
+  row: { user_id: string; display_name: string; total_points: number; exact_hits: number; trend_hits: number },
   index: number,
   highlightedUserId?: string | null
 ) {
-  const rank = competitionRankForIndex(ranking, index, (item) => item.total_points);
+  const rank = rankingRankForIndex(ranking, index);
   const prefix = rankingPrefix(rank);
   if (highlightedUserId && row.user_id === highlightedUserId) return `*${prefix} ${row.display_name} - ${row.total_points} pts*`;
   return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
 }
 
 function rankingLineForGroup(
-  ranking: { user_id: string; display_name: string; total_points: number }[],
-  row: { user_id: string; display_name: string; total_points: number },
+  ranking: { user_id: string; display_name: string; total_points: number; exact_hits: number; trend_hits: number }[],
+  row: { user_id: string; display_name: string; total_points: number; exact_hits: number; trend_hits: number },
   index: number
 ) {
-  const rank = competitionRankForIndex(ranking, index, (item) => item.total_points);
+  const rank = rankingRankForIndex(ranking, index);
   const prefix = rankingPrefix(rank);
   if (rank <= 3) return `*${prefix} ${row.display_name} - ${row.total_points} pts*`;
   return `${prefix} ${row.display_name} - *${row.total_points} pts*`;
 }
 
 function rankingBody(
-  ranking: { user_id: string; display_name: string; total_points: number }[],
+  ranking: { user_id: string; display_name: string; total_points: number; exact_hits: number; trend_hits: number }[],
   today: string,
   highlightedUserId?: string | null
 ) {
@@ -118,7 +118,7 @@ function rankingBody(
   const podium: string[] = [];
   const others: string[] = [];
   ranking.forEach((row, index) => {
-    const rank = competitionRankForIndex(ranking, index, (item) => item.total_points);
+    const rank = rankingRankForIndex(ranking, index);
     const prefix = rankingPrefix(rank);
     const isHighlighted = highlightedUserId && row.user_id === highlightedUserId;
     const line = rank <= 3 || isHighlighted

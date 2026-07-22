@@ -1,16 +1,14 @@
 "use client";
 
 import { AdminBackButton } from "@/components/admin-back-button";
+import { NotificationBody } from "@/components/notification-body";
 import { formatArgentinaDateTime } from "@/lib/dates";
+import type { LatestNotification } from "@/lib/notifications";
 import { Newspaper, Pencil, Save, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
-type NewsItem = {
-  id: string;
-  title: string;
-  body: string;
-  published: boolean;
-  created_at: string;
+type NewsItem = LatestNotification & {
+  published?: boolean;
 };
 
 const defaultNewsTitle = "Mundialito 🏆⚽";
@@ -166,7 +164,7 @@ export default function AdminNewsPage() {
                         {formatArgentinaDateTime(item.created_at)}
                       </time>
                     </div>
-                    <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-ink/70">{item.body}</p>
+                    <NotificationBody item={item} compact />
                   </>
                 )}
               </div>

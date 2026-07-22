@@ -13,7 +13,7 @@ import { CountryFilterPicker } from "@/components/country-filter-picker";
 import { PointsPill, pointsInputClass, pointsPillClass } from "@/components/points-pill";
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import { RankingDescription } from "@/components/ranking-description";
-import { competitionRankMap } from "@/lib/ranking-position";
+import { compareRankingRows, rankingRankMap } from "@/lib/ranking-position";
 import { knockoutMatchNumber } from "@/lib/knockout-match-number";
 import { Calculator, CircleDot, ClipboardPaste, Eye, GitBranch, ListChecks, Lock, Medal, RotateCcw, Table2, Target, Trophy, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -43,6 +43,31 @@ type DisplayMatch = {
   home: DisplayTeam;
   away: DisplayTeam;
 };
+
+type SimRankingRow = {
+  userId: string;
+  name: string;
+  points: number;
+  exacts: number;
+  trends: number;
+  played: number;
+  podium: SimPodiumDetail;
+};
+
+function simRankingTieBreak(row: SimRankingRow) {
+  return {
+    total_points: row.points,
+    exact_hits: row.exacts,
+    trend_hits: row.trends,
+    podium_champion_points: row.podium.champion,
+    podium_runner_up_points: row.podium.runnerUp,
+    podium_third_place_points: row.podium.thirdPlace
+  };
+}
+
+function compareSimRankingRows(a: SimRankingRow, b: SimRankingRow) {
+  return compareRankingRows({ ...simRankingTieBreak(a), display_name: a.name }, { ...simRankingTieBreak(b), display_name: b.name });
+}
 
 const stageLabels: Record<string, string> = {
   ALL: "Todos",
@@ -618,13 +643,13 @@ export function ScoringSimulator({ matches, predictions, profiles, podiumPredict
     }
 
     return {
-      rows: Object.values(rows).sort((a, b) => b.points - a.points || b.exacts - a.exacts || b.trends - a.trends || a.name.localeCompare(b.name)),
+      rows: Object.values(rows).sort(compareSimRankingRows),
       details
     };
   }, [matches, podiumPredictions, predictionsByMatch, profiles, results, simulated.displays, simulatedChampion, simulatedRunnerUp, simulatedThirdPlace]);
   const ranking = rankingData.rows;
   const rankByUser = useMemo(
-    () => competitionRankMap(ranking, (row) => row.userId, (row) => row.points),
+    () => rankingRankMap(ranking.map((row) => ({ ...row, ...simRankingTieBreak(row) })), (row) => row.userId),
     [ranking]
   );
   const selectedRankingRow = ranking.find((row) => row.userId === selectedRankingUserId) ?? null;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { competitionRankForIndex, competitionRankMap } from "@/lib/ranking-position";
+import { compareRankingRows, competitionRankForIndex, competitionRankMap, rankingRankForIndex } from "@/lib/ranking-position";
 
 const rows = [
   { id: "a", points: 10 },
@@ -25,5 +25,17 @@ describe("ranking positions", () => {
     expect(ranks.get("d")).toBe(2);
     expect(ranks.get("e")).toBe(3);
     expect(ranks.get("h")).toBe(4);
+  });
+
+  it("breaks ranking ties by total hits including podium and then exact hits", () => {
+    const ranking = [
+      { display_name: "A", total_points: 10, exact_hits: 2, trend_hits: 2, podium_champion_points: 0, podium_runner_up_points: 0, podium_third_place_points: 0 },
+      { display_name: "B", total_points: 10, exact_hits: 2, trend_hits: 1, podium_champion_points: 3, podium_runner_up_points: 0, podium_third_place_points: 0 },
+      { display_name: "C", total_points: 10, exact_hits: 3, trend_hits: 0, podium_champion_points: 0, podium_runner_up_points: 0, podium_third_place_points: 0 },
+      { display_name: "D", total_points: 9, exact_hits: 9, trend_hits: 9, podium_champion_points: 3, podium_runner_up_points: 2, podium_third_place_points: 1 }
+    ].sort(compareRankingRows);
+
+    expect(ranking.map((row) => row.display_name)).toEqual(["B", "A", "C", "D"]);
+    expect(ranking.map((_, index) => rankingRankForIndex(ranking, index))).toEqual([1, 2, 3, 4]);
   });
 });

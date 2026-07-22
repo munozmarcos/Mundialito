@@ -10,7 +10,7 @@ import { TeamLabel } from "@/components/team-label";
 import { argentinaDateKey, formatArgentinaDateTime } from "@/lib/dates";
 import { sortedGroupEntries } from "@/lib/group-sort";
 import { matchFitsBasicFilters } from "@/lib/match-filters";
-import { competitionRankMap } from "@/lib/ranking-position";
+import { compareRankingRows, rankingRankMap } from "@/lib/ranking-position";
 import { teamOptionsFromMatches } from "@/lib/team-options";
 import type { RankingDetails, RankingPredictionDetail, RankingRow } from "@/lib/data";
 import type { Match, MatchStage } from "@/lib/types";
@@ -203,7 +203,7 @@ export function RankingContent({ ranking, details }: Props) {
           podium_third_place_points: podium?.third_place_points ?? 0
         };
       })
-      .sort((a, b) => b.total_points - a.total_points || b.exact_hits - a.exact_hits || b.trend_hits - a.trend_hits || a.display_name.localeCompare(b.display_name));
+      .sort(compareRankingRows);
   }, [details.podium, details.predictions, ranking]);
   const selectedRow = normalizedRanking.find((row) => row.user_id === selectedUserId) ?? null;
   const selectedSummary = selectedUserId ? details.summaries.find((summary) => summary.user_id === selectedUserId) : null;
@@ -232,7 +232,7 @@ export function RankingContent({ ranking, details }: Props) {
     [normalizedQuery, normalizedRanking]
   );
   const rankByUser = useMemo(
-    () => competitionRankMap(normalizedRanking, (row) => row.user_id, (row) => row.total_points),
+    () => rankingRankMap(normalizedRanking, (row) => row.user_id),
     [normalizedRanking]
   );
 

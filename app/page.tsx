@@ -12,7 +12,7 @@ import { argentinaDateKey, formatArgentinaDateTime } from "@/lib/dates";
 import { liveMinuteLabel } from "@/lib/live-minute";
 import { isMatchBlockedUntilOfficial, isPlaceholderTeamName } from "@/lib/match-availability";
 import { getLatestNotifications } from "@/lib/notifications";
-import { competitionRankForIndex } from "@/lib/ranking-position";
+import { rankingRankForIndex } from "@/lib/ranking-position";
 import { isPredictionLocked, matchStatus } from "@/lib/scoring";
 import { stageLabel } from "@/lib/stage-labels";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
@@ -312,7 +312,7 @@ export default async function Home() {
               <p className="p-5 text-sm font-semibold text-ink/65">Todavía no hay ranking.</p>
             ) : (
               ranking.slice(0, 3).map((row, index) => {
-                const rank = competitionRankForIndex(ranking, index, (item) => item.total_points);
+                const rank = rankingRankForIndex(ranking, index);
                 return (
                 <div className={`grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b p-4 last:border-0 ${podiumClass(rank - 1)}`} key={row.user_id}>
                   <strong className="text-xl font-black">#{rank}</strong>

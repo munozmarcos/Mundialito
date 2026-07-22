@@ -1,5 +1,6 @@
 import { demoMatches, demoRanking } from "@/lib/demo-data";
 import { isMatchBlockedUntilOfficial } from "@/lib/match-availability";
+import { compareRankingRows } from "@/lib/ranking-position";
 import { supabaseAdmin, supabaseConfigured } from "@/lib/supabase";
 import { fetchAllSupabaseRows } from "@/lib/supabase-pagination";
 import { unstable_noStore as noStore } from "next/cache";
@@ -201,7 +202,7 @@ export async function getRanking(): Promise<RankingRow[]> {
           podium_third_place_points: podium?.third_place_points ?? 0
         } satisfies RankingRow;
       })
-      .sort((a, b) => b.total_points - a.total_points || b.exact_hits - a.exact_hits || b.trend_hits - a.trend_hits || a.display_name.localeCompare(b.display_name));
+      .sort(compareRankingRows);
   } catch (error) {
     console.warn("[demo:fallback] ranking", error);
     return demoRanking;
